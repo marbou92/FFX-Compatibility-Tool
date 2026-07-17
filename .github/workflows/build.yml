@@ -1,0 +1,74 @@
+name: Build
+
+# Builds packaged desktop binaries via PyInstaller. Runs on version tags
+# (e.g. v0.4.0) and can also be triggered manually. Artifacts are attached
+# to the corresponding GitHub Release.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            artifact_name: FFXCompatibilityTool-windows
+            pyinstaller_args: --windowed --name FFXCompatibilityTool
+          - os: macos-latest
+            artifact_name: FFXCompatibilityTool-macos
+            pyinstaller_args: --windowed --name FFXCompatibilityTool
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Run tests before packaging
+        run: |
+          pip install -r requirements-dev.txt
+          pytest -v
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller ${{ matrix.pyinstaller_args }} --add-data "data${{ runner.os == 'Windows' && ';' || ':' }}data" run_gui.py
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Zip each platform's build
+        run: |
+          cd artifacts
+          for dir in */; do
+            name="${dir%/}"
+            zip -r "../${name}.zip" "$dir"
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "*.zip"
+          generate_release_notes: true
