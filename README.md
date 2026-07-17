@@ -64,20 +64,8 @@ Tagged releases (`vX.Y.Z`) are built automatically for Windows and macOS via
 GitHub Actions — see the Releases page. See `.github/workflows/build.yml`
 for the packaging steps if you'd rather build locally with PyInstaller.
 
-## Project status
-
-- ✅ Phase 1 — RIFX parser/serializer (lossless round-trip, tested)
-- ✅ Phase 2 — Conversion pipeline + CLI
-- ✅ Phase 3 — PySide6 GUI (Effect Lister / Plugin Profile / Convert tabs)
-- ✅ Phase 4 — Plugin ownership profile system (delivered as part of
-  Phase 3 — manual checklist + folder-scan auto-detect + automatic
-  per-file cross-check, all in `ffx_gui/profile_store.py` and
-  `ffx_gui/tab_profile.py`)
-- ✅ Phase 5 — Packaged releases (Windows/macOS) via GitHub Actions
-
 See `PROJECT_PLAN.md` for the full original spec and `PHASES.md` for how it
-was broken down. Both are historical planning documents at this point —
-this README is the source of truth for current status.
+was broken down.
 
 ## Known limitations
 
