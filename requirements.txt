@@ -1,0 +1,3 @@
+# Phase 1-2 (ffx_core, cli.py) use only the Python standard library —
+# no runtime dependencies yet. PySide6 gets added here in Phase 3 when
+# the GUI work starts.
