@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ffx-compatibility-tool"
+version = "0.3.0"
+description = "Downgrade Adobe After Effects .ffx presets to older AE versions, with plugin-dependency detection."
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+# The fix for the CI ModuleNotFoundError: pytest's rootdir-detection only
+# adds a test file's own directory to sys.path when tests/ has no
+# __init__.py — it does NOT add the project root, so `from ffx_core import
+# ...` fails in CI even though it happens to work locally if your shell's
+# cwd is already the project root. Explicitly adding "." here fixes it
+# everywhere, regardless of cwd or Python version.
+pythonpath = ["."]
+testpaths = ["tests"]
