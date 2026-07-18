@@ -18,24 +18,24 @@ namespace FfxTool.Gui
         {
             FlatStyle = FlatStyle.Flat;
             FlatAppearance.BorderSize = 0;
-            BackColor = Md3Tokens.Primary;
-            ForeColor = Md3Tokens.OnPrimary;
+            BackColor = ThemeManager.Current.Primary;
+            ForeColor = ThemeManager.Current.OnPrimary;
             Font = Md3Tokens.LabelLarge;
             Height = 36;
             Cursor = Cursors.Hand;
-            FlatAppearance.MouseOverBackColor = ControlPaint.Light(Md3Tokens.Primary, 0.1f);
-            FlatAppearance.MouseDownBackColor = ControlPaint.Dark(Md3Tokens.Primary, 0.05f);
+            FlatAppearance.MouseOverBackColor = ControlPaint.Light(ThemeManager.Current.Primary, 0.1f);
+            FlatAppearance.MouseDownBackColor = ControlPaint.Dark(ThemeManager.Current.Primary, 0.05f);
         }
 
         protected override void OnPaint(PaintEventArgs pevent)
         {
             pevent.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             using (var path = RoundedRect(ClientRectangle, Md3Tokens.CornerLarge))
-            using (var brush = new SolidBrush(BackColor))
+            using (var brush = new SolidBrush(ThemeManager.Current.Primary))
             {
                 pevent.Graphics.FillPath(brush, path);
             }
-            TextRenderer.DrawText(pevent.Graphics, Text, Font, ClientRectangle, ForeColor,
+            TextRenderer.DrawText(pevent.Graphics, Text, Font, ClientRectangle, ThemeManager.Current.OnPrimary,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
         }
 
@@ -57,17 +57,19 @@ namespace FfxTool.Gui
     {
         public Md3Card()
         {
-            BackColor = Md3Tokens.SurfaceContainer;
             Padding = new Padding(Md3Tokens.Space4);
+            ThemeManager.ThemeChanged += Invalidate_;
         }
+
+        void Invalidate_() => Invalidate();
 
         protected override void OnPaint(PaintEventArgs e)
         {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             var bounds = new Rectangle(0, 0, Width - 1, Height - 1);
             using (var path = RoundedRect(bounds, Md3Tokens.CornerMedium))
-            using (var fillBrush = new SolidBrush(BackColor))
-            using (var pen = new Pen(Md3Tokens.OutlineVariant, 1))
+            using (var fillBrush = new SolidBrush(ThemeManager.Current.SurfaceContainer))
+            using (var pen = new Pen(ThemeManager.Current.OutlineVariant, 1))
             {
                 e.Graphics.FillPath(fillBrush, path);
                 e.Graphics.DrawPath(pen, path);
@@ -103,20 +105,20 @@ namespace FfxTool.Gui
             switch (status)
             {
                 case Status.Ok:
-                    BackColor = Md3Tokens.PrimaryContainer;
-                    ForeColor = Md3Tokens.OnPrimaryContainer;
+                    BackColor = ThemeManager.Current.PrimaryContainer;
+                    ForeColor = ThemeManager.Current.OnPrimaryContainer;
                     break;
                 case Status.Warning:
-                    BackColor = Md3Tokens.TertiaryContainer;
-                    ForeColor = Md3Tokens.OnTertiaryContainer;
+                    BackColor = ThemeManager.Current.TertiaryContainer;
+                    ForeColor = ThemeManager.Current.OnTertiaryContainer;
                     break;
                 case Status.Error:
-                    BackColor = Md3Tokens.ErrorContainer;
-                    ForeColor = Md3Tokens.OnErrorContainer;
+                    BackColor = ThemeManager.Current.ErrorContainer;
+                    ForeColor = ThemeManager.Current.OnErrorContainer;
                     break;
                 default:
-                    BackColor = Md3Tokens.SurfaceContainerHigh;
-                    ForeColor = Md3Tokens.OnSurfaceVariant;
+                    BackColor = ThemeManager.Current.SurfaceContainerHigh;
+                    ForeColor = ThemeManager.Current.OnSurfaceVariant;
                     break;
             }
         }

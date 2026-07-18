@@ -26,7 +26,7 @@ namespace FfxTool.Gui
         public ConvertTab(PluginProfile profile)
         {
             _profile = profile;
-            BackColor = Md3Tokens.Surface;
+            BackColor = ThemeManager.Current.Surface;
 
             var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5 };
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // open file row
@@ -40,7 +40,7 @@ namespace FfxTool.Gui
             openBtn.Click += (s, e) => OpenFile();
             _fileLabel = new Label
             {
-                Text = "No file loaded", Font = Md3Tokens.BodyMedium, ForeColor = Md3Tokens.OnSurfaceVariant,
+                Text = "No file loaded", Font = Md3Tokens.BodyMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant,
                 AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, Md3Tokens.Space2, 0, 0),
             };
             openRow.Controls.Add(openBtn);
@@ -50,7 +50,7 @@ namespace FfxTool.Gui
             {
                 Text = "Effects flagged as missing from your Plugin Profile are pre-selected for removal below —\n" +
                        "uncheck any you'd rather keep.",
-                Font = Md3Tokens.BodyMedium, ForeColor = Md3Tokens.OnSurfaceVariant,
+                Font = Md3Tokens.BodyMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant,
                 AutoSize = true, Margin = new Padding(0, Md3Tokens.Space4, 0, Md3Tokens.Space2),
             };
 
@@ -59,7 +59,7 @@ namespace FfxTool.Gui
             var targetRow = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
             var targetLabel = new Label
             {
-                Text = "Target version:", Font = Md3Tokens.BodyLarge, ForeColor = Md3Tokens.OnSurface,
+                Text = "Target version:", Font = Md3Tokens.BodyLarge, ForeColor = ThemeManager.Current.OnSurface,
                 AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, Md3Tokens.Space2, Md3Tokens.Space2, 0),
             };
             _targetCombo = new Md3ComboBox
@@ -80,7 +80,7 @@ namespace FfxTool.Gui
             _resultBox = new TextBox
             {
                 Multiline = true, ReadOnly = true, Font = Md3Tokens.BodyMedium,
-                Dock = DockStyle.Fill, BackColor = Md3Tokens.SurfaceContainer,
+                Dock = DockStyle.Fill, BackColor = ThemeManager.Current.SurfaceContainer,
                 BorderStyle = BorderStyle.FixedSingle, ScrollBars = ScrollBars.Vertical,
             };
 

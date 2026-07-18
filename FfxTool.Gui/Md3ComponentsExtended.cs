@@ -39,11 +39,11 @@ namespace FfxTool.Gui
         {
             var g = pevent.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.Clear(Parent?.BackColor ?? Md3Tokens.Surface);
+            g.Clear(Parent?.BackColor ?? ThemeManager.Current.Surface);
 
             var trackRect = new Rectangle(0, 2, TrackWidth, TrackHeight);
-            var trackColor = Checked ? Md3Tokens.Primary : Md3Tokens.SurfaceContainerHigh;
-            var outlineColor = Checked ? Md3Tokens.Primary : Md3Tokens.Outline;
+            var trackColor = Checked ? ThemeManager.Current.Primary : ThemeManager.Current.SurfaceContainerHigh;
+            var outlineColor = Checked ? ThemeManager.Current.Primary : ThemeManager.Current.Outline;
 
             using (var path = PillPath(trackRect))
             using (var fillBrush = new SolidBrush(trackColor))
@@ -62,13 +62,13 @@ namespace FfxTool.Gui
                 ? trackRect.Right - thumbDiameter - (ThumbMargin / 2)
                 : trackRect.X + (ThumbMargin / 2) + 4;
 
-            var thumbColor = Checked ? Md3Tokens.OnPrimary : Md3Tokens.Outline;
+            var thumbColor = Checked ? ThemeManager.Current.OnPrimary : ThemeManager.Current.Outline;
             using (var thumbBrush = new SolidBrush(thumbColor))
                 g.FillEllipse(thumbBrush, thumbX, thumbY, thumbDiameter, thumbDiameter);
 
             // label, to the right of the track
             var labelRect = new Rectangle(TrackWidth + Md3Tokens.Space3, 0, Width - TrackWidth - Md3Tokens.Space3, Height);
-            TextRenderer.DrawText(g, Text, Font, labelRect, Md3Tokens.OnSurface,
+            TextRenderer.DrawText(g, Text, Font, labelRect, ThemeManager.Current.OnSurface,
                 TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
         }
 
@@ -107,7 +107,7 @@ namespace FfxTool.Gui
         {
             var g = pevent.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.Clear(Parent?.BackColor ?? Md3Tokens.Surface);
+            g.Clear(Parent?.BackColor ?? ThemeManager.Current.Surface);
 
             var boxRect = new Rectangle(0, (Height - BoxSize) / 2, BoxSize, BoxSize);
 
@@ -115,19 +115,19 @@ namespace FfxTool.Gui
             {
                 if (Checked)
                 {
-                    using (var brush = new SolidBrush(Md3Tokens.Primary))
+                    using (var brush = new SolidBrush(ThemeManager.Current.Primary))
                         g.FillPath(brush, path);
                 }
                 else
                 {
-                    using (var pen = new Pen(Md3Tokens.Outline, 1.5f))
+                    using (var pen = new Pen(ThemeManager.Current.Outline, 1.5f))
                         g.DrawPath(pen, path);
                 }
             }
 
             if (Checked)
             {
-                using (var pen = new Pen(Md3Tokens.OnPrimary, 2f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round })
+                using (var pen = new Pen(ThemeManager.Current.OnPrimary, 2f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round })
                 {
                     var p1 = new Point(boxRect.X + 4, boxRect.Y + 10);
                     var p2 = new Point(boxRect.X + 8, boxRect.Y + 14);
@@ -137,7 +137,7 @@ namespace FfxTool.Gui
             }
 
             var labelRect = new Rectangle(BoxSize + Md3Tokens.Space2, 0, Width - BoxSize - Md3Tokens.Space2, Height);
-            TextRenderer.DrawText(g, Text, Font, labelRect, Md3Tokens.OnSurface,
+            TextRenderer.DrawText(g, Text, Font, labelRect, ThemeManager.Current.OnSurface,
                 TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
         }
 
@@ -175,8 +175,8 @@ namespace FfxTool.Gui
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
 
             bool selected = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
-            var bg = selected ? Md3Tokens.PrimaryContainer : Md3Tokens.Surface;
-            var fg = selected ? Md3Tokens.OnPrimaryContainer : Md3Tokens.OnSurface;
+            var bg = selected ? ThemeManager.Current.PrimaryContainer : ThemeManager.Current.Surface;
+            var fg = selected ? ThemeManager.Current.OnPrimaryContainer : ThemeManager.Current.OnSurface;
 
             using (var brush = new SolidBrush(bg))
                 e.Graphics.FillRectangle(brush, e.Bounds);
@@ -196,8 +196,8 @@ namespace FfxTool.Gui
             var bounds = new Rectangle(0, 0, Width - 1, Height - 1);
 
             using (var path = RoundedRect(bounds, Md3Tokens.CornerSmall))
-            using (var fillBrush = new SolidBrush(Md3Tokens.Surface))
-            using (var pen = new Pen(Md3Tokens.Outline, 1f))
+            using (var fillBrush = new SolidBrush(ThemeManager.Current.Surface))
+            using (var pen = new Pen(ThemeManager.Current.Outline, 1f))
             {
                 g.FillPath(fillBrush, path);
                 g.DrawPath(pen, path);
@@ -206,13 +206,13 @@ namespace FfxTool.Gui
             if (SelectedIndex >= 0)
             {
                 var textRect = new Rectangle(Md3Tokens.Space3, 0, Width - Md3Tokens.Space6 - 16, Height);
-                TextRenderer.DrawText(g, Items[SelectedIndex].ToString(), Font, textRect, Md3Tokens.OnSurface,
+                TextRenderer.DrawText(g, Items[SelectedIndex].ToString(), Font, textRect, ThemeManager.Current.OnSurface,
                     TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
             }
 
             // simple downward-caret glyph instead of the native combo arrow
             var caretCenter = new Point(Width - 16, Height / 2);
-            using (var pen = new Pen(Md3Tokens.OnSurfaceVariant, 1.5f) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+            using (var pen = new Pen(ThemeManager.Current.OnSurfaceVariant, 1.5f) { StartCap = LineCap.Round, EndCap = LineCap.Round })
             {
                 g.DrawLine(pen, caretCenter.X - 4, caretCenter.Y - 2, caretCenter.X, caretCenter.Y + 2);
                 g.DrawLine(pen, caretCenter.X, caretCenter.Y + 2, caretCenter.X + 4, caretCenter.Y - 2);

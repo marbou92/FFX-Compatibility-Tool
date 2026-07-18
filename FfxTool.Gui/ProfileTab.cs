@@ -28,7 +28,7 @@ namespace FfxTool.Gui
         {
             _profile = profile;
             _onChange = onChange;
-            BackColor = Md3Tokens.Surface;
+            BackColor = ThemeManager.Current.Surface;
 
             var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4 };
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -41,7 +41,7 @@ namespace FfxTool.Gui
                 Text = "Check off every plugin vendor you have installed in your target After Effects\n" +
                        "version. Checking a vendor covers all of its effects (e.g. checking \"Boris FX\"\n" +
                        "covers both Sapphire and Continuum effects).",
-                Font = Md3Tokens.BodyLarge, ForeColor = Md3Tokens.OnSurface,
+                Font = Md3Tokens.BodyLarge, ForeColor = ThemeManager.Current.OnSurface,
                 AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space6),
             };
 
@@ -83,7 +83,7 @@ namespace FfxTool.Gui
             var scanHint = new Label
             {
                 Text = "Point this at your AE plugins directory to auto-check vendors whose files are found there.",
-                Font = Md3Tokens.BodyMedium, ForeColor = Md3Tokens.OnSurfaceVariant,
+                Font = Md3Tokens.BodyMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant,
                 AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, Md3Tokens.Space2, 0, 0),
             };
             scanRow.Controls.Add(scanBtn);

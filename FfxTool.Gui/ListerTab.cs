@@ -23,7 +23,7 @@ namespace FfxTool.Gui
         public ListerTab(PluginProfile profile)
         {
             _profile = profile;
-            BackColor = Md3Tokens.Surface;
+            BackColor = ThemeManager.Current.Surface;
 
             var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -39,7 +39,7 @@ namespace FfxTool.Gui
             openBtn.Click += (s, e) => OpenFile();
             _fileLabel = new Label
             {
-                Text = "No file loaded", ForeColor = Md3Tokens.OnSurfaceVariant, Font = Md3Tokens.BodyMedium,
+                Text = "No file loaded", ForeColor = ThemeManager.Current.OnSurfaceVariant, Font = Md3Tokens.BodyMedium,
                 AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, Md3Tokens.Space2, 0, 0),
             };
             headerRow.Controls.Add(openBtn);
@@ -48,7 +48,7 @@ namespace FfxTool.Gui
             _list = new ListView
             {
                 View = View.Details, FullRowSelect = true, GridLines = false,
-                Dock = DockStyle.Fill, Font = Md3Tokens.BodyMedium, BackColor = Md3Tokens.Surface,
+                Dock = DockStyle.Fill, Font = Md3Tokens.BodyMedium, BackColor = ThemeManager.Current.Surface,
                 Margin = new Padding(0, Md3Tokens.Space2, 0, Md3Tokens.Space2),
             };
             _list.Columns.Add("#", 40);
@@ -58,7 +58,7 @@ namespace FfxTool.Gui
 
             _summaryLabel = new Label
             {
-                Text = "", Font = Md3Tokens.BodyMedium, ForeColor = Md3Tokens.OnSurfaceVariant,
+                Text = "", Font = Md3Tokens.BodyMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant,
                 Dock = DockStyle.Fill, AutoSize = true,
             };
 
@@ -111,8 +111,8 @@ namespace FfxTool.Gui
                 {
                     (i + 1).ToString(), eff.MatchName, $"{match.Vendor ?? "?"} — {match.Suite ?? "?"}", status,
                 });
-                if (owned == false) item.BackColor = Md3Tokens.ErrorContainer;
-                else if (match.Vendor == null) item.BackColor = Md3Tokens.TertiaryContainer;
+                if (owned == false) item.BackColor = ThemeManager.Current.ErrorContainer;
+                else if (match.Vendor == null) item.BackColor = ThemeManager.Current.TertiaryContainer;
                 _list.Items.Add(item);
             }
 
