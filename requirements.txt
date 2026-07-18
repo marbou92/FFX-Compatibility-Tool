@@ -1,2 +1,0 @@
-# Core (ffx_core, cli.py) — used by tests and the CLI. No GUI dependency.
-# Deliberately empty beyond this comment: everything here is stdlib-only.

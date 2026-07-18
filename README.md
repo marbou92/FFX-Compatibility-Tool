@@ -1,92 +1,69 @@
-# FFX Compatibility Tool
+# FFX Compatibility Tool — C# / .NET Framework 4.8 port
 
-Inspects, edits, and downgrades Adobe After Effects `.ffx` preset files so
-they work on older AE versions (currently: CS5.5), with a plugin-dependency
-checker that flags effects you don't have installed *before* AE crashes on
-them.
+A from-scratch port of the Python `ffx_core` engine to C#, targeting
+**.NET Framework 4.8** specifically for real Windows 7 compatibility —
+see the repo's earlier history for why: Python 3.9+, Qt6 (PySide6), and
+even PySide2's available wheel range all independently stopped supporting
+Win7, and chasing each one individually stopped being productive.
 
-No official spec exists for the `.ffx` binary format — everything this tool
-does was reverse-engineered by hand against real sample files. See
-**`RESEARCH_NOTES.md`** for the full derivation, including the mistakes made
-along the way (worth reading before changing `ffx_core/pipeline.py`).
+## Important: what's verified and what isn't yet
 
-## Features
+**I could not compile or run this C# code myself** — this sandbox has no
+.NET SDK installed and no way to install one (network access here is
+locked to a handful of package registries, not Microsoft's). Every line
+was written by careful manual translation from the Python version that
+*was* fully tested against your real preset files across this whole
+project, but **the C# port itself has not been executed by anyone yet.**
 
-- **Effect Lister** — see every effect in a preset, resolved to its vendor
-  (Boris FX, Red Giant/Maxon, Video Copilot, Plugin Everything, RE:Vision
-  Effects, or native Adobe), with missing-plugin warnings.
-- **Plugin Profile** — tell the app which plugin vendors you actually have
-  installed, either by checking them off manually or by scanning your AE
-  plugins folder.
-- **Version downgrade** — converts a preset's internal name-string encoding
-  and version marker to a target AE version's native format. Currently
-  supports CS5.5; adding another target requires deriving its version-byte
-  value the same way CS5.5's was (see `RESEARCH_NOTES.md`).
-- **Effect removal** — strip an effect you don't have, with automatic index
-  renumbering so the remaining effects don't get corrupted.
-- **Keyframes and third-party plugin data are never touched** — only the
-  container-level version marker and name strings are converted; animation
-  curves and plugin-internal parameter blobs (e.g. Twixtor's speed graph)
-  pass through byte-for-byte unchanged.
-- **Verification pass on every conversion** — checks for zero remaining
-  old-format string tags, contiguous effect indices, and unchanged
-  keyframe/parameter data, and reports the result rather than a silent
-  pass/fail.
+`.github/workflows/test.yml` is set up to build and run the full test
+suite (a port of every meaningful test from `tests/test_riff.py` and
+`tests/test_pipeline.py`, including a real-file round-trip using the same
+`sample_1.ffx` fixture) on `windows-latest` the moment you push this. That
+CI run is the actual first real test of this code — please check it
+before trusting the logic, the same discipline the Python version went
+through before any of it got called "confirmed."
 
-## Quick start (from source)
+If it fails, the most likely culprits, roughly in order of likelihood:
+1. A typo or off-by-one in the manual translation (most likely — this is
+   hand-ported, not machine-translated)
+2. `System.Text.Json` version pin needing adjustment for net48 compat
+3. Something about the `<None Include>` linked-file paths for
+   `plugin_table.json` / the `.ffx` fixture not resolving the way I
+   expect across `dotnet build`'s output structure
 
-```bash
-pip install -r requirements.txt -r requirements-dev.txt
+None of these would be surprising for a first-pass port — flag whatever
+the CI output shows and I'll fix it directly rather than guess further.
 
-# GUI:
-python -m ffx_gui
+## Structure
 
-# CLI:
-python cli.py list path/to/preset.ffx
-python cli.py convert path/to/preset.ffx out.ffx --target cs5.5
-python cli.py convert in.ffx out.ffx --target cs5.5 --remove "MB LookSuite3"
+```
+FfxTool.Core/              # port of ffx_core — RiffNode.cs, Pipeline.cs, PluginLookup.cs
+FfxTool.Core.Tests/         # xUnit port of test_riff.py / test_pipeline.py
+data/plugin_table.json      # unchanged — same file the Python version uses
+.github/workflows/test.yml  # dotnet build + test, runs on windows-latest
 ```
 
-## Running tests
+No GUI project yet — per the plan, Core gets verified first (via your CI
+run), then a WinForms GUI project gets built on top of it, mirroring how
+the Python version did Phase 1-2 (core+CLI) before Phase 3 (GUI).
+
+## What was deliberately preserved from the Python version
+
+Every hard-won detail from `RESEARCH_NOTES.md` carried over as-is:
+- `fnam` chunks get padded to a fixed 48 bytes; `tdsn`/`pdnm` stay
+  variable-length — these are NOT the same treatment (this distinction
+  was Mistake #3 in the original derivation; getting it wrong crashes AE).
+- Effect removal matches `sspc` blocks to `tdsp` entries by **position**,
+  not name, and always renumbers `tdix` afterward.
+- Keyframe (`lhd3`/`ldat`) and third-party plugin blob data is never
+  touched by any pipeline step, and `Pipeline.Verify()` checks this holds
+  after every conversion — same verification discipline as the Python
+  version, not weakened for the port.
+
+## Running locally (once you have the .NET SDK)
 
 ```bash
-pytest -v
+dotnet restore FfxTool.sln
+dotnet build FfxTool.sln
+dotnet test FfxTool.sln
 ```
-
-Round-trip and pipeline tests run against a synthetic file by default, plus
-a real sample file committed at `tests/fixtures/sample_1.ffx`. Add more real
-`.ffx` files to that folder to exercise the pipeline further — the test
-suite picks up any `*.ffx` file placed there automatically.
-
-## Downloading a build
-
-Tagged releases (`vX.Y.Z`) are built automatically for Windows and macOS via
-GitHub Actions — see the Releases page. See `.github/workflows/build.yml`
-for the packaging steps if you'd rather build locally with PyInstaller.
-
-See `PROJECT_PLAN.md` for the full original spec and `PHASES.md` for how it
-was broken down.
-
-## Known limitations
-
-- Only CS5.5 is a confirmed downgrade target. Adding another target AE
-  version requires a real sample pair to derive its version-byte value —
-  see `RESEARCH_NOTES.md`'s section on the `head` chunk.
-- Third-party plugins' own internal parameter formats (e.g. Twixtor's speed
-  curve) are treated as opaque and never modified. If a plugin's blob
-  itself needs version translation (not yet observed — the container-level
-  fixes have been sufficient in every real test case so far), that would be
-  a separate, much harder per-plugin research effort.
-- The plugin vendor/prefix lookup table (`data/plugin_table.json`) and the
-  folder-scan filename hints (`ffx_gui/tab_profile.py`) are both seeded
-  thin, by design — meant to grow from real files and real plugin
-  installations rather than a one-time scrape. Contributions welcome.
-
-## License
-
-MIT — see `LICENSE`. Adobe, After Effects, and third-party plugin vendor
-names referenced in this project (Boris FX, Red Giant/Maxon, Video Copilot,
-Plugin Everything, RE:Vision Effects, etc.) are trademarks of their
-respective owners, referenced solely for interoperability/identification.
-This project is not affiliated with or endorsed by Adobe or any plugin
-vendor it detects.
