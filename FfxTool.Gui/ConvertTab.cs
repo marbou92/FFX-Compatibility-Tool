@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
@@ -7,9 +8,9 @@ using FfxTool.Core;
 
 namespace FfxTool.Gui
 {
-    /// <summary>Port of ffx_gui/tab_convert.py. Load a .ffx, optionally
-    /// strip effects flagged as missing, pick a target version, convert,
-    /// save. Surfaces the verification-pass result directly.</summary>
+    /// <summary>Redesigned with a TableLayoutPanel so the effect checklist
+    /// and result box actually grow/shrink with the window, instead of
+    /// v1's fixed pixel sizes.</summary>
     public class ConvertTab : UserControl
     {
         readonly PluginProfile _profile;
@@ -26,70 +27,69 @@ namespace FfxTool.Gui
         {
             _profile = profile;
             BackColor = Md3Tokens.Surface;
-            Padding = new Padding(Md3Tokens.Space6);
 
-            var openBtn = new Md3Button { Text = "Open .ffx file…", Width = 160, Location = new System.Drawing.Point(0, 0) };
+            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5 };
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // open file row
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // hint
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 55)); // effect checklist — grows with window
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // target + convert button
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 45)); // result box — grows with window
+
+            var openRow = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = false };
+            var openBtn = new Md3Button { Text = "Open .ffx file…", Width = 160, Margin = new Padding(0, 0, Md3Tokens.Space4, 0) };
             openBtn.Click += (s, e) => OpenFile();
-
             _fileLabel = new Label
             {
                 Text = "No file loaded", Font = Md3Tokens.BodyMedium, ForeColor = Md3Tokens.OnSurfaceVariant,
-                Location = new System.Drawing.Point(openBtn.Right + Md3Tokens.Space4, 8), AutoSize = true,
+                AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, Md3Tokens.Space2, 0, 0),
             };
+            openRow.Controls.Add(openBtn);
+            openRow.Controls.Add(_fileLabel);
 
             var hint = new Label
             {
                 Text = "Effects flagged as missing from your Plugin Profile are pre-selected for removal below —\n" +
                        "uncheck any you'd rather keep.",
                 Font = Md3Tokens.BodyMedium, ForeColor = Md3Tokens.OnSurfaceVariant,
-                Location = new System.Drawing.Point(0, openBtn.Bottom + Md3Tokens.Space4), AutoSize = true,
+                AutoSize = true, Margin = new Padding(0, Md3Tokens.Space4, 0, Md3Tokens.Space2),
             };
 
-            _effectList = new CheckedListBox
-            {
-                Location = new System.Drawing.Point(0, hint.Bottom + Md3Tokens.Space2),
-                Size = new System.Drawing.Size(600, 220), Font = Md3Tokens.BodyMedium,
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-            };
+            _effectList = new CheckedListBox { Dock = DockStyle.Fill, Font = Md3Tokens.BodyMedium, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
 
+            var targetRow = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
             var targetLabel = new Label
             {
                 Text = "Target version:", Font = Md3Tokens.BodyLarge, ForeColor = Md3Tokens.OnSurface,
-                Location = new System.Drawing.Point(0, _effectList.Bottom + Md3Tokens.Space4), AutoSize = true,
+                AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, Md3Tokens.Space2, Md3Tokens.Space2, 0),
             };
             _targetCombo = new ComboBox
             {
-                DropDownStyle = ComboBoxStyle.DropDownList, Font = Md3Tokens.BodyLarge,
-                Location = new System.Drawing.Point(targetLabel.Right + Md3Tokens.Space2, targetLabel.Top - 3),
-                Width = 120,
+                DropDownStyle = ComboBoxStyle.DropDownList, Font = Md3Tokens.BodyLarge, Width = 120,
+                Margin = new Padding(0, 0, Md3Tokens.Space6, 0),
             };
             foreach (var k in Pipeline.KnownVersions.Keys.OrderBy(k => k)) _targetCombo.Items.Add(k);
             if (_targetCombo.Items.Count > 0) _targetCombo.SelectedIndex = 0;
 
-            _convertBtn = new Md3Button
-            {
-                Text = "Convert…", Width = 140,
-                Location = new System.Drawing.Point(0, targetLabel.Bottom + Md3Tokens.Space4),
-                Enabled = false,
-            };
+            _convertBtn = new Md3Button { Text = "Convert…", Width = 140, Enabled = false };
             _convertBtn.Click += (s, e) => DoConvert();
+
+            targetRow.Controls.Add(targetLabel);
+            targetRow.Controls.Add(_targetCombo);
+            targetRow.Controls.Add(_convertBtn);
 
             _resultBox = new TextBox
             {
                 Multiline = true, ReadOnly = true, Font = Md3Tokens.BodyMedium,
-                Location = new System.Drawing.Point(0, _convertBtn.Bottom + Md3Tokens.Space4),
-                Size = new System.Drawing.Size(600, 100), BackColor = Md3Tokens.SurfaceContainer,
-                BorderStyle = BorderStyle.FixedSingle, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                Dock = DockStyle.Fill, BackColor = Md3Tokens.SurfaceContainer,
+                BorderStyle = BorderStyle.FixedSingle, ScrollBars = ScrollBars.Vertical,
             };
 
-            Controls.Add(openBtn);
-            Controls.Add(_fileLabel);
-            Controls.Add(hint);
-            Controls.Add(_effectList);
-            Controls.Add(targetLabel);
-            Controls.Add(_targetCombo);
-            Controls.Add(_convertBtn);
-            Controls.Add(_resultBox);
+            root.Controls.Add(openRow, 0, 0);
+            root.Controls.Add(hint, 0, 1);
+            root.Controls.Add(_effectList, 0, 2);
+            root.Controls.Add(targetRow, 0, 3);
+            root.Controls.Add(_resultBox, 0, 4);
+            Controls.Add(root);
         }
 
         void OpenFile()
@@ -105,8 +105,6 @@ namespace FfxTool.Gui
             }
         }
 
-        /// <summary>Re-render the removal checklist. Called on file load,
-        /// and again when the Plugin Profile changes.</summary>
         public void Refresh_()
         {
             _effectList.Items.Clear();
@@ -118,10 +116,6 @@ namespace FfxTool.Gui
                 if (eff.IsSentinel) continue;
                 var match = PluginLookup.Resolve(eff.MatchName, table);
                 var owned = _profile.Owns(match.Vendor);
-
-                // Never pre-check an unknown-vendor effect — "unknown" is
-                // not the same as "confirmed missing" and shouldn't be
-                // silently stripped by default.
                 _effectList.Items.Add($"{eff.MatchName}  ({match.Vendor ?? "unknown vendor"})", owned == false);
             }
         }

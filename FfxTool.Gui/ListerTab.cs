@@ -1,4 +1,4 @@
-using System;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
@@ -7,9 +7,10 @@ using FfxTool.Core;
 namespace FfxTool.Gui
 {
     /// <summary>
-    /// Port of ffx_gui/tab_lister.py. Open a .ffx, see every effect it
-    /// uses, resolved vendor/suite, and a warning if it's flagged as
-    /// missing from the user's Plugin Profile.
+    /// Redesigned with a TableLayoutPanel (header row / fill row / summary
+    /// row) instead of v1's manual pixel-position math, which broke on
+    /// resize. The ListView now genuinely fills available space instead
+    /// of relying on Anchor guesswork.
     /// </summary>
     public class ListerTab : UserControl
     {
@@ -17,31 +18,38 @@ namespace FfxTool.Gui
         readonly Label _fileLabel;
         readonly ListView _list;
         readonly Label _summaryLabel;
-        string _currentPath;
         System.Collections.Generic.List<Pipeline.EffectInfo> _currentEffects = new System.Collections.Generic.List<Pipeline.EffectInfo>();
 
         public ListerTab(PluginProfile profile)
         {
             _profile = profile;
             BackColor = Md3Tokens.Surface;
-            Padding = new Padding(Md3Tokens.Space6);
 
-            var openBtn = new Md3Button { Text = "Open .ffx file…", Width = 160, Location = new System.Drawing.Point(0, 0) };
+            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+            var headerRow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill, AutoSize = true, WrapContents = false,
+                FlowDirection = FlowDirection.LeftToRight,
+            };
+            var openBtn = new Md3Button { Text = "Open .ffx file…", Width = 160, Margin = new Padding(0, 0, Md3Tokens.Space4, Md3Tokens.Space4) };
             openBtn.Click += (s, e) => OpenFile();
-
             _fileLabel = new Label
             {
                 Text = "No file loaded", ForeColor = Md3Tokens.OnSurfaceVariant, Font = Md3Tokens.BodyMedium,
-                Location = new System.Drawing.Point(openBtn.Right + Md3Tokens.Space4, 8), AutoSize = true,
+                AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, Md3Tokens.Space2, 0, 0),
             };
+            headerRow.Controls.Add(openBtn);
+            headerRow.Controls.Add(_fileLabel);
 
             _list = new ListView
             {
                 View = View.Details, FullRowSelect = true, GridLines = false,
-                Location = new System.Drawing.Point(0, openBtn.Bottom + Md3Tokens.Space4),
-                Size = new System.Drawing.Size(820, 400),
-                Font = Md3Tokens.BodyMedium, BackColor = Md3Tokens.Surface,
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
+                Dock = DockStyle.Fill, Font = Md3Tokens.BodyMedium, BackColor = Md3Tokens.Surface,
+                Margin = new Padding(0, Md3Tokens.Space2, 0, Md3Tokens.Space2),
             };
             _list.Columns.Add("#", 40);
             _list.Columns.Add("Match name", 220);
@@ -51,14 +59,13 @@ namespace FfxTool.Gui
             _summaryLabel = new Label
             {
                 Text = "", Font = Md3Tokens.BodyMedium, ForeColor = Md3Tokens.OnSurfaceVariant,
-                Location = new System.Drawing.Point(0, _list.Bottom + Md3Tokens.Space2),
-                AutoSize = true, Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+                Dock = DockStyle.Fill, AutoSize = true,
             };
 
-            Controls.Add(openBtn);
-            Controls.Add(_fileLabel);
-            Controls.Add(_list);
-            Controls.Add(_summaryLabel);
+            root.Controls.Add(headerRow, 0, 0);
+            root.Controls.Add(_list, 0, 1);
+            root.Controls.Add(_summaryLabel, 0, 2);
+            Controls.Add(root);
         }
 
         void OpenFile()
@@ -72,7 +79,6 @@ namespace FfxTool.Gui
 
         public void LoadFile(string path)
         {
-            _currentPath = path;
             _fileLabel.Text = path;
             var data = File.ReadAllBytes(path);
             _currentEffects = Pipeline.ListEffects(data);
