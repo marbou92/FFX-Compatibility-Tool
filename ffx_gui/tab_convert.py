@@ -4,6 +4,8 @@ the user's profile, pick a target version, run the pipeline, save output.
 Surfaces the verification pass results directly rather than a silent
 pass/fail — see PROJECT_PLAN.md Section 4.5.
 """
+
+from __future__ import annotations
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QComboBox,
     QListWidget, QListWidgetItem, QFileDialog, QMessageBox, QTextEdit,

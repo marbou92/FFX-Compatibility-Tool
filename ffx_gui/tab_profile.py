@@ -5,7 +5,10 @@ AE plugins folder is scaffolded but left as a manual "browse" step for now
 — see the TODO below — since plugin folder layout varies enough across
 OS/AE versions that guessing a default path wrongly is worse than asking.
 """
+
+from __future__ import annotations
 import os
+
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QPushButton, QLabel, QFileDialog

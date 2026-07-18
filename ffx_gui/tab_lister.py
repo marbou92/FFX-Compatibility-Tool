@@ -6,6 +6,8 @@ ever try opening the file in AE. This is the feature meant to catch
 exactly the kind of crash that motivated this whole project (a preset
 using a plugin that turned out not to be installed).
 """
+
+from __future__ import annotations
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QTableWidget, QTableWidgetItem, QFileDialog, QHeaderView,

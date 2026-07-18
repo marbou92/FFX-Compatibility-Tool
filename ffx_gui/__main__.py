@@ -10,6 +10,8 @@ Three tabs, matching PROJECT_PLAN.md Section 4:
 All actual file logic lives in ffx_core (Phase 1-2) — this file and its
 sibling modules are UI only. Run with: python -m ffx_gui
 """
+
+from __future__ import annotations
 import sys
 
 from PySide6.QtWidgets import QApplication, QMainWindow, QTabWidget

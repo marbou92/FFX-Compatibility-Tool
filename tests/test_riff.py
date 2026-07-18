@@ -4,6 +4,8 @@ must reproduce it byte-for-byte. This is the correctness bar the whole
 pipeline depends on — every later edit assumes serialize() is lossless
 for anything it doesn't touch.
 """
+from __future__ import annotations
+
 import glob
 import os
 import struct

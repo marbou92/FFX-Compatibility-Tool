@@ -3,6 +3,8 @@ Phase 2 exit criteria tests. Each pipeline step is tested independently
 where possible, plus an end-to-end test against real fixtures if any are
 present in tests/fixtures/.
 """
+from __future__ import annotations
+
 import glob
 import os
 import struct
