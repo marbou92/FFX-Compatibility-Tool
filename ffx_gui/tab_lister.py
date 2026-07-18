@@ -8,11 +8,11 @@ using a plugin that turned out not to be installed).
 """
 
 from __future__ import annotations
-from PySide6.QtWidgets import (
+from PySide2.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QTableWidget, QTableWidgetItem, QFileDialog, QHeaderView,
 )
-from PySide6.QtGui import QColor
+from PySide2.QtGui import QColor
 
 from ffx_core import pipeline, plugins as plugins_module
 from ffx_gui.profile_store import PluginProfile

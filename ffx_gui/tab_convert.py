@@ -6,11 +6,11 @@ pass/fail — see PROJECT_PLAN.md Section 4.5.
 """
 
 from __future__ import annotations
-from PySide6.QtWidgets import (
+from PySide2.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QComboBox,
     QListWidget, QListWidgetItem, QFileDialog, QMessageBox, QTextEdit,
 )
-from PySide6.QtCore import Qt
+from PySide2.QtCore import Qt
 
 from ffx_core import pipeline, plugins as plugins_module
 from ffx_gui.profile_store import PluginProfile

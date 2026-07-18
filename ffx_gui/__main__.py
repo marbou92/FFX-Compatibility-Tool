@@ -14,7 +14,7 @@ sibling modules are UI only. Run with: python -m ffx_gui
 from __future__ import annotations
 import sys
 
-from PySide6.QtWidgets import QApplication, QMainWindow, QTabWidget
+from PySide2.QtWidgets import QApplication, QMainWindow, QTabWidget
 
 from ffx_gui.tab_lister import ListerTab
 from ffx_gui.tab_profile import ProfileTab
@@ -51,7 +51,7 @@ def main() -> int:
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
-    return app.exec()
+    return app.exec_()
 
 
 if __name__ == "__main__":
