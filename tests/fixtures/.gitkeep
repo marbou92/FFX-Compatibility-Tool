@@ -1,9 +1,0 @@
-Place real .ffx sample files here for round-trip and pipeline tests.
-
-Rename/sanitize commercial preset files before committing if their
-license doesn't permit redistribution — the tests only need the binary
-structure, not the original filenames or attribution.
-
-Tests in this suite are parametrized to automatically pick up every
-*.ffx file placed in this directory — no test code changes needed when
-adding a new fixture.
