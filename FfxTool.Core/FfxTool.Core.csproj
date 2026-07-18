@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- net48 = .NET Framework 4.8, the last version Microsoft fully
+         supports on Windows 7 SP1. This is the whole point of the C#
+         rewrite — do not bump this to net5.0+/net6.0+, those dropped
+         Win7 support the same way Python 3.9+ and Qt6 did. -->
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- System.Text.Json isn't built into .NET Framework 4.8 (unlike
+         .NET 5+) — needs an explicit package reference. -->
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\data\plugin_table.json" CopyToOutputDirectory="PreserveNewest" Link="data\plugin_table.json" />
+  </ItemGroup>
+
+</Project>

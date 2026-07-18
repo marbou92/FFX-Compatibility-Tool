@@ -1,0 +1,58 @@
+[
+  {
+    "prefix": "ADBE ",
+    "vendor": "Adobe",
+    "suite": "Native (built into every AE version)",
+    "confirmed": true,
+    "note": "Always available — never a compatibility risk on its own."
+  },
+  {
+    "prefix": "S_",
+    "vendor": "Boris FX",
+    "suite": "Sapphire",
+    "confirmed": true,
+    "note": "Verified against user's own installed files (S_Sharpen, S_FilmDamage, S_MathOps, S_Shake, S_Flicker, S_BlurMoCurves, S_DropShadow, etc.)."
+  },
+  {
+    "prefix": "BCC",
+    "vendor": "Boris FX",
+    "suite": "Continuum Complete",
+    "confirmed": true,
+    "note": "Verified against user's own installed files (BCC3Directional Blur, BCC3Hue Saturation Lightness)."
+  },
+  {
+    "prefix": "MB ",
+    "vendor": "Red Giant / Maxon",
+    "suite": "Magic Bullet",
+    "confirmed": true,
+    "note": "Confirmed via real file (MB LookSuite3 = Magic Bullet Looks). User confirmed this is NOT installed on their CS5.5 setup."
+  },
+  {
+    "prefix": "tc ",
+    "vendor": "Red Giant / Maxon",
+    "suite": "Trapcode",
+    "confirmed": false,
+    "note": "From David Torno's AE match-name reference article (tc Shine, tc Particular) — not yet verified against a real file in this project."
+  },
+  {
+    "prefix": "VIDEOCOPILOT",
+    "vendor": "Video Copilot",
+    "suite": "Element 3D / Optical Flares / Saber / Twitch / etc.",
+    "confirmed": false,
+    "note": "From David Torno's AE match-name reference article (VIDEOCOPILOT 3DArray) — not yet verified against a real file in this project."
+  },
+  {
+    "prefix": "PEDG",
+    "vendor": "Plugin Everything",
+    "suite": "Deep Glow",
+    "confirmed": true,
+    "note": "Confirmed via real file — caused a crash on user's CS5.5 setup because it isn't installed there."
+  },
+  {
+    "prefix": "Twixtor",
+    "vendor": "RE:Vision Effects",
+    "suite": "Twixtor",
+    "confirmed": true,
+    "note": "Uses plain display name rather than a coded prefix (e.g. 'Twixtor 45'). 'Twixtor 45'/'Twixtor Pro' and 'Twixtor 45 Lite' both refer to the same standard plugin per user."
+  }
+]
