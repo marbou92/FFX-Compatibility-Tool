@@ -62,9 +62,9 @@ namespace FfxTool.Gui
                 Text = "Target version:", Font = Md3Tokens.BodyLarge, ForeColor = Md3Tokens.OnSurface,
                 AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, Md3Tokens.Space2, Md3Tokens.Space2, 0),
             };
-            _targetCombo = new ComboBox
+            _targetCombo = new Md3ComboBox
             {
-                DropDownStyle = ComboBoxStyle.DropDownList, Font = Md3Tokens.BodyLarge, Width = 120,
+                Width = 120,
                 Margin = new Padding(0, 0, Md3Tokens.Space6, 0),
             };
             foreach (var k in Pipeline.KnownVersions.Keys.OrderBy(k => k)) _targetCombo.Items.Add(k);

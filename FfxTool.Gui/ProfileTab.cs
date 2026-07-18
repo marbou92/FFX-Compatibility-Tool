@@ -57,11 +57,10 @@ namespace FfxTool.Gui
             foreach (var vendor in vendors)
             {
                 var card = new Md3Card { Width = 420, Height = 44, Margin = new Padding(0, 0, 0, Md3Tokens.Space2) };
-                var cb = new CheckBox
+                var cb = new Md3Switch
                 {
                     Text = vendor, Checked = _profile.OwnedVendors.Contains(vendor),
-                    Font = Md3Tokens.BodyLarge, ForeColor = Md3Tokens.OnSurface,
-                    Dock = DockStyle.Fill, Padding = new Padding(Md3Tokens.Space2),
+                    Dock = DockStyle.Fill,
                 };
                 cb.CheckedChanged += (s, e) =>
                 {
