@@ -338,13 +338,13 @@ namespace FfxTool.Core
             // exists (removed effects legitimately remove their own
             // keyframes — we only check surviving chunks are untouched).
             var origTree = RiffFile.ParseFile(originalData);
-            var origLhd3 = new HashSet<string>(RiffFile.FindAll(origTree, LHD3).Select(c => Convert.ToBase64String(c.Content)));
-            var newLhd3 = RiffFile.FindAll(newTree, LHD3).Select(c => Convert.ToBase64String(c.Content));
+            var origLhd3 = new HashSet<string>(RiffFile.FindAll(origTree, LHD3).Select(c => System.Convert.ToBase64String(c.Content)));
+            var newLhd3 = RiffFile.FindAll(newTree, LHD3).Select(c => System.Convert.ToBase64String(c.Content));
             if (newLhd3.Any(h => !origLhd3.Contains(h)))
                 problems.Add("Keyframe header (lhd3) data changed unexpectedly.");
 
-            var origLdat = new HashSet<string>(RiffFile.FindAll(origTree, LDAT).Select(c => Convert.ToBase64String(c.Content)));
-            var newLdat = RiffFile.FindAll(newTree, LDAT).Select(c => Convert.ToBase64String(c.Content));
+            var origLdat = new HashSet<string>(RiffFile.FindAll(origTree, LDAT).Select(c => System.Convert.ToBase64String(c.Content)));
+            var newLdat = RiffFile.FindAll(newTree, LDAT).Select(c => System.Convert.ToBase64String(c.Content));
             if (newLdat.Any(h => !origLdat.Contains(h)))
                 problems.Add("Keyframe data (ldat) changed unexpectedly.");
 
