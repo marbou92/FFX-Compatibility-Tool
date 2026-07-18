@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- net48 — same reasoning as FfxTool.Core: last .NET version with
+         real Windows 7 support. Do not bump this. -->
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>latest</LangVersion>
+    <ApplicationIcon />
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FfxTool.Core\FfxTool.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\data\plugin_table.json" CopyToOutputDirectory="PreserveNewest" Link="data\plugin_table.json" />
+  </ItemGroup>
+
+</Project>
