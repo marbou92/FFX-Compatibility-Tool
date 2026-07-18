@@ -1,0 +1,9 @@
+# GUI only (ffx_gui). Kept separate from requirements.txt so the test
+# workflow (which runs across Python 3.10-3.12) never tries to install
+# this — PySide2 has no wheels past Python 3.10, and mixing it into the
+# shared requirements.txt broke `test.yml` even though those jobs don't
+# touch the GUI at all.
+#
+# PySide2 (Qt5) is required specifically for Windows 7 support — PySide6
+# (Qt6) does not work on Win7 at all, at any Python version.
+PySide2>=5.11,<5.16
