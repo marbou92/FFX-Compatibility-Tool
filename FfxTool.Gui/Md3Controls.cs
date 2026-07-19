@@ -30,7 +30,11 @@ namespace FfxTool.Gui
         protected override void OnPaint(PaintEventArgs pevent)
         {
             pevent.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            using (var path = RoundedRect(ClientRectangle, Md3Tokens.CornerLarge))
+            // MD3 spec (component-shape mapping): "Buttons (all types): full"
+            // — a true pill/stadium shape, not a fixed corner radius. This
+            // was previously using Md3Tokens.CornerLarge (16px fixed),
+            // which is spec-incorrect (that value is for FABs/nav drawers).
+            using (var path = PillPath(ClientRectangle))
             using (var brush = new SolidBrush(ThemeManager.Current.Primary))
             {
                 pevent.Graphics.FillPath(brush, path);
@@ -39,17 +43,17 @@ namespace FfxTool.Gui
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
         }
 
-        static GraphicsPath RoundedRect(Rectangle bounds, int radius)
+        static GraphicsPath PillPath(Rectangle bounds)
         {
             var path = new GraphicsPath();
+            int radius = bounds.Height / 2;
             int d = radius * 2;
-            path.AddArc(bounds.X, bounds.Y, d, d, 180, 90);
-            path.AddArc(bounds.Right - d, bounds.Y, d, d, 270, 90);
-            path.AddArc(bounds.Right - d, bounds.Bottom - d, d, d, 0, 90);
-            path.AddArc(bounds.X, bounds.Bottom - d, d, d, 90, 90);
+            path.AddArc(bounds.X, bounds.Y, d, d, 90, 180);
+            path.AddArc(bounds.Right - d, bounds.Y, d, d, 270, 180);
             path.CloseFigure();
             return path;
         }
+
     }
 
     /// <summary>An MD3-style "card" surface — rounded panel with a subtle border, no drop shadow (WinForms shadows are unreliable across OS versions including Win7).</summary>
@@ -127,7 +131,17 @@ namespace FfxTool.Gui
         {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             var bounds = new Rectangle(0, 0, Width - 1, Height - 1);
-            using (var path = RoundedRectFull(bounds))
+            // MD3 spec (component-shape mapping): "Chips: small" (8px
+            // corner), NOT a full pill — chips and buttons look similar
+            // but are spec'd differently. This was previously using a
+            // full/pill shape, which is the button shape, not the chip
+            // shape. BackColor/ForeColor here are still set once per
+            // SetStatus() call rather than read live from ThemeManager on
+            // every paint — acceptable for now since SetStatus() is meant
+            // to be called again on any state change (including a theme
+            // change, if the caller wires that up), but flagging the same
+            // staleness pattern found and fixed in Md3Button/Md3Card.
+            using (var path = RoundedRect(bounds, Md3Tokens.CornerSmall))
             using (var brush = new SolidBrush(BackColor))
             {
                 e.Graphics.FillPath(brush, path);
@@ -136,14 +150,14 @@ namespace FfxTool.Gui
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
         }
 
-        static GraphicsPath RoundedRectFull(Rectangle bounds)
+        static GraphicsPath RoundedRect(Rectangle bounds, int radius)
         {
-            // fully rounded ("pill") shape — MD3 chips use full corner radius
             var path = new GraphicsPath();
-            int radius = bounds.Height / 2;
             int d = radius * 2;
-            path.AddArc(bounds.X, bounds.Y, d, d, 90, 180);
-            path.AddArc(bounds.Right - d, bounds.Y, d, d, 270, 180);
+            path.AddArc(bounds.X, bounds.Y, d, d, 180, 90);
+            path.AddArc(bounds.Right - d, bounds.Y, d, d, 270, 90);
+            path.AddArc(bounds.Right - d, bounds.Bottom - d, d, d, 0, 90);
+            path.AddArc(bounds.X, bounds.Bottom - d, d, d, 90, 90);
             path.CloseFigure();
             return path;
         }

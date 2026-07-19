@@ -26,6 +26,11 @@ namespace FfxTool.Gui
         public static Font BodyLarge => new Font("Segoe UI", 10f, FontStyle.Regular);
         public static Font BodyMedium => new Font("Segoe UI", 9f, FontStyle.Regular);
         public static Font LabelLarge => new Font("Segoe UI", 9f, FontStyle.Bold);
+        // Per m3.material.io's component-type table: "Navigation label" ->
+        // Label Medium, not Title Medium — NavRail was using TitleMedium
+        // for the selected item, which is spec-incorrect (that's the card-title
+        // style). Fixed by adding the correct token and using it in NavRail.
+        public static Font LabelMedium => new Font("Segoe UI", 8f, FontStyle.Bold);
 
         // --- Shape (MD3 corner radius scale) ---
         public const int CornerSmall = 8;

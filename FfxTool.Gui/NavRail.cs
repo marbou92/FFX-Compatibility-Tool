@@ -133,7 +133,11 @@ namespace FfxTool.Gui
 
                 bool selected = i == _selectedIndex;
                 var textColor = selected ? ThemeManager.Current.OnPrimaryContainer : ThemeManager.Current.OnSurfaceVariant;
-                var font = selected ? Md3Tokens.TitleMedium : Md3Tokens.BodyLarge;
+                // MD3 spec (component-type table): "Navigation label" ->
+                // Label Medium. Was previously TitleMedium/BodyLarge — the
+                // wrong scale entirely (that's card-title/body-text style,
+                // not navigation).
+                var font = selected ? Md3Tokens.LabelLarge : Md3Tokens.LabelMedium;
                 TextRenderer.DrawText(e.Graphics, _items[i].Text, font, bounds, textColor,
                     TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
             }
