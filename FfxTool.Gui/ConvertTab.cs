@@ -36,7 +36,7 @@ namespace FfxTool.Gui
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 45)); // result box — grows with window
 
             var openRow = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = false };
-            var openBtn = new Md3Button { Text = "Open .ffx file…", Width = 160, Margin = new Padding(0, 0, Md3Tokens.Space4, 0) };
+            var openBtn = new Md3Button { Text = "Open .ffx file…", Icon = Md3Icons.Icon.FolderOpen, Width = 180, Margin = new Padding(0, 0, Md3Tokens.Space4, 0) };
             openBtn.Click += (s, e) => OpenFile();
             _fileLabel = new Label
             {
@@ -69,7 +69,7 @@ namespace FfxTool.Gui
             };
             _targetCombo.SetItems(Pipeline.KnownVersions.Keys.OrderBy(k => k), 0);
 
-            _convertBtn = new Md3Button { Text = "Convert…", Width = 140, Enabled = false };
+            _convertBtn = new Md3Button { Text = "Convert…", Icon = Md3Icons.Icon.Convert, Width = 150, Enabled = false };
             _convertBtn.Click += (s, e) => DoConvert();
 
             targetRow.Controls.Add(targetLabel);

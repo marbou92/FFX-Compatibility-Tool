@@ -35,7 +35,7 @@ namespace FfxTool.Gui
                 Dock = DockStyle.Fill, AutoSize = true, WrapContents = false,
                 FlowDirection = FlowDirection.LeftToRight,
             };
-            var openBtn = new Md3Button { Text = "Open .ffx file…", Width = 160, Margin = new Padding(0, 0, Md3Tokens.Space4, Md3Tokens.Space4) };
+            var openBtn = new Md3Button { Text = "Open .ffx file…", Icon = Md3Icons.Icon.FolderOpen, Width = 180, Margin = new Padding(0, 0, Md3Tokens.Space4, Md3Tokens.Space4) };
             openBtn.Click += (s, e) => OpenFile();
             _fileLabel = new Label
             {

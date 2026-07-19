@@ -16,12 +16,31 @@ namespace FfxTool.Gui
     public class Md3Theme
     {
         public Color Primary, OnPrimary, PrimaryContainer, OnPrimaryContainer;
-        public Color Surface, SurfaceContainer, SurfaceContainerHigh, OnSurface, OnSurfaceVariant;
+        public Color Surface, SurfaceContainerLowest, SurfaceContainerLow, SurfaceContainer, SurfaceContainerHigh, OnSurface, OnSurfaceVariant;
         public Color Outline, OutlineVariant;
         public Color Error, ErrorContainer, OnErrorContainer;
         public Color TertiaryContainer, OnTertiaryContainer;
 
         static Color H(string hex) => ColorTranslator.FromHtml(hex);
+
+        static Color Blend(Color a, Color b, float t) => Color.FromArgb(
+            (int)(a.R + (b.R - a.R) * t),
+            (int)(a.G + (b.G - a.G) * t),
+            (int)(a.B + (b.B - a.B) * t));
+
+        // Derives the two surface tiers MD3 defines but this file doesn't
+        // hand-pick per-palette: SurfaceContainerLowest (barely off the
+        // base Surface — window background level) and SurfaceContainerLow
+        // (between Surface and the existing SurfaceContainer — nav rail
+        // level). Interpolated from the two tiers that ARE hand-picked per
+        // palette, rather than 16 more hand-picked hex values, since the
+        // ordering/relationship matters more here than exact hue.
+        static Md3Theme FillDerived(Md3Theme t)
+        {
+            t.SurfaceContainerLowest = Blend(t.Surface, t.SurfaceContainer, 0.25f);
+            t.SurfaceContainerLow = Blend(t.Surface, t.SurfaceContainer, 0.6f);
+            return t;
+        }
 
         // --- Palette seed hues. Each palette below defines its own full
         // light+dark role set rather than deriving one algorithmically —
@@ -29,85 +48,77 @@ namespace FfxTool.Gui
         // is a whole HCT color-space algorithm; hand-picking role colors
         // per seed is a pragmatic approximation of it, not a reimplementation.
 
-        public static Md3Theme BlueLight() => new Md3Theme
-        {
+        public static Md3Theme BlueLight() => FillDerived(new Md3Theme {
             Primary = H("#1A73E8"), OnPrimary = H("#FFFFFF"), PrimaryContainer = H("#D3E3FD"), OnPrimaryContainer = H("#001C3B"),
             Surface = H("#FDFBFF"), SurfaceContainer = H("#F2F2F7"), SurfaceContainerHigh = H("#E9E9EE"),
             OnSurface = H("#1A1B20"), OnSurfaceVariant = H("#44474E"),
             Outline = H("#74777F"), OutlineVariant = H("#C4C6D0"),
             Error = H("#BA1A1A"), ErrorContainer = H("#FFDAD6"), OnErrorContainer = H("#410002"),
             TertiaryContainer = H("#FFDDBA"), OnTertiaryContainer = H("#2B1700"),
-        };
+        });
 
-        public static Md3Theme BlueDark() => new Md3Theme
-        {
+        public static Md3Theme BlueDark() => FillDerived(new Md3Theme {
             Primary = H("#A9C7FF"), OnPrimary = H("#00315C"), PrimaryContainer = H("#00478A"), OnPrimaryContainer = H("#D3E3FD"),
             Surface = H("#111318"), SurfaceContainer = H("#1D2024"), SurfaceContainerHigh = H("#282A2F"),
             OnSurface = H("#E2E2E9"), OnSurfaceVariant = H("#C4C6D0"),
             Outline = H("#8E9099"), OutlineVariant = H("#44474E"),
             Error = H("#FFB4AB"), ErrorContainer = H("#93000A"), OnErrorContainer = H("#FFDAD6"),
             TertiaryContainer = H("#5C4200"), OnTertiaryContainer = H("#FFDDBA"),
-        };
+        });
 
-        public static Md3Theme GreenLight() => new Md3Theme
-        {
+        public static Md3Theme GreenLight() => FillDerived(new Md3Theme {
             Primary = H("#2E7D4F"), OnPrimary = H("#FFFFFF"), PrimaryContainer = H("#B2F2C9"), OnPrimaryContainer = H("#00210F"),
             Surface = H("#FBFDF8"), SurfaceContainer = H("#EEF2EB"), SurfaceContainerHigh = H("#E3E8E0"),
             OnSurface = H("#191C19"), OnSurfaceVariant = H("#414942"),
             Outline = H("#717971"), OutlineVariant = H("#C1C9BF"),
             Error = H("#BA1A1A"), ErrorContainer = H("#FFDAD6"), OnErrorContainer = H("#410002"),
             TertiaryContainer = H("#D2E4FF"), OnTertiaryContainer = H("#001C38"),
-        };
+        });
 
-        public static Md3Theme GreenDark() => new Md3Theme
-        {
+        public static Md3Theme GreenDark() => FillDerived(new Md3Theme {
             Primary = H("#8FD6A6"), OnPrimary = H("#00391C"), PrimaryContainer = H("#00522C"), OnPrimaryContainer = H("#B2F2C9"),
             Surface = H("#101411"), SurfaceContainer = H("#1B1F1B"), SurfaceContainerHigh = H("#252A25"),
             OnSurface = H("#E1E3DD"), OnSurfaceVariant = H("#C1C9BF"),
             Outline = H("#8B938A"), OutlineVariant = H("#414942"),
             Error = H("#FFB4AB"), ErrorContainer = H("#93000A"), OnErrorContainer = H("#FFDAD6"),
             TertiaryContainer = H("#00447C"), OnTertiaryContainer = H("#D2E4FF"),
-        };
+        });
 
-        public static Md3Theme PurpleLight() => new Md3Theme
-        {
+        public static Md3Theme PurpleLight() => FillDerived(new Md3Theme {
             Primary = H("#7A4FE0"), OnPrimary = H("#FFFFFF"), PrimaryContainer = H("#E8DDFF"), OnPrimaryContainer = H("#26005A"),
             Surface = H("#FDFBFF"), SurfaceContainer = H("#F1EDF7"), SurfaceContainerHigh = H("#E6E1EC"),
             OnSurface = H("#1C1B20"), OnSurfaceVariant = H("#48454E"),
             Outline = H("#79747E"), OutlineVariant = H("#C9C4CF"),
             Error = H("#BA1A1A"), ErrorContainer = H("#FFDAD6"), OnErrorContainer = H("#410002"),
             TertiaryContainer = H("#FFD9E1"), OnTertiaryContainer = H("#3E001D"),
-        };
+        });
 
-        public static Md3Theme PurpleDark() => new Md3Theme
-        {
+        public static Md3Theme PurpleDark() => FillDerived(new Md3Theme {
             Primary = H("#CFBCFF"), OnPrimary = H("#3F1F94"), PrimaryContainer = H("#5A38AC"), OnPrimaryContainer = H("#E8DDFF"),
             Surface = H("#141317"), SurfaceContainer = H("#201F24"), SurfaceContainerHigh = H("#2B292F"),
             OnSurface = H("#E6E1E9"), OnSurfaceVariant = H("#C9C4CF"),
             Outline = H("#928F99"), OutlineVariant = H("#48454E"),
             Error = H("#FFB4AB"), ErrorContainer = H("#93000A"), OnErrorContainer = H("#FFDAD6"),
             TertiaryContainer = H("#5E1133"), OnTertiaryContainer = H("#FFD9E1"),
-        };
+        });
 
-        public static Md3Theme OrangeLight() => new Md3Theme
-        {
+        public static Md3Theme OrangeLight() => FillDerived(new Md3Theme {
             Primary = H("#B4540A"), OnPrimary = H("#FFFFFF"), PrimaryContainer = H("#FFDBC6"), OnPrimaryContainer = H("#391300"),
             Surface = H("#FFFBFF"), SurfaceContainer = H("#F6EEE9"), SurfaceContainerHigh = H("#EBE2DD"),
             OnSurface = H("#201A17"), OnSurfaceVariant = H("#52443D"),
             Outline = H("#85736C"), OutlineVariant = H("#D8C2B9"),
             Error = H("#BA1A1A"), ErrorContainer = H("#FFDAD6"), OnErrorContainer = H("#410002"),
             TertiaryContainer = H("#D8E6BB"), OnTertiaryContainer = H("#141F00"),
-        };
+        });
 
-        public static Md3Theme OrangeDark() => new Md3Theme
-        {
+        public static Md3Theme OrangeDark() => FillDerived(new Md3Theme {
             Primary = H("#FFB68C"), OnPrimary = H("#5D2600"), PrimaryContainer = H("#853800"), OnPrimaryContainer = H("#FFDBC6"),
             Surface = H("#18120F"), SurfaceContainer = H("#241E1A"), SurfaceContainerHigh = H("#2F2824"),
             OnSurface = H("#EDE0DA"), OnSurfaceVariant = H("#D8C2B9"),
             Outline = H("#A08D85"), OutlineVariant = H("#52443D"),
             Error = H("#FFB4AB"), ErrorContainer = H("#93000A"), OnErrorContainer = H("#FFDAD6"),
             TertiaryContainer = H("#3B4A1A"), OnTertiaryContainer = H("#D8E6BB"),
-        };
+        });
     }
 
     public enum Md3Palette { Blue, Green, Purple, Orange }

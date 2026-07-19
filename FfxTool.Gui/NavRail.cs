@@ -23,6 +23,7 @@ namespace FfxTool.Gui
         {
             public string Text;
             public Control Content;
+            public Md3Icons.Icon Icon;
         }
 
         readonly List<NavItem> _items = new List<NavItem>();
@@ -46,20 +47,20 @@ namespace FfxTool.Gui
         {
             Width = 200;
             Dock = DockStyle.Left;
-            BackColor = ThemeManager.Current.SurfaceContainer;
+            BackColor = ThemeManager.Current.SurfaceContainerLow;
             DoubleBuffered = true;
             Cursor = Cursors.Hand;
 
             MouseClick += OnMouseClick;
-            ThemeManager.ThemeChanged += () => { BackColor = ThemeManager.Current.SurfaceContainer; Invalidate(); };
+            ThemeManager.ThemeChanged += () => { BackColor = ThemeManager.Current.SurfaceContainerLow; Invalidate(); };
 
             _animTimer = new Timer { Interval = 15 };
             _animTimer.Tick += (s, e) => TickAnimation();
         }
 
-        public void AddItem(string text, Control content)
+        public void AddItem(string text, Control content, Md3Icons.Icon icon)
         {
-            _items.Add(new NavItem { Text = text, Content = content });
+            _items.Add(new NavItem { Text = text, Content = content, Icon = icon });
             if (_selectedIndex == -1)
             {
                 _selectedIndex = 0;
@@ -126,19 +127,27 @@ namespace FfxTool.Gui
             using (var brush = new SolidBrush(ThemeManager.Current.PrimaryContainer))
                 e.Graphics.FillPath(brush, path);
 
+            const int iconSize = 20;
+            const int iconTextGap = Md3Tokens.Space2;
+
             for (int i = 0; i < _items.Count; i++)
             {
                 var bounds = new Rectangle(ItemMarginX, (int)ItemBoundsY(i), Width - ItemMarginX * 2, ItemHeight - ItemMarginY);
                 _itemBounds.Add(bounds);
 
                 bool selected = i == _selectedIndex;
-                var textColor = selected ? ThemeManager.Current.OnPrimaryContainer : ThemeManager.Current.OnSurfaceVariant;
+                var itemColor = selected ? ThemeManager.Current.OnPrimaryContainer : ThemeManager.Current.OnSurfaceVariant;
+
+                var iconBounds = new Rectangle(bounds.X + Md3Tokens.Space2, bounds.Y + (bounds.Height - iconSize) / 2, iconSize, iconSize);
+                Md3Icons.Draw(e.Graphics, _items[i].Icon, iconBounds, itemColor, selected ? 2.0f : 1.6f);
+
+                var textBounds = new Rectangle(iconBounds.Right + iconTextGap, bounds.Y, bounds.Width - (iconBounds.Right + iconTextGap - bounds.X), bounds.Height);
                 // MD3 spec (component-type table): "Navigation label" ->
                 // Label Medium. Was previously TitleMedium/BodyLarge — the
                 // wrong scale entirely (that's card-title/body-text style,
                 // not navigation).
                 var font = selected ? Md3Tokens.LabelLarge : Md3Tokens.LabelMedium;
-                TextRenderer.DrawText(e.Graphics, _items[i].Text, font, bounds, textColor,
+                TextRenderer.DrawText(e.Graphics, _items[i].Text, font, textBounds, itemColor,
                     TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
             }
         }

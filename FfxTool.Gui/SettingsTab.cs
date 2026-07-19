@@ -31,7 +31,7 @@ namespace FfxTool.Gui
 
         Control BuildAppearanceSection()
         {
-            var card = new Md3Card { Width = 520, AutoSize = true, Padding = new Padding(Md3Tokens.Space6), Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
+            var card = new Md3Card { Variant = Md3CardVariant.Elevated, Width = 520, AutoSize = true, Padding = new Padding(Md3Tokens.Space6), Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
             var flow = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false };
 
             var title = new Label { Text = "Appearance", Font = Md3Tokens.TitleMedium, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
@@ -105,7 +105,7 @@ namespace FfxTool.Gui
 
         Control BuildAboutSection()
         {
-            var card = new Md3Card { Width = 520, AutoSize = true, Padding = new Padding(Md3Tokens.Space6) };
+            var card = new Md3Card { Variant = Md3CardVariant.Elevated, Width = 520, AutoSize = true, Padding = new Padding(Md3Tokens.Space6) };
             var flow = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false };
 
             var title = new Label { Text = "About", Font = Md3Tokens.TitleMedium, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };

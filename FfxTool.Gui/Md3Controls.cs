@@ -12,43 +12,99 @@ namespace FfxTool.Gui
     /// directly rather than relying on any external MD3 library — there
     /// isn't one for WinForms.
     /// </summary>
+    /// <summary>
+    /// MD3's button variants (m3.material.io/components/buttons) — this
+    /// was previously a single "filled" style used for every button in
+    /// the app, including secondary actions like "Scan a plugins folder"
+    /// that MD3 would style differently to establish visual hierarchy
+    /// (a screen full of identical filled buttons has no hierarchy at all).
+    /// Elevated is intentionally omitted — its whole visual identity is a
+    /// drop shadow, and WinForms shadows are unreliable across OS versions
+    /// including Win7 (same reasoning Md3Card already used to skip it).
+    /// </summary>
+    public enum Md3ButtonVariant { Filled, Tonal, Outlined, Text }
+
     public class Md3Button : Button
     {
+        public Md3ButtonVariant Variant = Md3ButtonVariant.Filled;
+        public Md3Icons.Icon? Icon = null;
+
+        bool _hovering;
+
         public Md3Button()
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.SupportsTransparentBackColor, true);
             FlatStyle = FlatStyle.Flat;
             FlatAppearance.BorderSize = 0;
-            BackColor = ThemeManager.Current.Primary;
-            ForeColor = ThemeManager.Current.OnPrimary;
             Font = Md3Tokens.LabelLarge;
             Height = 36;
             Cursor = Cursors.Hand;
-            FlatAppearance.MouseOverBackColor = ControlPaint.Light(ThemeManager.Current.Primary, 0.1f);
-            FlatAppearance.MouseDownBackColor = ControlPaint.Dark(ThemeManager.Current.Primary, 0.05f);
+            MouseEnter += (s, e) => { _hovering = true; Invalidate(); };
+            MouseLeave += (s, e) => { _hovering = false; Invalidate(); };
+            ThemeManager.ThemeChanged += Invalidate_;
+        }
+
+        void Invalidate_() => Invalidate();
+
+        (Color fill, Color content, bool outlined) Colors()
+        {
+            switch (Variant)
+            {
+                case Md3ButtonVariant.Filled: return (ThemeManager.Current.Primary, ThemeManager.Current.OnPrimary, false);
+                case Md3ButtonVariant.Tonal: return (ThemeManager.Current.PrimaryContainer, ThemeManager.Current.OnPrimaryContainer, false);
+                case Md3ButtonVariant.Outlined: return (Color.Transparent, ThemeManager.Current.Primary, true);
+                case Md3ButtonVariant.Text: return (Color.Transparent, ThemeManager.Current.Primary, false);
+                default: return (ThemeManager.Current.Primary, ThemeManager.Current.OnPrimary, false);
+            }
         }
 
         protected override void OnPaint(PaintEventArgs pevent)
         {
+            var g = pevent.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
             // Without ControlStyles.UserPaint, WinForms still paints the
-            // native button background/chrome underneath our custom pill —
-            // it shows through as jagged artifacts at the corners the pill
-            // path doesn't cover (this was a real visible bug: black
-            // notches at the bottom-left of every button). Clearing to the
-            // parent's actual surface color first, then drawing the pill
-            // on top, fixes it properly instead of just papering over it.
-            pevent.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            pevent.Graphics.Clear(Parent?.BackColor ?? ThemeManager.Current.Surface);
+            // native button background underneath our custom pill, which
+            // showed through as jagged black corner artifacts in a real
+            // screenshot — clearing to the actual parent surface first
+            // fixes that properly.
+            g.Clear(Parent?.BackColor ?? ThemeManager.Current.Surface);
 
-            // MD3 spec (component-shape mapping): "Buttons (all types): full"
-            // — a true pill/stadium shape, not a fixed corner radius.
+            var (fill, content, outlined) = Colors();
             using (var path = PillPath(ClientRectangle))
-            using (var brush = new SolidBrush(ThemeManager.Current.Primary))
             {
-                pevent.Graphics.FillPath(brush, path);
+                if (fill != Color.Transparent)
+                {
+                    using (var brush = new SolidBrush(fill))
+                        g.FillPath(brush, path);
+                }
+                if (outlined)
+                {
+                    using (var pen = new Pen(ThemeManager.Current.Outline, 1f))
+                        g.DrawPath(pen, path);
+                }
+                if (_hovering)
+                {
+                    // MD3's real hover mechanism: a semi-transparent overlay
+                    // of the content color, not a flat color swap.
+                    Md3StateLayer.Paint(g, path, content, Md3Tokens.HoverStateAlpha);
+                }
             }
-            TextRenderer.DrawText(pevent.Graphics, Text, Font, ClientRectangle, ThemeManager.Current.OnPrimary,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+            int textX = ClientRectangle.X;
+            int textWidth = ClientRectangle.Width;
+            if (Icon.HasValue)
+            {
+                int iconSize = 18;
+                var iconBounds = new Rectangle(ClientRectangle.X + Md3Tokens.Space4, (Height - iconSize) / 2, iconSize, iconSize);
+                Md3Icons.Draw(g, Icon.Value, iconBounds, content, 1.8f);
+                textX = iconBounds.Right + Md3Tokens.Space2;
+                textWidth = ClientRectangle.Width - (textX - ClientRectangle.X) - Md3Tokens.Space4;
+            }
+            var textRect = new Rectangle(textX, ClientRectangle.Y, textWidth, ClientRectangle.Height);
+            TextRenderer.DrawText(g, Text, Font, textRect, content,
+                Icon.HasValue
+                    ? TextFormatFlags.VerticalCenter | TextFormatFlags.Left
+                    : TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
         }
 
         static GraphicsPath PillPath(Rectangle bounds)
@@ -61,12 +117,24 @@ namespace FfxTool.Gui
             path.CloseFigure();
             return path;
         }
-
     }
 
     /// <summary>An MD3-style "card" surface — rounded panel with a subtle border, no drop shadow (WinForms shadows are unreliable across OS versions including Win7).</summary>
+    /// <summary>
+    /// MD3's card variants (m3.material.io/components/cards). Previously
+    /// every card in the app (Plugin Profile vendor rows, Settings'
+    /// Appearance/About) looked identical — one undifferentiated style.
+    /// Elevated uses a slightly higher surface tone instead of a drop
+    /// shadow (WinForms shadows are unreliable across OS versions
+    /// including Win7, so this substitutes MD3's own tonal-elevation
+    /// concept rather than skipping elevation differentiation entirely).
+    /// </summary>
+    public enum Md3CardVariant { Elevated, Filled, Outlined }
+
     public class Md3Card : Panel
     {
+        public Md3CardVariant Variant = Md3CardVariant.Filled;
+
         public Md3Card()
         {
             Padding = new Padding(Md3Tokens.Space4);
@@ -79,12 +147,25 @@ namespace FfxTool.Gui
         {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             var bounds = new Rectangle(0, 0, Width - 1, Height - 1);
+
+            Color fill;
+            bool outline;
+            switch (Variant)
+            {
+                case Md3CardVariant.Elevated: fill = ThemeManager.Current.SurfaceContainerHigh; outline = false; break;
+                case Md3CardVariant.Outlined: fill = ThemeManager.Current.Surface; outline = true; break;
+                default: fill = ThemeManager.Current.SurfaceContainer; outline = false; break; // Filled
+            }
+
             using (var path = RoundedRect(bounds, Md3Tokens.CornerMedium))
-            using (var fillBrush = new SolidBrush(ThemeManager.Current.SurfaceContainer))
-            using (var pen = new Pen(ThemeManager.Current.OutlineVariant, 1))
+            using (var fillBrush = new SolidBrush(fill))
             {
                 e.Graphics.FillPath(fillBrush, path);
-                e.Graphics.DrawPath(pen, path);
+                if (outline)
+                {
+                    using (var pen = new Pen(ThemeManager.Current.OutlineVariant, 1))
+                        e.Graphics.DrawPath(pen, path);
+                }
             }
         }
 

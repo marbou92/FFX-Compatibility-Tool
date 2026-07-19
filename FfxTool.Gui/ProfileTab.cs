@@ -78,7 +78,7 @@ namespace FfxTool.Gui
                 Dock = DockStyle.Fill, AutoSize = true, WrapContents = false,
                 FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(0, Md3Tokens.Space6, 0, 0),
             };
-            var scanBtn = new Md3Button { Text = "Scan a plugins folder…", Width = 200, Margin = new Padding(0, 0, Md3Tokens.Space4, 0) };
+            var scanBtn = new Md3Button { Text = "Scan a plugins folder…", Icon = Md3Icons.Icon.FolderOpen, Variant = Md3ButtonVariant.Outlined, Width = 210, Margin = new Padding(0, 0, Md3Tokens.Space4, 0) };
             scanBtn.Click += (s, e) => ScanFolder();
             var scanHint = new Label
             {

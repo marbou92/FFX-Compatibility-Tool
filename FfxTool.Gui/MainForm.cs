@@ -39,10 +39,10 @@ namespace FfxTool.Gui
             _contentHost.Controls.Add(_listerTab);
 
             _navRail = new NavRail();
-            _navRail.AddItem("Effect Lister", _listerTab);
-            _navRail.AddItem("Plugin Profile", _profileTab);
-            _navRail.AddItem("Convert", _convertTab);
-            _navRail.AddItem("Settings", _settingsTab);
+            _navRail.AddItem("Effect Lister", _listerTab, Md3Icons.Icon.EffectList);
+            _navRail.AddItem("Plugin Profile", _profileTab, Md3Icons.Icon.Plugin);
+            _navRail.AddItem("Convert", _convertTab, Md3Icons.Icon.Convert);
+            _navRail.AddItem("Settings", _settingsTab, Md3Icons.Icon.Settings);
             _navRail.SelectionChanged += OnNavSelectionChanged;
 
             _header = new AppHeader("FFX Compatibility Tool");
