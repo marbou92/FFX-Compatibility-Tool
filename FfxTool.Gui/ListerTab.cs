@@ -50,7 +50,46 @@ namespace FfxTool.Gui
                 View = View.Details, FullRowSelect = true, GridLines = false,
                 Dock = DockStyle.Fill, Font = Md3Tokens.BodyMedium, BackColor = ThemeManager.Current.Surface,
                 Margin = new Padding(0, Md3Tokens.Space2, 0, Md3Tokens.Space2),
+                BorderStyle = BorderStyle.FixedSingle,
+                // ListView (unlike ComboBox) has a real owner-draw API that
+                // fully replaces its native rendering — using it here to
+                // get an actual flat MD3-themed header and rows instead of
+                // the stock Windows 3D-bevel header + native selection
+                // highlight that was showing in the previous build.
+                OwnerDraw = true,
             };
+            _list.DrawColumnHeader += (s, e) =>
+            {
+                using (var brush = new SolidBrush(ThemeManager.Current.SurfaceContainer))
+                    e.Graphics.FillRectangle(brush, e.Bounds);
+                using (var pen = new Pen(ThemeManager.Current.OutlineVariant))
+                    e.Graphics.DrawLine(pen, e.Bounds.Left, e.Bounds.Bottom - 1, e.Bounds.Right, e.Bounds.Bottom - 1);
+                var textRect = new Rectangle(e.Bounds.X + Md3Tokens.Space2, e.Bounds.Y, e.Bounds.Width - Md3Tokens.Space4, e.Bounds.Height);
+                TextRenderer.DrawText(e.Graphics, e.Header.Text, Md3Tokens.LabelLarge, textRect, ThemeManager.Current.OnSurfaceVariant,
+                    TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
+            };
+            _list.DrawSubItem += (s, e) =>
+            {
+                // e.Item.BackColor is still used deliberately here (set per-row
+                // in Refresh_() below for missing/unknown status highlighting)
+                // — that's a per-row semantic color, not a stale-theme bug like
+                // the earlier Md3Switch/Md3Card issue, since it's re-set fresh
+                // every time Refresh_() runs rather than cached once at
+                // construction.
+                var rowBg = e.Item.Selected
+                    ? ThemeManager.Current.PrimaryContainer
+                    : e.Item.BackColor != _list.BackColor
+                        ? e.Item.BackColor // an explicit missing/unknown-plugin highlight set in Refresh_()
+                        : ThemeManager.Current.Surface;
+                using (var brush = new SolidBrush(rowBg))
+                    e.Graphics.FillRectangle(brush, e.Bounds);
+                var textColor = e.Item.Selected ? ThemeManager.Current.OnPrimaryContainer : ThemeManager.Current.OnSurface;
+                var textRect = new Rectangle(e.Bounds.X + Md3Tokens.Space2, e.Bounds.Y, e.Bounds.Width - Md3Tokens.Space4, e.Bounds.Height);
+                TextRenderer.DrawText(e.Graphics, e.SubItem.Text, Md3Tokens.BodyMedium, textRect, textColor,
+                    TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
+            };
+            _list.DrawItem += (s, e) => { }; // required to exist for OwnerDraw, actual painting happens per-subitem above
+            ThemeManager.ThemeChanged += () => { _list.BackColor = ThemeManager.Current.Surface; _list.Invalidate(true); };
             _list.Columns.Add("#", 40);
             _list.Columns.Add("Match name", 220);
             _list.Columns.Add("Vendor / Suite", 320);

@@ -16,6 +16,7 @@ namespace FfxTool.Gui
     {
         public Md3Button()
         {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.SupportsTransparentBackColor, true);
             FlatStyle = FlatStyle.Flat;
             FlatAppearance.BorderSize = 0;
             BackColor = ThemeManager.Current.Primary;
@@ -29,11 +30,18 @@ namespace FfxTool.Gui
 
         protected override void OnPaint(PaintEventArgs pevent)
         {
+            // Without ControlStyles.UserPaint, WinForms still paints the
+            // native button background/chrome underneath our custom pill —
+            // it shows through as jagged artifacts at the corners the pill
+            // path doesn't cover (this was a real visible bug: black
+            // notches at the bottom-left of every button). Clearing to the
+            // parent's actual surface color first, then drawing the pill
+            // on top, fixes it properly instead of just papering over it.
             pevent.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            pevent.Graphics.Clear(Parent?.BackColor ?? ThemeManager.Current.Surface);
+
             // MD3 spec (component-shape mapping): "Buttons (all types): full"
-            // — a true pill/stadium shape, not a fixed corner radius. This
-            // was previously using Md3Tokens.CornerLarge (16px fixed),
-            // which is spec-incorrect (that value is for FABs/nav drawers).
+            // — a true pill/stadium shape, not a fixed corner radius.
             using (var path = PillPath(ClientRectangle))
             using (var brush = new SolidBrush(ThemeManager.Current.Primary))
             {

@@ -16,7 +16,7 @@ namespace FfxTool.Gui
         readonly PluginProfile _profile;
         readonly Label _fileLabel;
         readonly CheckedListBox _effectList;
-        readonly ComboBox _targetCombo;
+        readonly Md3Dropdown _targetCombo;
         readonly Md3Button _convertBtn;
         readonly TextBox _resultBox;
 
@@ -62,13 +62,12 @@ namespace FfxTool.Gui
                 Text = "Target version:", Font = Md3Tokens.BodyLarge, ForeColor = ThemeManager.Current.OnSurface,
                 AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, Md3Tokens.Space2, Md3Tokens.Space2, 0),
             };
-            _targetCombo = new Md3ComboBox
+            _targetCombo = new Md3Dropdown
             {
                 Width = 120,
                 Margin = new Padding(0, 0, Md3Tokens.Space6, 0),
             };
-            foreach (var k in Pipeline.KnownVersions.Keys.OrderBy(k => k)) _targetCombo.Items.Add(k);
-            if (_targetCombo.Items.Count > 0) _targetCombo.SelectedIndex = 0;
+            _targetCombo.SetItems(Pipeline.KnownVersions.Keys.OrderBy(k => k), 0);
 
             _convertBtn = new Md3Button { Text = "Convert…", Width = 140, Enabled = false };
             _convertBtn.Click += (s, e) => DoConvert();
@@ -135,7 +134,7 @@ namespace FfxTool.Gui
                 }
             }
 
-            var target = _targetCombo.SelectedItem?.ToString() ?? "cs5.5";
+            var target = _targetCombo.SelectedItem ?? "cs5.5";
 
             Pipeline.ConversionResult result;
             try

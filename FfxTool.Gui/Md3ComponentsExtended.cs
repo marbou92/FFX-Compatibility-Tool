@@ -39,7 +39,16 @@ namespace FfxTool.Gui
         {
             var g = pevent.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.Clear(Parent?.BackColor ?? ThemeManager.Current.Surface);
+            // Both Md3Switch and Md3Checkbox live inside an Md3Card in every
+            // real usage in this app, and Md3Card no longer keeps its
+            // BackColor property in sync with the live theme (it paints
+            // SurfaceContainer directly in its own OnPaint instead) —
+            // reading Parent.BackColor here was picking up a stale/wrong
+            // color, which caused the switch track to visibly mismatch
+            // its card and overlap/obscure the label text next to it.
+            // Reading the theme's SurfaceContainer directly instead is
+            // correct for this app's actual layout, not just a workaround.
+            g.Clear(ThemeManager.Current.SurfaceContainer);
 
             var trackRect = new Rectangle(0, 2, TrackWidth, TrackHeight);
             var trackColor = Checked ? ThemeManager.Current.Primary : ThemeManager.Current.SurfaceContainerHigh;
@@ -107,7 +116,16 @@ namespace FfxTool.Gui
         {
             var g = pevent.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.Clear(Parent?.BackColor ?? ThemeManager.Current.Surface);
+            // Both Md3Switch and Md3Checkbox live inside an Md3Card in every
+            // real usage in this app, and Md3Card no longer keeps its
+            // BackColor property in sync with the live theme (it paints
+            // SurfaceContainer directly in its own OnPaint instead) —
+            // reading Parent.BackColor here was picking up a stale/wrong
+            // color, which caused the switch track to visibly mismatch
+            // its card and overlap/obscure the label text next to it.
+            // Reading the theme's SurfaceContainer directly instead is
+            // correct for this app's actual layout, not just a workaround.
+            g.Clear(ThemeManager.Current.SurfaceContainer);
 
             var boxRect = new Rectangle(0, (Height - BoxSize) / 2, BoxSize, BoxSize);
 
@@ -154,81 +172,4 @@ namespace FfxTool.Gui
         }
     }
 
-    /// <summary>MD3 "Outlined Dropdown menu" shape
-    /// (m3.material.io/components/menus#dropdown-menus) applied to a
-    /// standard WinForms ComboBox via owner-draw: rounded outline, MD3
-    /// color tokens, no native Windows combobox chrome.</summary>
-    public class Md3ComboBox : ComboBox
-    {
-        public Md3ComboBox()
-        {
-            DrawMode = DrawMode.OwnerDrawFixed;
-            DropDownStyle = ComboBoxStyle.DropDownList;
-            FlatStyle = FlatStyle.Flat;
-            Font = Md3Tokens.BodyLarge;
-            ItemHeight = 24;
-        }
-
-        protected override void OnDrawItem(DrawItemEventArgs e)
-        {
-            if (e.Index < 0) return;
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-
-            bool selected = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
-            var bg = selected ? ThemeManager.Current.PrimaryContainer : ThemeManager.Current.Surface;
-            var fg = selected ? ThemeManager.Current.OnPrimaryContainer : ThemeManager.Current.OnSurface;
-
-            using (var brush = new SolidBrush(bg))
-                e.Graphics.FillRectangle(brush, e.Bounds);
-
-            TextRenderer.DrawText(e.Graphics, Items[e.Index].ToString(), Font, e.Bounds, fg,
-                TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.NoPadding);
-        }
-
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            // Owner-drawing the closed-state box too (not just the
-            // dropdown list) — otherwise the box itself stays native
-            // Windows chrome while only the opened list gets MD3 styling,
-            // which looks inconsistent.
-            var g = e.Graphics;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            var bounds = new Rectangle(0, 0, Width - 1, Height - 1);
-
-            using (var path = RoundedRect(bounds, Md3Tokens.CornerSmall))
-            using (var fillBrush = new SolidBrush(ThemeManager.Current.Surface))
-            using (var pen = new Pen(ThemeManager.Current.Outline, 1f))
-            {
-                g.FillPath(fillBrush, path);
-                g.DrawPath(pen, path);
-            }
-
-            if (SelectedIndex >= 0)
-            {
-                var textRect = new Rectangle(Md3Tokens.Space3, 0, Width - Md3Tokens.Space6 - 16, Height);
-                TextRenderer.DrawText(g, Items[SelectedIndex].ToString(), Font, textRect, ThemeManager.Current.OnSurface,
-                    TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
-            }
-
-            // simple downward-caret glyph instead of the native combo arrow
-            var caretCenter = new Point(Width - 16, Height / 2);
-            using (var pen = new Pen(ThemeManager.Current.OnSurfaceVariant, 1.5f) { StartCap = LineCap.Round, EndCap = LineCap.Round })
-            {
-                g.DrawLine(pen, caretCenter.X - 4, caretCenter.Y - 2, caretCenter.X, caretCenter.Y + 2);
-                g.DrawLine(pen, caretCenter.X, caretCenter.Y + 2, caretCenter.X + 4, caretCenter.Y - 2);
-            }
-        }
-
-        static GraphicsPath RoundedRect(Rectangle bounds, int radius)
-        {
-            var path = new GraphicsPath();
-            int d = radius * 2;
-            path.AddArc(bounds.X, bounds.Y, d, d, 180, 90);
-            path.AddArc(bounds.Right - d, bounds.Y, d, d, 270, 90);
-            path.AddArc(bounds.Right - d, bounds.Bottom - d, d, d, 0, 90);
-            path.AddArc(bounds.X, bounds.Bottom - d, d, d, 90, 90);
-            path.CloseFigure();
-            return path;
-        }
-    }
 }
