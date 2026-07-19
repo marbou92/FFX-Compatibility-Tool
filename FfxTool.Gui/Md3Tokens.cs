@@ -45,6 +45,13 @@ namespace FfxTool.Gui
         public static Font LabelMedium => new Font("Segoe UI", 8f, FontStyle.Bold);
         public static Font LabelSmall => new Font("Segoe UI", 7f, FontStyle.Bold);
 
+        // --- Layout tokens — added during layout audit: cards across
+        // different tabs were using inconsistent hardcoded widths (420 in
+        // ProfileTab, 520 in SettingsTab) with no shared source of truth.
+        // Every card-style content block in the app should reference this
+        // instead of picking its own number.
+        public const int ContentMaxWidth = 520;
+
         // --- Shape (MD3 corner radius scale) ---
         public const int CornerExtraSmall = 4;
         public const int CornerSmall = 8;

@@ -17,6 +17,8 @@ namespace FfxTool.Gui
         readonly PluginProfile _profile;
         readonly Label _fileLabel;
         readonly ListView _list;
+        readonly Md3EmptyState _emptyState;
+        readonly Panel _listHost;
         readonly Label _summaryLabel;
         System.Collections.Generic.List<Pipeline.EffectInfo> _currentEffects = new System.Collections.Generic.List<Pipeline.EffectInfo>();
 
@@ -35,7 +37,7 @@ namespace FfxTool.Gui
                 Dock = DockStyle.Fill, AutoSize = true, WrapContents = false,
                 FlowDirection = FlowDirection.LeftToRight,
             };
-            var openBtn = new Md3Button { Text = "Open .ffx file…", Icon = Md3Icons.Icon.FolderOpen, Width = 180, Margin = new Padding(0, 0, Md3Tokens.Space4, Md3Tokens.Space4) };
+            var openBtn = new Md3Button { Text = "Open .ffx file…", Icon = Md3Icons.Icon.FolderOpen, Width = 180, Margin = new Padding(0, 0, Md3Tokens.Space4, 0) };
             openBtn.Click += (s, e) => OpenFile();
             _fileLabel = new Label
             {
@@ -49,7 +51,6 @@ namespace FfxTool.Gui
             {
                 View = View.Details, FullRowSelect = true, GridLines = false,
                 Dock = DockStyle.Fill, Font = Md3Tokens.BodyMedium, BackColor = ThemeManager.Current.Surface,
-                Margin = new Padding(0, Md3Tokens.Space2, 0, Md3Tokens.Space2),
                 BorderStyle = BorderStyle.FixedSingle,
                 // ListView (unlike ComboBox) has a real owner-draw API that
                 // fully replaces its native rendering — using it here to
@@ -95,6 +96,20 @@ namespace FfxTool.Gui
             _list.Columns.Add("Vendor / Suite", 320);
             _list.Columns.Add("Status", 220);
 
+            // Empty-state overlay: previously this area was just a bare
+            // box with nothing in it before a file was loaded. Both
+            // controls are docked Fill inside the same host and swapped
+            // via Visible in Refresh_() rather than adding/removing from
+            // Controls, which avoids layout-thrash on every refresh.
+            _emptyState = new Md3EmptyState(Md3Icons.Icon.EffectList, "No preset loaded",
+                "Open a .ffx file to see its effects and check them against your plugin profile.")
+            { Dock = DockStyle.Fill };
+            _listHost = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, Md3Tokens.Space2, 0, Md3Tokens.Space2) };
+            _listHost.Controls.Add(_list);
+            _listHost.Controls.Add(_emptyState);
+            _list.Dock = DockStyle.Fill;
+            _list.Visible = false; // empty state shows first, until a file is loaded
+
             _summaryLabel = new Label
             {
                 Text = "", Font = Md3Tokens.BodyMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant,
@@ -102,7 +117,7 @@ namespace FfxTool.Gui
             };
 
             root.Controls.Add(headerRow, 0, 0);
-            root.Controls.Add(_list, 0, 1);
+            root.Controls.Add(_listHost, 0, 1);
             root.Controls.Add(_summaryLabel, 0, 2);
             Controls.Add(root);
         }
@@ -159,6 +174,10 @@ namespace FfxTool.Gui
             if (missingCount > 0) parts.Add($"{missingCount} flagged as missing from your profile");
             if (unknownCount > 0) parts.Add($"{unknownCount} unrecognized");
             _summaryLabel.Text = string.Join(" · ", parts);
+
+            bool hasContent = realEffects.Count > 0;
+            _list.Visible = hasContent;
+            _emptyState.Visible = !hasContent;
         }
     }
 }

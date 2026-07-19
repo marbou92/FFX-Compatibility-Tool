@@ -56,7 +56,7 @@ namespace FfxTool.Gui
 
             foreach (var vendor in vendors)
             {
-                var card = new Md3Card { Width = 420, Height = 44, Margin = new Padding(0, 0, 0, Md3Tokens.Space2) };
+                var card = new Md3Card { Width = Md3Tokens.ContentMaxWidth, Height = 44, Margin = new Padding(0, 0, 0, Md3Tokens.Space2) };
                 var cb = new Md3Switch
                 {
                     Text = vendor, Checked = _profile.OwnedVendors.Contains(vendor),

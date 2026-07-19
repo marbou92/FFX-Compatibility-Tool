@@ -16,6 +16,8 @@ namespace FfxTool.Gui
         readonly PluginProfile _profile;
         readonly Label _fileLabel;
         readonly CheckedListBox _effectList;
+        readonly Md3EmptyState _effectListEmptyState;
+        readonly Panel _effectListHost;
         readonly Md3Dropdown _targetCombo;
         readonly Md3Button _convertBtn;
         readonly TextBox _resultBox;
@@ -54,7 +56,14 @@ namespace FfxTool.Gui
                 AutoSize = true, Margin = new Padding(0, Md3Tokens.Space4, 0, Md3Tokens.Space2),
             };
 
-            _effectList = new CheckedListBox { Dock = DockStyle.Fill, Font = Md3Tokens.BodyMedium, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
+            _effectList = new CheckedListBox { Dock = DockStyle.Fill, Font = Md3Tokens.BodyMedium };
+            _effectListEmptyState = new Md3EmptyState(Md3Icons.Icon.FolderOpen, "No preset loaded",
+                "Open a .ffx file above to see its effects here for removal before converting.")
+            { Dock = DockStyle.Fill, Visible = true };
+            _effectListHost = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
+            _effectListHost.Controls.Add(_effectList);
+            _effectListHost.Controls.Add(_effectListEmptyState);
+            _effectList.Visible = false;
 
             var targetRow = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
             var targetLabel = new Label
@@ -85,7 +94,7 @@ namespace FfxTool.Gui
 
             root.Controls.Add(openRow, 0, 0);
             root.Controls.Add(hint, 0, 1);
-            root.Controls.Add(_effectList, 0, 2);
+            root.Controls.Add(_effectListHost, 0, 2);
             root.Controls.Add(targetRow, 0, 3);
             root.Controls.Add(_resultBox, 0, 4);
             Controls.Add(root);
@@ -107,7 +116,12 @@ namespace FfxTool.Gui
         public void Refresh_()
         {
             _effectList.Items.Clear();
-            if (_currentEffects.Count == 0) return;
+            if (_currentEffects.Count == 0)
+            {
+                _effectList.Visible = false;
+                _effectListEmptyState.Visible = true;
+                return;
+            }
 
             var table = PluginLookup.LoadTable();
             foreach (var eff in _currentEffects)
@@ -117,6 +131,9 @@ namespace FfxTool.Gui
                 var owned = _profile.Owns(match.Vendor);
                 _effectList.Items.Add($"{eff.MatchName}  ({match.Vendor ?? "unknown vendor"})", owned == false);
             }
+
+            _effectList.Visible = true;
+            _effectListEmptyState.Visible = false;
         }
 
         void DoConvert()
