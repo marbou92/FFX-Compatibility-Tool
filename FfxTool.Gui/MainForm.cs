@@ -13,6 +13,7 @@ namespace FfxTool.Gui
         readonly Panel _contentHost;
         readonly NavRail _navRail;
         readonly TableLayoutPanel _root;
+        readonly TableLayoutPanel _body;
         readonly Md3TitleBar _titleBar;
 
         // resize-border thickness for the WM_NCHITTEST override below —
@@ -54,8 +55,9 @@ namespace FfxTool.Gui
             _navRail.AddItem("Effect Lister", _listerTab, Md3Icons.Icon.EffectList);
             _navRail.AddItem("Plugin Profile", _profileTab, Md3Icons.Icon.Plugin);
             _navRail.AddItem("Convert", _convertTab, Md3Icons.Icon.Convert);
-            _navRail.AddItem("Settings", _settingsTab, Md3Icons.Icon.Settings);
+            _navRail.AddItem("Settings", _settingsTab, Md3Icons.Icon.Settings, pinned: true);
             _navRail.SelectionChanged += OnNavSelectionChanged;
+            _navRail.CollapsedChanged += () => _body.ColumnStyles[0].Width = _navRail.TargetWidth;
 
             _titleBar = new Md3TitleBar(this, "FFX Compatibility Tool");
 
@@ -63,15 +65,15 @@ namespace FfxTool.Gui
             _root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-            var body = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1 };
-            body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200));
-            body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            body.Controls.Add(_navRail, 0, 0);
-            body.Controls.Add(_contentHost, 1, 0);
+            _body = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1 };
+            _body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, _navRail.TargetWidth));
+            _body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            _body.Controls.Add(_navRail, 0, 0);
+            _body.Controls.Add(_contentHost, 1, 0);
             _navRail.Dock = DockStyle.Fill;
 
             _root.Controls.Add(_titleBar, 0, 0);
-            _root.Controls.Add(body, 0, 1);
+            _root.Controls.Add(_body, 0, 1);
 
             Controls.Add(_root);
 
