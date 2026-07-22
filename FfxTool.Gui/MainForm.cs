@@ -57,7 +57,6 @@ namespace FfxTool.Gui
             _navRail.AddItem("Convert", _convertTab, Md3Icons.Icon.Convert);
             _navRail.AddItem("Settings", _settingsTab, Md3Icons.Icon.Settings, pinned: true);
             _navRail.SelectionChanged += OnNavSelectionChanged;
-            _navRail.CollapsedChanged += () => _body.ColumnStyles[0].Width = _navRail.TargetWidth;
 
             _titleBar = new Md3TitleBar(this, "FFX Compatibility Tool");
 
@@ -66,7 +65,7 @@ namespace FfxTool.Gui
             _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             _body = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1 };
-            _body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, _navRail.TargetWidth));
+            _body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, NavRail.RailWidth));
             _body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             _body.Controls.Add(_navRail, 0, 0);
             _body.Controls.Add(_contentHost, 1, 0);

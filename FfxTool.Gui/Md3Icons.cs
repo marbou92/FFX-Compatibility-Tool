@@ -20,7 +20,7 @@ namespace FfxTool.Gui
         public enum Icon
         {
             FolderOpen, Convert, Settings, Check, Warning,
-            Palette, Sun, Moon, EffectList, Plugin,
+            Palette, Sun, Moon, EffectList, Plugin, Logo,
         }
 
         public static void Draw(Graphics g, Icon icon, Rectangle bounds, Color color, float strokeWidth = 1.8f)
@@ -41,6 +41,7 @@ namespace FfxTool.Gui
                     case Icon.Moon: DrawMoon(g, bounds, brush); break;
                     case Icon.EffectList: DrawEffectList(g, bounds, pen); break;
                     case Icon.Plugin: DrawPlugin(g, bounds, pen); break;
+                    case Icon.Logo: DrawLogo(g, bounds, pen, brush); break;
                 }
             }
         }
@@ -158,6 +159,20 @@ namespace FfxTool.Gui
             g.DrawLine(pen, P(b, 9, 9), P(b, 9, 5));
             g.DrawLine(pen, P(b, 15, 9), P(b, 15, 5));
             g.DrawLine(pen, P(b, 12, 16.2f), P(b, 12, 20));
+        }
+
+        static void DrawLogo(Graphics g, Rectangle b, Pen pen, Brush brush)
+        {
+            // Abstract angular mark echoing the design spec's brand
+            // personality ("technical precision") — deliberately simple
+            // rather than a literal icon-font glyph, since this is the
+            // one piece with no Material Symbols equivalent to approximate
+            // (it's meant to be a distinct app mark, not a system icon).
+            var pts = new[] { P(b, 12, 2), P(b, 21, 8), P(b, 21, 16), P(b, 12, 22), P(b, 3, 16), P(b, 3, 8), P(b, 12, 2) };
+            g.DrawLines(pen, pts);
+            g.DrawLine(pen, P(b, 12, 2), P(b, 12, 22));
+            using (var lightPen = new Pen(((SolidBrush)brush).Color, 1.2f))
+                g.DrawLine(lightPen, P(b, 3, 8), P(b, 21, 16));
         }
     }
 }

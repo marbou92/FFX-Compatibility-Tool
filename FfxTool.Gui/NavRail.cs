@@ -7,14 +7,15 @@ using System.Windows.Forms;
 namespace FfxTool.Gui
 {
     /// <summary>
-    /// MD3 navigation rail, now supporting both of MD3's real states:
-    /// expanded (icon + label, m3.material.io/components/navigation-rail)
-    /// and collapsed (icon-only, same spec — this isn't a deviation, MD3
-    /// explicitly defines both as valid states of the same component).
+    /// MD3 navigation rail, rebuilt to match the user's real design spec
+    /// exactly: fixed 80px width ("Navigation Rail: A slim 80px vertical
+    /// bar that remains fixed"), icon centered above a small label
+    /// (Label Small, 11px/500), a brand mark at the top, and a pill-shaped
+    /// active indicator behind just the icon.
     ///
-    /// Also splits items into a main group and a "pinned" group (Settings)
-    /// rendered at the bottom with a visual gap, per the layout sketch
-    /// this was built from.
+    /// This REPLACES the earlier toggleable expand/collapse version built
+    /// from the user's own rough sketch — the real spec supersedes that
+    /// interpretation. Fixed-width, not collapsible, per the actual design.
     /// </summary>
     public class NavRail : Panel
     {
@@ -29,10 +30,6 @@ namespace FfxTool.Gui
         readonly List<NavItem> _items = new List<NavItem>();
         readonly List<Rectangle> _itemBounds = new List<Rectangle>();
         int _selectedIndex = -1;
-        bool _isCollapsed;
-
-        readonly ToolTip _tooltip = new ToolTip { InitialDelay = 400, ShowAlways = true };
-        int _hoveredIndex = -1;
 
         readonly Timer _animTimer;
         float _pillY, _pillTargetY;
@@ -40,29 +37,22 @@ namespace FfxTool.Gui
         const int AnimMs = 150;
 
         public event Action<int> SelectionChanged;
-        public event Action CollapsedChanged;
 
-        const int ItemHeight = 48;
-        const int ItemMarginX = Md3Tokens.Space3;
-        const int ToggleButtonHeight = 40;
-        public const int ExpandedWidth = 200;
-        public const int CollapsedWidth = 72;
-
-        public bool IsCollapsed => _isCollapsed;
-        public int TargetWidth => _isCollapsed ? CollapsedWidth : ExpandedWidth;
+        // Spec: rail-width: 80px (fixed, not collapsible)
+        public const int RailWidth = 80;
+        const int LogoAreaHeight = 72;
+        const int ItemHeight = 64; // icon + gap + label needs more vertical room than the old icon+label-beside layout
+        const int PillSize = 44;   // spec: pill background sized to the icon, not the full item width
 
         public NavRail()
         {
-            _isCollapsed = NavRailPrefs.LoadCollapsed();
-            Width = TargetWidth;
+            Width = RailWidth;
             Dock = DockStyle.Left;
             BackColor = ThemeManager.Current.NavigationSurface;
             DoubleBuffered = true;
             Cursor = Cursors.Hand;
 
             MouseClick += OnMouseClick;
-            MouseMove += OnMouseMove;
-            MouseLeave += (s, e) => { _hoveredIndex = -1; };
             ThemeManager.ThemeChanged += () => { BackColor = ThemeManager.Current.NavigationSurface; Invalidate(); };
 
             _animTimer = new Timer { Interval = 15 };
@@ -84,16 +74,13 @@ namespace FfxTool.Gui
 
         float ItemBoundsY(int index)
         {
-            // main-group items stack from the top (below the toggle button);
-            // pinned items stack from the bottom, in insertion order, with
-            // a gap separating them from the main group.
             var mainItems = _items.FindAll(i => !i.Pinned);
             var pinnedItems = _items.FindAll(i => i.Pinned);
 
             if (!_items[index].Pinned)
             {
                 int mainIdx = mainItems.IndexOf(_items[index]);
-                return ToggleButtonHeight + Md3Tokens.Space4 + mainIdx * ItemHeight;
+                return LogoAreaHeight + mainIdx * ItemHeight;
             }
             else
             {
@@ -105,17 +92,6 @@ namespace FfxTool.Gui
 
         void OnMouseClick(object sender, MouseEventArgs e)
         {
-            var toggleBounds = new Rectangle(0, 0, Width, ToggleButtonHeight);
-            if (toggleBounds.Contains(e.Location))
-            {
-                _isCollapsed = !_isCollapsed;
-                NavRailPrefs.SaveCollapsed(_isCollapsed);
-                Width = TargetWidth;
-                Invalidate();
-                CollapsedChanged?.Invoke();
-                return;
-            }
-
             for (int i = 0; i < _itemBounds.Count; i++)
             {
                 if (_itemBounds[i].Contains(e.Location) && i != _selectedIndex)
@@ -128,24 +104,6 @@ namespace FfxTool.Gui
                     return;
                 }
             }
-        }
-
-        void OnMouseMove(object sender, MouseEventArgs e)
-        {
-            if (!_isCollapsed) { _hoveredIndex = -1; return; } // tooltips only needed when labels are hidden
-            for (int i = 0; i < _itemBounds.Count; i++)
-            {
-                if (_itemBounds[i].Contains(e.Location))
-                {
-                    if (_hoveredIndex != i)
-                    {
-                        _hoveredIndex = i;
-                        _tooltip.SetToolTip(this, _items[i].Text);
-                    }
-                    return;
-                }
-            }
-            _hoveredIndex = -1;
         }
 
         void TickAnimation()
@@ -171,64 +129,55 @@ namespace FfxTool.Gui
             using (var pen = new Pen(ThemeManager.Current.OutlineVariant))
                 e.Graphics.DrawLine(pen, Width - 1, 0, Width - 1, Height);
 
-            // collapse/expand toggle — simple 3-line "menu" glyph, drawn
-            // inline rather than adding a dedicated Md3Icons entry for
-            // one-off chrome (kept the icon set focused on nav/action icons)
-            var toggleBounds = new Rectangle(0, 0, Width, ToggleButtonHeight);
-            using (var pen = new Pen(ThemeManager.Current.OnSurfaceVariant, 1.6f) { StartCap = LineCap.Round, EndCap = LineCap.Round })
-            {
-                int cx = Md3Tokens.Space4 + 8;
-                int cy = ToggleButtonHeight / 2;
-                for (int i = -1; i <= 1; i++)
-                    e.Graphics.DrawLine(pen, cx - 8, cy + i * 5, cx + 8, cy + i * 5);
-            }
+            // brand mark, top of rail
+            int logoSize = 28;
+            var logoBounds = new Rectangle((Width - logoSize) / 2, Md3Tokens.Space4, logoSize, logoSize);
+            Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Logo, logoBounds, ThemeManager.Current.Primary, 1.8f);
+            using (var pen = new Pen(ThemeManager.Current.OutlineVariant))
+                e.Graphics.DrawLine(pen, Md3Tokens.Space4, LogoAreaHeight - Md3Tokens.Space2, Width - Md3Tokens.Space4, LogoAreaHeight - Md3Tokens.Space2);
 
-            int iconSize = 20;
-            const int iconTextGap = Md3Tokens.Space2;
-
+            int iconSize = 24;
             bool sawPinnedGap = false;
-            foreach (var item in _items)
+
+            for (int i = 0; i < _items.Count; i++)
             {
-                int i = _items.IndexOf(item);
+                var item = _items[i];
                 bool selected = i == _selectedIndex;
 
                 if (item.Pinned && !sawPinnedGap)
                 {
                     sawPinnedGap = true;
-                    float gapY = ItemBoundsY(i) - Md3Tokens.Space4;
+                    float gapY = ItemBoundsY(i) - Md3Tokens.Space2;
                     using (var pen = new Pen(ThemeManager.Current.OutlineVariant))
-                        e.Graphics.DrawLine(pen, ItemMarginX, gapY, Width - ItemMarginX, gapY);
+                        e.Graphics.DrawLine(pen, Md3Tokens.Space4, gapY, Width - Md3Tokens.Space4, gapY);
                 }
 
-                var bounds = new Rectangle(ItemMarginX, (int)ItemBoundsY(i), Width - ItemMarginX * 2, ItemHeight - Md3Tokens.Space2);
+                var bounds = new Rectangle(0, (int)ItemBoundsY(i), Width, ItemHeight - Md3Tokens.Space2);
                 _itemBounds.Add(bounds);
 
-                var itemColor = selected ? ThemeManager.Current.OnPrimaryContainer : ThemeManager.Current.OnSurfaceVariant;
+                var itemColor = selected ? ThemeManager.Current.Primary : ThemeManager.Current.OnSurfaceVariant;
 
+                // pill sized to just the icon (spec: "Active State is
+                // indicated by a Pill background behind the icon"), not
+                // stretched to the item's full width — a real difference
+                // from the earlier expanded-rail version, which used a
+                // full-width pill since it had a label sitting beside the
+                // icon rather than below it.
                 if (selected)
                 {
-                    var pillBounds = _isCollapsed
-                        ? new Rectangle(bounds.X + (bounds.Width - bounds.Height) / 2, (int)_pillY, bounds.Height, bounds.Height - Md3Tokens.Space2)
-                        : new Rectangle(bounds.X, (int)_pillY, bounds.Width, bounds.Height - Md3Tokens.Space2);
+                    var pillBounds = new Rectangle((Width - PillSize) / 2, (int)_pillY + Md3Tokens.Space1, PillSize, PillSize);
                     using (var path = PillPath(pillBounds))
                     using (var brush = new SolidBrush(ThemeManager.Current.PrimaryContainer))
                         e.Graphics.FillPath(brush, path);
                 }
 
-                if (_isCollapsed)
-                {
-                    var iconBounds = new Rectangle(bounds.X + (bounds.Width - iconSize) / 2, bounds.Y + (bounds.Height - iconSize) / 2, iconSize, iconSize);
-                    Md3Icons.Draw(e.Graphics, item.Icon, iconBounds, itemColor, selected ? 2.0f : 1.6f);
-                }
-                else
-                {
-                    var iconBounds = new Rectangle(bounds.X + Md3Tokens.Space2, bounds.Y + (bounds.Height - iconSize) / 2, iconSize, iconSize);
-                    Md3Icons.Draw(e.Graphics, item.Icon, iconBounds, itemColor, selected ? 2.0f : 1.6f);
-                    var textBounds = new Rectangle(iconBounds.Right + iconTextGap, bounds.Y, bounds.Width - (iconBounds.Right + iconTextGap - bounds.X), bounds.Height);
-                    var font = selected ? Md3Tokens.LabelLarge : Md3Tokens.LabelMedium;
-                    TextRenderer.DrawText(e.Graphics, item.Text, font, textBounds, itemColor,
-                        TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
-                }
+                var iconBounds = new Rectangle((Width - iconSize) / 2, bounds.Y + Md3Tokens.Space2 + (PillSize - iconSize) / 2, iconSize, iconSize);
+                Md3Icons.Draw(e.Graphics, item.Icon, iconBounds, itemColor, selected ? 2.0f : 1.6f);
+
+                var labelBounds = new Rectangle(0, iconBounds.Bottom + Md3Tokens.Space1, Width, 16);
+                var font = selected ? Md3Tokens.LabelSmall : Md3Tokens.LabelSmall; // spec: nav labels are Label Small (11px), not Medium — both states share the size, weight differs via the color/emphasis only
+                TextRenderer.DrawText(e.Graphics, item.Text, font, labelBounds, itemColor,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.Top);
             }
         }
 
