@@ -20,6 +20,13 @@ namespace FfxTool.Gui
         public Color Outline, OutlineVariant;
         public Color Error, ErrorContainer, OnErrorContainer;
         public Color TertiaryContainer, OnTertiaryContainer;
+        // Your spec ("Material Technical Desktop") calls out Side
+        // Navigation as its own distinct token (#F6F6FA) — close to but
+        // NOT the same as surface-container-low (#f5f3f7). Previously
+        // NavRail just reused SurfaceContainerLow; now it uses this
+        // dedicated token, matching your spec's actual intent
+        // ("visually separate the application structure from the workspace").
+        public Color NavigationSurface;
 
         static Color H(string hex) => ColorTranslator.FromHtml(hex);
 
@@ -28,17 +35,17 @@ namespace FfxTool.Gui
             (int)(a.G + (b.G - a.G) * t),
             (int)(a.B + (b.B - a.B) * t));
 
-        // Derives the two surface tiers MD3 defines but this file doesn't
-        // hand-pick per-palette: SurfaceContainerLowest (barely off the
-        // base Surface — window background level) and SurfaceContainerLow
-        // (between Surface and the existing SurfaceContainer — nav rail
-        // level). Interpolated from the two tiers that ARE hand-picked per
-        // palette, rather than 16 more hand-picked hex values, since the
-        // ordering/relationship matters more here than exact hue.
+        // Fills in any tier a specific palette definition didn't set
+        // explicitly, by interpolating between Surface and SurfaceContainer.
+        // BlueLight() now sets SurfaceContainerLowest/Low/NavigationSurface
+        // directly from the user's exact design spec (real hex values, not
+        // approximations) — this only fills the gap for the other 7
+        // palette/mode combinations that don't have a full spec yet.
         static Md3Theme FillDerived(Md3Theme t)
         {
-            t.SurfaceContainerLowest = Blend(t.Surface, t.SurfaceContainer, 0.25f);
-            t.SurfaceContainerLow = Blend(t.Surface, t.SurfaceContainer, 0.6f);
+            if (t.SurfaceContainerLowest.IsEmpty) t.SurfaceContainerLowest = Blend(t.Surface, t.SurfaceContainer, 0.25f);
+            if (t.SurfaceContainerLow.IsEmpty) t.SurfaceContainerLow = Blend(t.Surface, t.SurfaceContainer, 0.6f);
+            if (t.NavigationSurface.IsEmpty) t.NavigationSurface = t.SurfaceContainerLow;
             return t;
         }
 
@@ -48,13 +55,21 @@ namespace FfxTool.Gui
         // is a whole HCT color-space algorithm; hand-picking role colors
         // per seed is a pragmatic approximation of it, not a reimplementation.
 
+        // Exact values from the user's own design spec ("Material Technical
+        // Desktop"), not an approximation — every field here traces to a
+        // literal hex value in that document, including the two surface
+        // tiers and the dedicated navigation-rail color it calls out
+        // specifically ("Side Navigation: a slightly cooler, muted gray").
         public static Md3Theme BlueLight() => FillDerived(new Md3Theme {
-            Primary = H("#1A73E8"), OnPrimary = H("#FFFFFF"), PrimaryContainer = H("#D3E3FD"), OnPrimaryContainer = H("#001C3B"),
-            Surface = H("#FDFBFF"), SurfaceContainer = H("#F2F2F7"), SurfaceContainerHigh = H("#E9E9EE"),
+            Primary = H("#005BBF"), OnPrimary = H("#FFFFFF"), PrimaryContainer = H("#1A73E8"), OnPrimaryContainer = H("#FFFFFF"),
+            Surface = H("#FAF9FC"),
+            SurfaceContainerLowest = H("#FFFFFF"), SurfaceContainerLow = H("#F5F3F7"),
+            SurfaceContainer = H("#EFEDF1"), SurfaceContainerHigh = H("#E9E7EB"),
             OnSurface = H("#1A1B20"), OnSurfaceVariant = H("#44474E"),
-            Outline = H("#74777F"), OutlineVariant = H("#C4C6D0"),
-            Error = H("#BA1A1A"), ErrorContainer = H("#FFDAD6"), OnErrorContainer = H("#410002"),
-            TertiaryContainer = H("#FFDDBA"), OnTertiaryContainer = H("#2B1700"),
+            Outline = H("#C4C6D0"), OutlineVariant = H("#C1C6D6"),
+            Error = H("#BA1A1A"), ErrorContainer = H("#FFDAD6"), OnErrorContainer = H("#93000A"),
+            TertiaryContainer = H("#7C5DF0"), OnTertiaryContainer = H("#050021"),
+            NavigationSurface = H("#F6F6FA"),
         });
 
         public static Md3Theme BlueDark() => FillDerived(new Md3Theme {

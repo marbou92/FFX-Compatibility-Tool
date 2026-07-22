@@ -30,6 +30,7 @@ namespace FfxTool.Gui
         public Md3Icons.Icon? Icon = null;
 
         bool _hovering;
+        bool _pressed;
 
         public Md3Button()
         {
@@ -41,6 +42,13 @@ namespace FfxTool.Gui
             Cursor = Cursors.Hand;
             MouseEnter += (s, e) => { _hovering = true; Invalidate(); };
             MouseLeave += (s, e) => { _hovering = false; Invalidate(); };
+            // Matches the design spec's "active:scale-95" press feedback —
+            // approximated here as a small inset of the drawn pill rather
+            // than a true GDI+ scale transform (which would need to scale
+            // around the button's center and complicates hit-testing);
+            // visually reads the same for a control this size.
+            MouseDown += (s, e) => { _pressed = true; Invalidate(); };
+            MouseUp += (s, e) => { _pressed = false; Invalidate(); };
             ThemeManager.ThemeChanged += Invalidate_;
         }
 
@@ -70,7 +78,11 @@ namespace FfxTool.Gui
             g.Clear(Parent?.BackColor ?? ThemeManager.Current.Surface);
 
             var (fill, content, outlined) = Colors();
-            using (var path = PillPath(ClientRectangle))
+            // ~5% inset on press, approximating the design's scale-95 press feedback
+            var drawBounds = _pressed
+                ? Rectangle.Inflate(ClientRectangle, -(int)(ClientRectangle.Width * 0.025f), -(int)(ClientRectangle.Height * 0.025f))
+                : ClientRectangle;
+            using (var path = PillPath(drawBounds))
             {
                 if (fill != Color.Transparent)
                 {
@@ -134,11 +146,20 @@ namespace FfxTool.Gui
     public class Md3Card : Panel
     {
         public Md3CardVariant Variant = Md3CardVariant.Filled;
+        bool _hovering;
 
         public Md3Card()
         {
             Padding = new Padding(Md3Tokens.Space4);
             ThemeManager.ThemeChanged += Invalidate_;
+            // Matches the design spec's card hover pattern: "border
+            // border-transparent hover:border-outline-variant" — a border
+            // that's invisible at rest and fades in on hover, rather than
+            // always-visible (Outlined variant already always shows a
+            // border; this is a distinct interaction on top of Filled/
+            // Elevated variants, which otherwise have no border at all).
+            MouseEnter += (s, e) => { _hovering = true; Invalidate(); };
+            MouseLeave += (s, e) => { _hovering = false; Invalidate(); };
         }
 
         void Invalidate_() => Invalidate();
@@ -162,6 +183,11 @@ namespace FfxTool.Gui
             {
                 e.Graphics.FillPath(fillBrush, path);
                 if (outline)
+                {
+                    using (var pen = new Pen(ThemeManager.Current.OutlineVariant, 1))
+                        e.Graphics.DrawPath(pen, path);
+                }
+                else if (_hovering)
                 {
                     using (var pen = new Pen(ThemeManager.Current.OutlineVariant, 1))
                         e.Graphics.DrawPath(pen, path);

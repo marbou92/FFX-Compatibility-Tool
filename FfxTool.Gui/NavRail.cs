@@ -56,14 +56,14 @@ namespace FfxTool.Gui
             _isCollapsed = NavRailPrefs.LoadCollapsed();
             Width = TargetWidth;
             Dock = DockStyle.Left;
-            BackColor = ThemeManager.Current.SurfaceContainerLow;
+            BackColor = ThemeManager.Current.NavigationSurface;
             DoubleBuffered = true;
             Cursor = Cursors.Hand;
 
             MouseClick += OnMouseClick;
             MouseMove += OnMouseMove;
             MouseLeave += (s, e) => { _hoveredIndex = -1; };
-            ThemeManager.ThemeChanged += () => { BackColor = ThemeManager.Current.SurfaceContainerLow; Invalidate(); };
+            ThemeManager.ThemeChanged += () => { BackColor = ThemeManager.Current.NavigationSurface; Invalidate(); };
 
             _animTimer = new Timer { Interval = 15 };
             _animTimer.Tick += (s, e) => TickAnimation();
