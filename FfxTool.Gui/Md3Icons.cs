@@ -21,6 +21,7 @@ namespace FfxTool.Gui
         {
             FolderOpen, Convert, Settings, Check, Warning,
             Palette, Sun, Moon, EffectList, Plugin, Logo,
+            Diamond, Eye, Flare,
         }
 
         public static void Draw(Graphics g, Icon icon, Rectangle bounds, Color color, float strokeWidth = 1.8f)
@@ -42,6 +43,9 @@ namespace FfxTool.Gui
                     case Icon.EffectList: DrawEffectList(g, bounds, pen); break;
                     case Icon.Plugin: DrawPlugin(g, bounds, pen); break;
                     case Icon.Logo: DrawLogo(g, bounds, pen, brush); break;
+                    case Icon.Diamond: DrawDiamond(g, bounds, pen); break;
+                    case Icon.Eye: DrawEye(g, bounds, pen); break;
+                    case Icon.Flare: DrawFlare(g, bounds, pen); break;
                 }
             }
         }
@@ -173,6 +177,38 @@ namespace FfxTool.Gui
             g.DrawLine(pen, P(b, 12, 2), P(b, 12, 22));
             using (var lightPen = new Pen(((SolidBrush)brush).Color, 1.2f))
                 g.DrawLine(lightPen, P(b, 3, 8), P(b, 21, 16));
+        }
+
+        static void DrawDiamond(Graphics g, Rectangle b, Pen pen)
+        {
+            var pts = new[] { P(b, 12, 2), P(b, 21, 9), P(b, 12, 22), P(b, 3, 9), P(b, 12, 2) };
+            g.DrawLines(pen, pts);
+            g.DrawLine(pen, P(b, 3, 9), P(b, 21, 9));
+            g.DrawLine(pen, P(b, 8, 9), P(b, 12, 2));
+            g.DrawLine(pen, P(b, 16, 9), P(b, 12, 2));
+        }
+
+        static void DrawEye(Graphics g, Rectangle b, Pen pen)
+        {
+            var pts = new[] { P(b, 2, 12), P(b, 12, 5), P(b, 22, 12), P(b, 12, 19), P(b, 2, 12) };
+            g.DrawLines(pen, pts);
+            g.DrawEllipse(pen, P(b, 9, 9).X, P(b, 9, 9).Y, b.Width * 0.25f, b.Height * 0.25f);
+        }
+
+        static void DrawFlare(Graphics g, Rectangle b, Pen pen)
+        {
+            var center = P(b, 12, 12);
+            for (int i = 0; i < 4; i++)
+            {
+                double angle = i * (System.Math.PI / 2) + System.Math.PI / 4;
+                float r1 = b.Width * 0.12f, r2 = b.Width * 0.4f;
+                float x1 = center.X + (float)(System.Math.Cos(angle) * r1);
+                float y1 = center.Y + (float)(System.Math.Sin(angle) * r1);
+                float x2 = center.X + (float)(System.Math.Cos(angle) * r2);
+                float y2 = center.Y + (float)(System.Math.Sin(angle) * r2);
+                g.DrawLine(pen, x1, y1, x2, y2);
+            }
+            g.DrawEllipse(pen, center.X - b.Width * 0.1f, center.Y - b.Width * 0.1f, b.Width * 0.2f, b.Width * 0.2f);
         }
     }
 }
