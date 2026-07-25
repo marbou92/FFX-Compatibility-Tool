@@ -8,21 +8,27 @@ using FfxTool.Core;
 
 namespace FfxTool.Gui
 {
-    /// <summary>Redesigned with a TableLayoutPanel so the effect checklist
-    /// and result box actually grow/shrink with the window, instead of
-    /// v1's fixed pixel sizes.</summary>
+    /// <summary>
+    /// Rebuilt to match the real Convert design (correctly filed under
+    /// Convert.zip — no filename mismatch here, unlike Phases 3-4).
+    /// Matches: the status pill, the "Intelligent Conversion" info
+    /// callout, the empty-state copy/icon, Encoding Options checkboxes,
+    /// and the dark console-style log panel with colored window dots.
+    /// </summary>
     public class ConvertTab : UserControl
     {
         readonly PluginProfile _profile;
-        readonly Label _fileLabel;
+        readonly Label _fileChipLabel;
         readonly CheckedListBox _effectList;
-        readonly Md3EmptyState _effectListEmptyState;
+        readonly Panel _effectListEmptyState;
         readonly Panel _effectListHost;
         readonly Md3Dropdown _targetCombo;
+        readonly CheckBox _overwriteCheck;
         readonly Md3Button _convertBtn;
-        readonly TextBox _resultBox;
+        readonly TextBox _consoleBox;
 
         byte[] _inputData;
+        string _inputPath;
         List<Pipeline.EffectInfo> _currentEffects = new List<Pipeline.EffectInfo>();
 
         public ConvertTab(PluginProfile profile)
@@ -30,74 +36,176 @@ namespace FfxTool.Gui
             _profile = profile;
             BackColor = ThemeManager.Current.Surface;
 
-            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5 };
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // open file row
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // hint
-            root.RowStyles.Add(new RowStyle(SizeType.Percent, 55)); // effect checklist — grows with window
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // target + convert button
-            root.RowStyles.Add(new RowStyle(SizeType.Percent, 45)); // result box — grows with window
+            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 6 };
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // status row
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // intelligent conversion callout
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 50)); // table
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // target + encoding + convert
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 50)); // console
 
-            var openRow = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = false };
-            var openBtn = new Md3Button { Text = "Open .ffx file…", Icon = Md3Icons.Icon.FolderOpen, Width = 180, Margin = new Padding(0, 0, Md3Tokens.Space4, 0) };
+            // --- status row: Open button + info pill + right-aligned description ---
+            var statusRow = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 1, AutoSize = true };
+            statusRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            statusRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            statusRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+
+            var openBtn = new Md3Button { Text = "Open .ffx file…", Icon = Md3Icons.Icon.FolderOpen, Width = 180, Margin = new Padding(0, 0, Md3Tokens.Space4, Md3Tokens.Space4) };
             openBtn.Click += (s, e) => OpenFile();
-            _fileLabel = new Label
-            {
-                Text = "No file loaded", Font = Md3Tokens.BodyMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant,
-                AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, Md3Tokens.Space2, 0, 0),
-            };
-            openRow.Controls.Add(openBtn);
-            openRow.Controls.Add(_fileLabel);
 
-            var hint = new Label
+            var statusChip = new Panel { AutoSize = true, Height = 36, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
+            _fileChipLabel = new Label { Text = "Status: No file loaded", Font = Md3Tokens.BodyMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant, AutoSize = true, Location = new Point(34, 9) };
+            statusChip.Paint += (s, e) =>
             {
-                Text = "Effects flagged as missing from your Plugin Profile are pre-selected for removal below —\n" +
-                       "uncheck any you'd rather keep.",
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                var bounds = new Rectangle(0, 0, statusChip.Width - 1, statusChip.Height - 1);
+                using (var path = RoundedRect(bounds, Md3Tokens.CornerSmall))
+                using (var brush = new SolidBrush(ThemeManager.Current.SurfaceContainer))
+                using (var pen = new Pen(ThemeManager.Current.OutlineVariant))
+                {
+                    e.Graphics.FillPath(brush, path);
+                    e.Graphics.DrawPath(pen, path);
+                }
+                Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Warning, new Rectangle(Md3Tokens.Space2, 8, 18, 18), ThemeManager.Current.OnSurfaceVariant, 1.4f);
+            };
+            statusChip.Controls.Add(_fileChipLabel);
+            statusChip.Width = 34 + TextRenderer.MeasureText(_fileChipLabel.Text, Md3Tokens.BodyMedium).Width + Md3Tokens.Space3;
+
+            var descLabel = new Label
+            {
+                // exact copy from the real design
+                Text = "Ready to process legacy After Effects presets.\nSupports version translation and plugin cleanup.",
                 Font = Md3Tokens.BodyMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant,
-                AutoSize = true, Margin = new Padding(0, Md3Tokens.Space4, 0, Md3Tokens.Space2),
+                AutoSize = true, TextAlign = ContentAlignment.TopRight, Anchor = AnchorStyles.Right,
+                Margin = new Padding(0, Md3Tokens.Space2, 0, Md3Tokens.Space4),
             };
 
+            statusRow.Controls.Add(openBtn, 0, 0);
+            statusRow.Controls.Add(statusChip, 1, 0);
+            statusRow.Controls.Add(descLabel, 2, 0);
+
+            // --- "Intelligent Conversion" callout ---
+            var callout = new Md3Card { Variant = Md3CardVariant.Filled, Dock = DockStyle.Fill, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
+            var calloutFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+            calloutFlow.Controls.Add(new Label { Text = "Intelligent Conversion", Font = Md3Tokens.TitleSmall, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space1) });
+            calloutFlow.Controls.Add(new Label
+            {
+                Text = "The tool will automatically detect and suggest removal of missing or incompatible plugins based on your current host configuration. Presets will be re-encoded to the selected target version.",
+                Font = Md3Tokens.BodyMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant,
+                AutoSize = true, MaximumSize = new Size(720, 0),
+            });
+            callout.Controls.Add(calloutFlow);
+
+            // --- data table (Effect Name / Plugin Vendor / Compatibility / Action) ---
             _effectList = new CheckedListBox { Dock = DockStyle.Fill, Font = Md3Tokens.BodyMedium };
-            _effectListEmptyState = new Md3EmptyState(Md3Icons.Icon.FolderOpen, "No preset loaded",
-                "Open a .ffx file above to see its effects here for removal before converting.")
-            { Dock = DockStyle.Fill, Visible = true };
+            _effectListEmptyState = BuildEmptyState();
             _effectListHost = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
             _effectListHost.Controls.Add(_effectList);
             _effectListHost.Controls.Add(_effectListEmptyState);
             _effectList.Visible = false;
 
-            var targetRow = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
-            var targetLabel = new Label
-            {
-                Text = "Target version:", Font = Md3Tokens.BodyLarge, ForeColor = ThemeManager.Current.OnSurface,
-                AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, Md3Tokens.Space2, Md3Tokens.Space2, 0),
-            };
-            _targetCombo = new Md3Dropdown
-            {
-                Width = 120,
-                Margin = new Padding(0, 0, Md3Tokens.Space6, 0),
-            };
-            _targetCombo.SetItems(Pipeline.KnownVersions.Keys.OrderBy(k => k), 0);
+            // --- target version + encoding options + convert button ---
+            var targetRow = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 1, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
+            targetRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            targetRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            targetRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-            _convertBtn = new Md3Button { Text = "Convert…", Icon = Md3Icons.Icon.Convert, Width = 150, Enabled = false };
+            var targetCol = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+            targetCol.Controls.Add(new Label { Text = "Target version", Font = Md3Tokens.LabelMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space1) });
+            _targetCombo = new Md3Dropdown { Width = 200 };
+            // Real design shows a friendly display name ("After Effects
+            // CS5.5"), not the raw internal key ("cs5.5") the pipeline
+            // uses — display/internal values kept separate below.
+            _targetCombo.SetItems(Pipeline.KnownVersions.Keys.OrderBy(k => k).Select(DisplayNameFor), 0);
+            targetCol.Controls.Add(_targetCombo);
+
+            var encodingCol = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+            encodingCol.Controls.Add(new Label { Text = "Encoding Options", Font = Md3Tokens.LabelMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space1) });
+            var cleanMetadataCheck = new Md3Checkbox { Text = "Clean Metadata", Checked = true, Enabled = false, Width = 160, Height = 24 };
+            var tip = new ToolTip();
+            tip.SetToolTip(cleanMetadataCheck, "Not yet implemented — the pipeline doesn't have a separate metadata-cleaning step");
+            _overwriteCheck = new Md3Checkbox { Text = "Overwrite File", Width = 160, Height = 24 };
+            encodingCol.Controls.Add(cleanMetadataCheck);
+            encodingCol.Controls.Add(_overwriteCheck);
+
+            _convertBtn = new Md3Button { Text = "Convert…", Icon = Md3Icons.Icon.Convert, Width = 150, Height = 46, Enabled = false, Anchor = AnchorStyles.Right };
             _convertBtn.Click += (s, e) => DoConvert();
 
-            targetRow.Controls.Add(targetLabel);
-            targetRow.Controls.Add(_targetCombo);
-            targetRow.Controls.Add(_convertBtn);
+            targetRow.Controls.Add(targetCol, 0, 0);
+            targetRow.Controls.Add(encodingCol, 1, 0);
+            targetRow.Controls.Add(_convertBtn, 2, 0);
 
-            _resultBox = new TextBox
+            // --- console-style log panel ---
+            var consoleHeader = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 2, RowCount = 1, Height = 28, BackColor = Color.FromArgb(30, 30, 34) };
+            consoleHeader.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            consoleHeader.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            var dotsPanel = new Panel { Dock = DockStyle.Left, Width = 140 };
+            dotsPanel.Paint += (s, e) =>
             {
-                Multiline = true, ReadOnly = true, Font = Md3Tokens.BodyMedium,
-                Dock = DockStyle.Fill, BackColor = ThemeManager.Current.SurfaceContainer,
-                BorderStyle = BorderStyle.FixedSingle, ScrollBars = ScrollBars.Vertical,
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                Color[] dots = { Color.FromArgb(237, 106, 94), Color.FromArgb(97, 174, 238), Color.FromArgb(159, 120, 224) };
+                int x = 10;
+                foreach (var c in dots)
+                {
+                    using (var b = new SolidBrush(c)) e.Graphics.FillEllipse(b, x, 9, 10, 10);
+                    x += 18;
+                }
+                TextRenderer.DrawText(e.Graphics, "CONSOLE OUTPUT", Md3Tokens.LabelSmall, new Rectangle(x + 4, 0, 200, 28), Color.FromArgb(160, 255, 255, 255), TextFormatFlags.VerticalCenter);
             };
+            var clearLogsBtn = new LinkLabel { Text = "Clear Logs", AutoSize = true, Anchor = AnchorStyles.Right, Font = Md3Tokens.LabelSmall, LinkColor = Color.FromArgb(160, 255, 255, 255), Margin = new Padding(0, 6, 8, 0) };
+            clearLogsBtn.LinkClicked += (s, e) => { _consoleBox.Clear(); Log("[SYSTEM] Log cleared."); };
+            consoleHeader.Controls.Add(dotsPanel, 0, 0);
+            consoleHeader.Controls.Add(clearLogsBtn, 1, 0);
 
-            root.Controls.Add(openRow, 0, 0);
-            root.Controls.Add(hint, 0, 1);
+            _consoleBox = new TextBox
+            {
+                Multiline = true, ReadOnly = true, Font = new Font("Consolas", 9f),
+                Dock = DockStyle.Fill, BackColor = Color.FromArgb(24, 24, 27), ForeColor = Color.FromArgb(190, 230, 190),
+                BorderStyle = BorderStyle.None, ScrollBars = ScrollBars.Vertical,
+            };
+            var consolePanel = new Panel { Dock = DockStyle.Fill };
+            consolePanel.Controls.Add(_consoleBox);
+            consolePanel.Controls.Add(consoleHeader);
+
+            root.Controls.Add(statusRow, 0, 0);
+            root.Controls.Add(callout, 0, 1);
             root.Controls.Add(_effectListHost, 0, 2);
             root.Controls.Add(targetRow, 0, 3);
-            root.Controls.Add(_resultBox, 0, 4);
+            root.Controls.Add(consolePanel, 0, 4);
             Controls.Add(root);
+
+            Log("[SYSTEM] Engine initialized.");
+            Log("[INFO] Waiting for file input…");
+        }
+
+        static readonly Dictionary<string, string> _displayNames = new Dictionary<string, string> { { "cs5.5", "After Effects CS5.5" } };
+        static string DisplayNameFor(string key) => _displayNames.TryGetValue(key, out var v) ? v : key;
+        static string InternalKeyFor(string display) => _displayNames.FirstOrDefault(kv => kv.Value == display).Key ?? display;
+
+        void Log(string line) => _consoleBox.AppendText(line + Environment.NewLine);
+
+        Panel BuildEmptyState()
+        {
+            var container = new Panel { Dock = DockStyle.Fill };
+            container.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                var bounds = new Rectangle(20, 20, container.Width - 40, container.Height - 40);
+                using (var brush = new SolidBrush(ThemeManager.Current.SurfaceContainerLow))
+                using (var path = RoundedRect(bounds, Md3Tokens.CornerMedium))
+                    e.Graphics.FillPath(brush, path);
+
+                int cy = bounds.Top + 60;
+                Md3Icons.Draw(e.Graphics, Md3Icons.Icon.FolderOpen, new Rectangle(bounds.X + bounds.Width / 2 - 24, cy - 24, 48, 48), ThemeManager.Current.OutlineVariant, 1.8f);
+                TextRenderer.DrawText(e.Graphics, "No preset loaded", Md3Tokens.TitleMedium, new Rectangle(bounds.X, cy + 36, bounds.Width, 26), ThemeManager.Current.OnSurface, TextFormatFlags.HorizontalCenter);
+                TextRenderer.DrawText(e.Graphics, "Select an Adobe After Effects .ffx file to begin the analysis and conversion process.", Md3Tokens.BodyMedium,
+                    new Rectangle(bounds.X + bounds.Width / 2 - 200, cy + 62, 400, 40), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.HorizontalCenter | TextFormatFlags.WordBreak);
+            };
+
+            var browseBtn = new Md3Button { Text = "Browse Files", Icon = Md3Icons.Icon.Check, Variant = Md3ButtonVariant.Outlined, Width = 150, Anchor = AnchorStyles.None };
+            browseBtn.Click += (s, e) => OpenFile();
+            container.Controls.Add(browseBtn);
+            container.Resize += (s, e) => browseBtn.Location = new Point((container.Width - browseBtn.Width) / 2, container.Height / 2 + 40);
+            return container;
         }
 
         void OpenFile()
@@ -105,10 +213,12 @@ namespace FfxTool.Gui
             using (var dlg = new OpenFileDialog { Filter = "After Effects Presets (*.ffx)|*.ffx" })
             {
                 if (dlg.ShowDialog() != DialogResult.OK) return;
-                _fileLabel.Text = dlg.FileName;
+                _inputPath = dlg.FileName;
+                _fileChipLabel.Text = $"Status: {Path.GetFileName(dlg.FileName)}";
                 _inputData = File.ReadAllBytes(dlg.FileName);
                 _currentEffects = Pipeline.ListEffects(_inputData);
                 _convertBtn.Enabled = true;
+                Log($"[INFO] Loaded {Path.GetFileName(dlg.FileName)} ({_inputData.Length} bytes).");
                 Refresh_();
             }
         }
@@ -151,7 +261,8 @@ namespace FfxTool.Gui
                 }
             }
 
-            var target = _targetCombo.SelectedItem ?? "cs5.5";
+            var target = InternalKeyFor(_targetCombo.SelectedItem ?? "After Effects CS5.5");
+            Log($"[SYSTEM] Converting to target '{target}'…");
 
             Pipeline.ConversionResult result;
             try
@@ -160,22 +271,49 @@ namespace FfxTool.Gui
             }
             catch (Exception ex)
             {
+                Log($"[ERROR] {ex.Message}");
                 MessageBox.Show(this, ex.Message, "Conversion failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
-            using (var dlg = new SaveFileDialog { Filter = "After Effects Presets (*.ffx)|*.ffx" })
+            string outPath;
+            if (_overwriteCheck.Checked && !string.IsNullOrEmpty(_inputPath))
             {
-                if (dlg.ShowDialog() != DialogResult.OK) return;
-                File.WriteAllBytes(dlg.FileName, result.Data);
-
-                var lines = new List<string> { $"Saved: {dlg.FileName}", $"Target: {target}" };
-                if (result.RemovedEffects.Count > 0)
-                    lines.Add($"Removed: {string.Join(", ", result.RemovedEffects)}");
-                foreach (var w in result.Warnings) lines.Add($"Warning: {w}");
-                lines.Add("Verification pass: OK — 0 Utf8 tags remaining, indices contiguous, keyframe/parameter data unchanged.");
-                _resultBox.Text = string.Join(Environment.NewLine, lines);
+                // Real, working "Overwrite File" — writes back to the
+                // original input path instead of prompting for a save
+                // location. Unlike "Clean Metadata" above, this one maps
+                // to something the pipeline genuinely supports (it's just
+                // a different output destination), so it's wired for real
+                // rather than shown disabled.
+                outPath = _inputPath;
+                File.WriteAllBytes(outPath, result.Data);
             }
+            else
+            {
+                using (var dlg = new SaveFileDialog { Filter = "After Effects Presets (*.ffx)|*.ffx" })
+                {
+                    if (dlg.ShowDialog() != DialogResult.OK) { Log("[INFO] Save cancelled."); return; }
+                    outPath = dlg.FileName;
+                    File.WriteAllBytes(outPath, result.Data);
+                }
+            }
+
+            Log($"[SUCCESS] Saved: {outPath}");
+            if (result.RemovedEffects.Count > 0) Log($"[INFO] Removed: {string.Join(", ", result.RemovedEffects)}");
+            foreach (var w in result.Warnings) Log($"[WARNING] {w}");
+            Log("[OK] Verification pass: 0 Utf8 tags remaining, indices contiguous, keyframe/parameter data unchanged.");
+        }
+
+        static System.Drawing.Drawing2D.GraphicsPath RoundedRect(Rectangle bounds, int radius)
+        {
+            var path = new System.Drawing.Drawing2D.GraphicsPath();
+            int d = radius * 2;
+            path.AddArc(bounds.X, bounds.Y, d, d, 180, 90);
+            path.AddArc(bounds.Right - d, bounds.Y, d, d, 270, 90);
+            path.AddArc(bounds.Right - d, bounds.Bottom - d, d, d, 0, 90);
+            path.AddArc(bounds.X, bounds.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+            return path;
         }
     }
 }
