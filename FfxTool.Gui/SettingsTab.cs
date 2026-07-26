@@ -146,7 +146,7 @@ namespace FfxTool.Gui
 
             var headerRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
             var infoIcon = new Label { AutoSize = true, Width = 24, Height = 24 };
-            infoIcon.Paint += (s, e) => Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Warning, new Rectangle(0, 0, 22, 22), ThemeManager.Current.OnSurfaceVariant, 1.8f);
+            infoIcon.Paint += (s, e) => Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Info, new Rectangle(0, 0, 22, 22), ThemeManager.Current.OnSurfaceVariant, 1.8f);
             headerRow.Controls.Add(infoIcon);
             headerRow.Controls.Add(new Label { Text = "About", Font = Md3Tokens.TitleLarge, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(Md3Tokens.Space2, 2, 0, 0) });
             flow.Controls.Add(headerRow);

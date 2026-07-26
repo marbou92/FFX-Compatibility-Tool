@@ -67,7 +67,7 @@ namespace FfxTool.Gui
                     e.Graphics.FillPath(brush, path);
                     e.Graphics.DrawPath(pen, path);
                 }
-                Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Warning, new Rectangle(Md3Tokens.Space3, 8, 18, 18), ThemeManager.Current.OnSurfaceVariant, 1.5f);
+                Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Info, new Rectangle(Md3Tokens.Space3, 8, 18, 18), ThemeManager.Current.OnSurfaceVariant, 1.5f);
             };
             _fileChipLabel = new Label
             {

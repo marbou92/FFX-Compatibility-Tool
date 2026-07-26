@@ -19,14 +19,53 @@ namespace FfxTool.Gui
     {
         public enum Icon
         {
-            FolderOpen, Convert, Settings, Check, Warning,
+            FolderOpen, Convert, Settings, Check, Warning, Info,
             Palette, Sun, Moon, EffectList, Plugin, Logo,
             Diamond, Eye, Flare,
+        }
+
+        // Maps each Icon to its real Material Symbols Outlined ligature
+        // name (the exact strings used in the user's own design's
+        // code.html, e.g. `material-symbols-outlined` spans containing
+        // literal text like "folder_open"). "Logo" reuses "architecture" —
+        // the same glyph the real design itself uses for the About card's
+        // brand mark, so this isn't an approximation, it's the same real
+        // choice the design already made.
+        static string LigatureFor(Icon icon)
+        {
+            switch (icon)
+            {
+                case Icon.FolderOpen: return "folder_open";
+                case Icon.Convert: return "swap_horiz";
+                case Icon.Settings: return "settings";
+                case Icon.Check: return "check";
+                case Icon.Warning: return "warning";
+                case Icon.Info: return "info";
+                case Icon.Palette: return "palette";
+                case Icon.Sun: return "light_mode";
+                case Icon.Moon: return "dark_mode";
+                case Icon.EffectList: return "list_alt";
+                case Icon.Plugin: return "settings_input_component";
+                case Icon.Logo: return "architecture";
+                case Icon.Diamond: return "diamond";
+                case Icon.Eye: return "visibility";
+                case Icon.Flare: return "flare";
+                default: return null;
+            }
         }
 
         public static void Draw(Graphics g, Icon icon, Rectangle bounds, Color color, float strokeWidth = 1.8f)
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            // Real Material Symbols font first, if bundled — see
+            // Md3IconFont.cs for why/how, and for the manual setup step
+            // needed to actually get pixel-exact icons (same pattern as
+            // Inter in Phase 1: works fine without it, just falls back).
+            var ligature = LigatureFor(icon);
+            if (ligature != null && Md3IconFont.TryDraw(g, ligature, bounds, color))
+                return;
+
             using (var pen = new Pen(color, strokeWidth) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round })
             using (var brush = new SolidBrush(color))
             {
@@ -37,6 +76,7 @@ namespace FfxTool.Gui
                     case Icon.Settings: DrawSettings(g, bounds, pen, brush); break;
                     case Icon.Check: DrawCheck(g, bounds, pen); break;
                     case Icon.Warning: DrawWarning(g, bounds, pen, brush); break;
+                    case Icon.Info: DrawInfo(g, bounds, pen, brush); break;
                     case Icon.Palette: DrawPalette(g, bounds, pen); break;
                     case Icon.Sun: DrawSun(g, bounds, pen); break;
                     case Icon.Moon: DrawMoon(g, bounds, brush); break;
@@ -48,6 +88,7 @@ namespace FfxTool.Gui
                     case Icon.Flare: DrawFlare(g, bounds, pen); break;
                 }
             }
+
         }
 
         // Maps a 0-24 conceptual grid coordinate into the actual bounds rectangle.
@@ -103,6 +144,15 @@ namespace FfxTool.Gui
             g.DrawLines(pen, pts);
             g.DrawLine(pen, P(b, 12, 9), P(b, 12, 14));
             g.FillEllipse(brush, P(b, 11.3f, 15.5f).X, P(b, 11.3f, 15.5f).Y, b.Width * 0.06f, b.Height * 0.06f);
+        }
+
+        static void DrawInfo(Graphics g, Rectangle b, Pen pen, Brush brush)
+        {
+            var center = P(b, 12, 12);
+            float r = b.Width * 0.4f;
+            g.DrawEllipse(pen, center.X - r, center.Y - r, r * 2, r * 2);
+            g.DrawLine(pen, center.X, P(b, 12, 11).Y, center.X, P(b, 12, 17).Y);
+            g.FillEllipse(brush, center.X - b.Width * 0.04f, P(b, 12, 7.5f).Y, b.Width * 0.08f, b.Width * 0.08f);
         }
 
         static void DrawPalette(Graphics g, Rectangle b, Pen pen)
