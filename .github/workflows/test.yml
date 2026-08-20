@@ -23,6 +23,7 @@ jobs:
         run: dotnet restore FfxTool.sln
 
       - name: Build
+        # FfxTool.sln now includes FfxTool.Gui (added Phase A) — this builds Core + Core.Tests + Gui
         run: dotnet build FfxTool.sln --configuration Release --no-restore
 
       - name: Test

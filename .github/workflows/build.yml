@@ -29,20 +29,15 @@ jobs:
           dotnet-version: "8.0.x"
 
       - name: Restore
+        # FfxTool.sln now includes FfxTool.Gui — single restore covers all projects
         run: dotnet restore FfxTool.sln
 
       - name: Run tests before packaging
         run: dotnet test FfxTool.sln --configuration Release
 
-      - name: Restore FfxTool.Gui directly
-        # Not relying on FfxTool.sln here — if FfxTool.Gui was never
-        # actually added as a project entry in the .sln file, restoring
-        # the solution silently skips it, which is what caused the
-        # NETSDK1004 "assets file not found" error.
-        run: dotnet restore FfxTool.Gui\FfxTool.Gui.csproj
-
       - name: Build (Release)
-        run: dotnet build FfxTool.Gui\FfxTool.Gui.csproj --configuration Release --no-restore
+        # Build via the solution so Core + Gui share the same Release output handling
+        run: dotnet build FfxTool.sln --configuration Release --no-restore
 
       - name: Locate build output
         id: locate
