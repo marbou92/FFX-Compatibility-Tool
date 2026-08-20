@@ -206,7 +206,7 @@ namespace FfxTool.Gui
                 // circular icon bg like stitch w-24 h-24 rounded-full
                 var iconBg = new Rectangle(bounds.X + bounds.Width / 2 - 48, cy - 36, 96, 96);
                 using (var path = RoundedRect(iconBg, 48))
-                using (var brush = new SolidBrush(Color.FromArgb(40, ThemeManager.Current.SurfaceVariant.R, ThemeManager.Current.SurfaceVariant.G, ThemeManager.Current.SurfaceVariant.B)))
+                using (var brush = new SolidBrush(Color.FromArgb(40, ThemeManager.Current.SurfaceContainerHigh.R, ThemeManager.Current.SurfaceContainerHigh.G, ThemeManager.Current.SurfaceContainerHigh.B)))
                     e.Graphics.FillPath(brush, path);
                 Md3Icons.Draw(e.Graphics, Md3Icons.Icon.FolderOpen, new Rectangle(bounds.X + bounds.Width / 2 - 28, cy - 20, 56, 56), ThemeManager.Current.OnSurfaceVariant, 1.6f);
 
