@@ -225,30 +225,43 @@ namespace FfxTool.Gui
         /// </summary>
         public static void ApplyToTree(System.Windows.Forms.Control root)
         {
-            if (root is System.Windows.Forms.Form form)
-                form.BackColor = Current.Surface;
-            else if (root is System.Windows.Forms.UserControl uc)
-                uc.BackColor = Current.Surface;
-            else if (root is System.Windows.Forms.Panel panel && panel.GetType() == typeof(System.Windows.Forms.Panel))
-                panel.BackColor = Current.Surface;
-            else if (root is System.Windows.Forms.ListView lv)
+            // Custom MD3 controls (Md3Button/Md3Card/Md3Switch/Md3Checkbox etc.)
+            // read ThemeManager.Current live in OnPaint and already subscribe to
+            // ThemeChanged individually — they only need an Invalidate, not a
+            // BackColor assignment. Native WinForms controls hold static colors
+            // and do need explicit reassignment here.
+            bool isCustomMd3 = root is Md3Button || root is Md3Card || root is Md3Switch || root is Md3Checkbox || root is Md3Dropdown || root is Md3StatusChip;
+
+            if (!isCustomMd3)
             {
-                lv.BackColor = Current.Surface;
-                lv.ForeColor = Current.OnSurface;
-            }
-            else if (root is System.Windows.Forms.TextBox tb)
-            {
-                tb.BackColor = Current.SurfaceContainer;
-                tb.ForeColor = Current.OnSurface;
-            }
-            else if (root is System.Windows.Forms.CheckedListBox clb)
-            {
-                clb.BackColor = Current.Surface;
-                clb.ForeColor = Current.OnSurface;
-            }
-            else if (root is System.Windows.Forms.Label lbl && lbl.GetType() == typeof(System.Windows.Forms.Label))
-            {
-                lbl.ForeColor = Current.OnSurface;
+                if (root is System.Windows.Forms.Form form)
+                    form.BackColor = Current.Surface;
+                else if (root is System.Windows.Forms.UserControl uc)
+                    uc.BackColor = Current.Surface;
+                else if (root is System.Windows.Forms.Panel panel)
+                {
+                    // Md3Card is a Panel subclass — already handled above as custom, so only plain Panels reach here
+                    panel.BackColor = Current.Surface;
+                }
+                else if (root is System.Windows.Forms.ListView lv)
+                {
+                    lv.BackColor = Current.Surface;
+                    lv.ForeColor = Current.OnSurface;
+                }
+                else if (root is System.Windows.Forms.TextBox tb)
+                {
+                    tb.BackColor = Current.SurfaceContainer;
+                    tb.ForeColor = Current.OnSurface;
+                }
+                else if (root is System.Windows.Forms.CheckedListBox clb)
+                {
+                    clb.BackColor = Current.Surface;
+                    clb.ForeColor = Current.OnSurface;
+                }
+                else if (root is System.Windows.Forms.Label lbl)
+                {
+                    lbl.ForeColor = Current.OnSurface;
+                }
             }
 
             root.Invalidate(true);

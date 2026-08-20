@@ -269,10 +269,20 @@ namespace FfxTool.Gui
 
         public void LoadFile(string path)
         {
-            _fileChipLabel.Text = Path.GetFileName(path);
-            var data = File.ReadAllBytes(path);
-            _currentEffects = Pipeline.ListEffects(data);
-            Refresh_();
+            try
+            {
+                _fileChipLabel.Text = Path.GetFileName(path);
+                var data = File.ReadAllBytes(path);
+                _currentEffects = Pipeline.ListEffects(data);
+                Refresh_();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Failed to read '{Path.GetFileName(path)}':\n{ex.Message}", "Load failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                _fileChipLabel.Text = "No file loaded";
+                _currentEffects = new System.Collections.Generic.List<Pipeline.EffectInfo>();
+                Refresh_();
+            }
         }
 
         public void Refresh_()

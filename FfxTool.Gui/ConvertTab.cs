@@ -213,13 +213,21 @@ namespace FfxTool.Gui
             using (var dlg = new OpenFileDialog { Filter = "After Effects Presets (*.ffx)|*.ffx" })
             {
                 if (dlg.ShowDialog() != DialogResult.OK) return;
-                _inputPath = dlg.FileName;
-                _fileChipLabel.Text = $"Status: {Path.GetFileName(dlg.FileName)}";
-                _inputData = File.ReadAllBytes(dlg.FileName);
-                _currentEffects = Pipeline.ListEffects(_inputData);
-                _convertBtn.Enabled = true;
-                Log($"[INFO] Loaded {Path.GetFileName(dlg.FileName)} ({_inputData.Length} bytes).");
-                Refresh_();
+                try
+                {
+                    _inputPath = dlg.FileName;
+                    _inputData = File.ReadAllBytes(dlg.FileName);
+                    _currentEffects = Pipeline.ListEffects(_inputData);
+                    _fileChipLabel.Text = $"Status: {Path.GetFileName(dlg.FileName)}";
+                    _convertBtn.Enabled = true;
+                    Log($"[INFO] Loaded {Path.GetFileName(dlg.FileName)} ({_inputData.Length} bytes).");
+                    Refresh_();
+                }
+                catch (Exception ex)
+                {
+                    Log($"[ERROR] Failed to read '{Path.GetFileName(dlg.FileName)}': {ex.Message}");
+                    MessageBox.Show(this, $"Failed to read '{Path.GetFileName(dlg.FileName)}':\n{ex.Message}", "Load failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
         }
 

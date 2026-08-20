@@ -38,14 +38,14 @@ the CI output shows and I'll fix it directly rather than guess further.
 
 ```
 FfxTool.Core/              # port of ffx_core — RiffNode.cs, Pipeline.cs, PluginLookup.cs
-FfxTool.Core.Tests/         # xUnit port of test_riff.py / test_pipeline.py
-data/plugin_table.json      # unchanged — same file the Python version uses
-.github/workflows/test.yml  # dotnet build + test, runs on windows-latest
+FfxTool.Core.Tests/         # xUnit port of test_riff.py / test_pipeline.py (incl. fixtures/sample_1.ffx)
+FfxTool.Gui/               # WinForms GUI — MainForm, ListerTab, ProfileTab, ConvertTab, SettingsTab + MD3 theme
+data/plugin_table.json      # shared verbatim — copied to output via <None Include Link> (Core + Gui)
+.github/workflows/test.yml  # dotnet build + test on windows-latest (Core + Gui)
+.github/workflows/build.yml # Release zip of FfxTool.Gui.exe + dependencies + data/plugin_table.json
 ```
 
-No GUI project yet — per the plan, Core gets verified first (via your CI
-run), then a WinForms GUI project gets built on top of it, mirroring how
-the Python version did Phase 1-2 (core+CLI) before Phase 3 (GUI).
+`FfxTool.sln` includes all three projects (`Core`, `Core.Tests`, `Gui`) so a single `dotnet build FfxTool.sln` builds the entire repo. Each csproj links `../data/plugin_table.json` with `CopyToOutputDirectory=PreserveNewest`; `Core.Tests` additionally links `fixtures/*.ffx`.
 
 ## What was deliberately preserved from the Python version
 
@@ -60,10 +60,11 @@ Every hard-won detail from `RESEARCH_NOTES.md` carried over as-is:
   after every conversion — same verification discipline as the Python
   version, not weakened for the port.
 
-## Running locally (once you have the .NET SDK)
+## Running locally
 
 ```bash
 dotnet restore FfxTool.sln
-dotnet build FfxTool.sln
-dotnet test FfxTool.sln
+dotnet build FfxTool.sln --configuration Release
+dotnet test FfxTool.sln --configuration Release
+# GUI: FfxTool.Gui\bin\Release\net48\FfxTool.Gui.exe (+ data\plugin_table.json alongside it)
 ```
