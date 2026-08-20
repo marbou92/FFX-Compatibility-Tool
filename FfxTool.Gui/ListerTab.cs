@@ -55,10 +55,15 @@ namespace FfxTool.Gui
                 if (files.Length > 0) LoadFile(files[0]);
             };
 
-            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
+            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4 };
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+            // --- expressive heading: stitch h1 36px bold ---
+            var heading = new Label { Text = "Effect Lister", Font = new Font(Md3Tokens.HeadlineMedium.FontFamily, 22f, FontStyle.Bold), ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
+            ThemeManager.ThemeChanged += () => heading.ForeColor = ThemeManager.Current.OnSurface;
 
             // --- header row: open button, "info + no file loaded" pill, filter/sort icons ---
             var headerRow = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 1, AutoSize = true };
@@ -166,9 +171,10 @@ namespace FfxTool.Gui
             statusBar.Controls.Add(_statusBarLeft, 0, 0);
             statusBar.Controls.Add(statusBarRight, 1, 0);
 
-            root.Controls.Add(headerRow, 0, 0);
-            root.Controls.Add(_listHost, 0, 1);
-            root.Controls.Add(statusBar, 0, 2);
+            root.Controls.Add(heading, 0, 0);
+            root.Controls.Add(headerRow, 0, 1);
+            root.Controls.Add(_listHost, 0, 2);
+            root.Controls.Add(statusBar, 0, 3);
             Controls.Add(root);
         }
 

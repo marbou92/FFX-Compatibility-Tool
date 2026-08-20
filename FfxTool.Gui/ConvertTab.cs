@@ -42,12 +42,15 @@ namespace FfxTool.Gui
             DragEnter += OnDragEnter;
             DragDrop += OnDragDrop;
 
-            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5, AutoScroll = true };
+            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 6, AutoScroll = true };
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // heading
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // status row
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // callout
-            root.RowStyles.Add(new RowStyle(SizeType.Percent, 50)); // list host (flex, min 200 enforced below)
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // target + encoding + convert
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 220)); // console fixed 220
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 50)); // list host
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // target
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 220)); // console
+            var heading = new Label { Text = "Convert Preset", Font = new Font(Md3Tokens.HeadlineMedium.FontFamily, 22f, FontStyle.Bold), ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
+            ThemeManager.ThemeChanged += () => heading.ForeColor = ThemeManager.Current.OnSurface;
 
             // --- status row: Open button + pill + description ---
             var statusRow = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 3, RowCount = 1, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
@@ -205,11 +208,12 @@ namespace FfxTool.Gui
             consolePanel.Controls.SetChildIndex(consoleHeader, 0);
             consolePanel.Controls.SetChildIndex(_consoleBox, 1);
 
-            root.Controls.Add(statusRow, 0, 0);
-            root.Controls.Add(callout, 0, 1);
-            root.Controls.Add(_effectListHost, 0, 2);
-            root.Controls.Add(targetRow, 0, 3);
-            root.Controls.Add(consolePanel, 0, 4);
+            root.Controls.Add(heading, 0, 0);
+            root.Controls.Add(statusRow, 0, 1);
+            root.Controls.Add(callout, 0, 2);
+            root.Controls.Add(_effectListHost, 0, 3);
+            root.Controls.Add(targetRow, 0, 4);
+            root.Controls.Add(consolePanel, 0, 5);
             Controls.Add(root);
 
             Log("[SYSTEM] Engine initialized.");

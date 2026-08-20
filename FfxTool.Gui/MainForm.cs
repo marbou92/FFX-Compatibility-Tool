@@ -33,8 +33,8 @@ namespace FfxTool.Gui
             FormBorderStyle = FormBorderStyle.None;
 
             Text = "FFX Compatibility Tool";
-            MinimumSize = new Size(820, 560);
-            Size = new Size(1000, 680);
+            MinimumSize = new Size(960, 620);
+            Size = new Size(1180, 740); // expressive default — shows 3-col grid + supporting pane on xl
             BackColor = ThemeManager.Current.Surface;
             Font = Md3Tokens.BodyLarge;
 
@@ -45,7 +45,7 @@ namespace FfxTool.Gui
             _convertTab = new ConvertTab(_profile) { Dock = DockStyle.Fill, Visible = false };
             _settingsTab = new SettingsTab { Dock = DockStyle.Fill, Visible = false };
 
-            _contentHost = new Panel { Dock = DockStyle.Fill, BackColor = ThemeManager.Current.Surface, Padding = new Padding(Md3Tokens.Space6), AutoScroll = true };
+            _contentHost = new Panel { Dock = DockStyle.Fill, BackColor = ThemeManager.Current.SurfaceContainerLowest, Padding = new Padding(Md3Tokens.Space8), AutoScroll = true };
             _contentHost.Controls.Add(_settingsTab);
             _contentHost.Controls.Add(_convertTab);
             _contentHost.Controls.Add(_profileTab);
@@ -85,22 +85,27 @@ namespace FfxTool.Gui
             _root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-            var supportPane = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(217, ThemeManager.Current.Surface.R, ThemeManager.Current.Surface.G, ThemeManager.Current.Surface.B), Visible = false, Width = 320 };
+            var supportPane = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(217, ThemeManager.Current.Surface.R, ThemeManager.Current.Surface.G, ThemeManager.Current.Surface.B), Visible = false, Width = 360 };
+            supportPane.Padding = new Padding(Md3Tokens.Space6);
             supportPane.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                 using (var pen = new Pen(Color.FromArgb(51, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B)))
                     e.Graphics.DrawLine(pen, 0, 0, 0, supportPane.Height);
-                TextRenderer.DrawText(e.Graphics, "Insights", Md3Tokens.TitleMedium, new Rectangle(16, 16, 200, 24), ThemeManager.Current.OnSurface, TextFormatFlags.Left);
-                TextRenderer.DrawText(e.Graphics, "Select a preset to see compatibility details here.", Md3Tokens.BodySmall, new Rectangle(16, 44, 288, 40), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.WordBreak);
+                // stitch supporting pane: Recent Files + Stats
+                TextRenderer.DrawText(e.Graphics, "Recent Files", Md3Tokens.TitleMedium, new Rectangle(16, 16, 200, 24), ThemeManager.Current.OnSurface, TextFormatFlags.Left);
+                TextRenderer.DrawText(e.Graphics, "Glow_Soft_v2.ffx • 2 mins ago", Md3Tokens.BodySmall, new Rectangle(16, 44, 328, 20), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.Left);
+                TextRenderer.DrawText(e.Graphics, "Text_Bounce_In.ffx • Yesterday", Md3Tokens.BodySmall, new Rectangle(16, 68, 328, 20), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.Left);
+                TextRenderer.DrawText(e.Graphics, "Stats", Md3Tokens.TitleSmall, new Rectangle(16, 110, 200, 20), ThemeManager.Current.OnSurface, TextFormatFlags.Left);
+                TextRenderer.DrawText(e.Graphics, "0 Presets Scanned", Md3Tokens.LabelLarge, new Rectangle(16, 134, 328, 20), ThemeManager.Current.TertiaryContainer, TextFormatFlags.HorizontalCenter);
             };
             ThemeManager.ThemeChanged += () => { supportPane.BackColor = Color.FromArgb(217, ThemeManager.Current.Surface.R, ThemeManager.Current.Surface.G, ThemeManager.Current.Surface.B); supportPane.Invalidate(); };
-            // stitch secondary pane: hidden xl:block — show only on wide windows
+            // stitch secondary pane: hidden xl:block — show only on wide windows (1280+ shows 360 pane)
             void UpdateSupportPane()
             {
-                bool show = Width >= 1240;
+                bool show = Width >= 1280;
                 supportPane.Visible = show;
-                _body.ColumnStyles[2].Width = show ? 320 : 0;
+                _body.ColumnStyles[2].Width = show ? 360 : 0;
             }
             // initial
             Load += (s, e) => UpdateSupportPane();
@@ -109,14 +114,36 @@ namespace FfxTool.Gui
             _body = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 1 };
             _body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, NavRail.RailWidth));
             _body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            _body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 320));
+            _body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 360));
             _body.Controls.Add(_navRail, 0, 0);
             _body.Controls.Add(_contentHost, 1, 0);
             _body.Controls.Add(supportPane, 2, 0);
             _navRail.Dock = DockStyle.Fill;
 
+            // expressive footer: h-12 glass with Profile + DB version (stitch footer)
+            var footer = new Panel { Dock = DockStyle.Bottom, Height = 48, BackColor = Color.FromArgb(230, ThemeManager.Current.SurfaceContainerLow.R, ThemeManager.Current.SurfaceContainerLow.G, ThemeManager.Current.SurfaceContainerLow.B) };
+            footer.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                using (var pen = new Pen(Color.FromArgb(77, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B)))
+                    e.Graphics.DrawLine(pen, 0, 0, footer.Width, 0);
+                // dot + Profile
+                e.Graphics.FillEllipse(new SolidBrush(Color.FromArgb(34, 197, 94)), 16, 19, 10, 10);
+                TextRenderer.DrawText(e.Graphics, "Profile: Default", Md3Tokens.LabelMedium, new Rectangle(32, 0, 200, 48), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
+                TextRenderer.DrawText(e.Graphics, "DB Version: v1.2.4", Md3Tokens.LabelMedium, new Rectangle(footer.Width - 180, 0, 160, 48), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.VerticalCenter | TextFormatFlags.Right);
+            };
+            ThemeManager.ThemeChanged += () => { footer.BackColor = Color.FromArgb(230, ThemeManager.Current.SurfaceContainerLow.R, ThemeManager.Current.SurfaceContainerLow.G, ThemeManager.Current.SurfaceContainerLow.B); footer.Invalidate(); };
+            footer.Resize += (s, e) => footer.Invalidate();
+
             _root.Controls.Add(_titleBar, 0, 0);
             _root.Controls.Add(_body, 0, 1);
+            _root.Controls.Add(footer, 0, 2);
+            // need 3 rows now
+            _root.RowCount = 3;
+            _root.RowStyles.Clear();
+            _root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
 
             Controls.Add(_root);
 

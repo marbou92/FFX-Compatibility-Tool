@@ -54,6 +54,10 @@ namespace FfxTool.Gui
 
             var root = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
 
+            var heading = new Label { Text = "Plugin Profiles", Font = new Font(Md3Tokens.HeadlineMedium.FontFamily, 22f, FontStyle.Bold), ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space1) };
+            ThemeManager.ThemeChanged += () => heading.ForeColor = ThemeManager.Current.OnSurface;
+            root.Controls.Add(heading);
+
             var intro = new Label
             {
                 // exact copy from the real design

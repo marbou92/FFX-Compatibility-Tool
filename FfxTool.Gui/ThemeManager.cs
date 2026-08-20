@@ -27,6 +27,8 @@ namespace FfxTool.Gui
         // dedicated token, matching your spec's actual intent
         // ("visually separate the application structure from the workspace").
         public Color NavigationSurface;
+        // Alias for legacy web naming: surface-variant #F2F2F7 maps to SurfaceContainer in this WinForms token set
+        public Color SurfaceVariant => SurfaceContainer;
 
         static Color H(string hex) => ColorTranslator.FromHtml(hex);
 

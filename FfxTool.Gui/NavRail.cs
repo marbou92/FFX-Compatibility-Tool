@@ -38,11 +38,11 @@ namespace FfxTool.Gui
 
         public event Action<int> SelectionChanged;
 
-        // Spec: rail-width 88px per stitch_visual_discovery_tool code.html tailwind spacing.rail-width (overrides DESIGN.md 80px)
+        // Spec: rail-width 88px per stitch code.html (overrides DESIGN.md 80px) — expressive uses 88 + FAB
         public const int RailWidth = 88;
-        const int LogoAreaHeight = 72;
-        const int ItemHeight = 64; // icon + gap + label needs more vertical room than the old icon+label-beside layout
-        const int PillSize = 44;   // spec: pill background sized to the icon, not the full item width
+        const int LogoAreaHeight = 140; // logo 32 + FAB 56 + gaps (stitch has FAB aspect-square below logo)
+        const int ItemHeight = 72; // a bit taller for expressive touch targets (was 64)
+        const int PillSize = 56;   // stitch w-16 h-10 => pill 64x40, use 56x32 for WinForms balance
 
         public NavRail()
         {
@@ -126,14 +126,26 @@ namespace FfxTool.Gui
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             _itemBounds.Clear();
 
-            using (var pen = new Pen(ThemeManager.Current.OutlineVariant))
+            using (var pen = new Pen(Color.FromArgb(77, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B)))
                 e.Graphics.DrawLine(pen, Width - 1, 0, Width - 1, Height);
 
-            // brand mark, top of rail
-            int logoSize = 28;
-            var logoBounds = new Rectangle((Width - logoSize) / 2, Md3Tokens.Space4, logoSize, logoSize);
-            Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Logo, logoBounds, ThemeManager.Current.Primary, 1.8f);
-            using (var pen = new Pen(ThemeManager.Current.OutlineVariant))
+            // brand mark — larger expressive 32px with pill bg
+            int logoSize = 32;
+            var logoBg = new Rectangle((Width - 48) / 2, Md3Tokens.Space4, 48, 48);
+            using (var path = PillPath(new Rectangle(logoBg.X, logoBg.Y, 48, 48)))
+            using (var brush = new SolidBrush(Color.FromArgb(20, ThemeManager.Current.Primary.R, ThemeManager.Current.Primary.G, ThemeManager.Current.Primary.B)))
+                e.Graphics.FillPath(brush, path);
+            var logoBounds = new Rectangle((Width - logoSize) / 2, logoBg.Y + (48 - logoSize) / 2, logoSize, logoSize);
+            Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Logo, logoBounds, ThemeManager.Current.Primary, 2.0f);
+
+            // FAB — stitch expressive w-full aspect-square bg-primary-container rounded-2xl below logo
+            var fabBounds = new Rectangle((Width - 56) / 2, logoBg.Bottom + Md3Tokens.Space3, 56, 56);
+            using (var path = RoundedRect(fabBounds, Md3Tokens.CornerLarge))
+            using (var brush = new SolidBrush(ThemeManager.Current.PrimaryContainer))
+                e.Graphics.FillPath(brush, path);
+            Md3Icons.Draw(e.Graphics, Md3Icons.Icon.FolderOpen, new Rectangle(fabBounds.X + 16, fabBounds.Y + 16, 24, 24), ThemeManager.Current.OnPrimaryContainer, 1.8f);
+
+            using (var pen = new Pen(Color.FromArgb(60, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B)))
                 e.Graphics.DrawLine(pen, Md3Tokens.Space4, LogoAreaHeight - Md3Tokens.Space2, Width - Md3Tokens.Space4, LogoAreaHeight - Md3Tokens.Space2);
 
             int iconSize = 24;
@@ -188,6 +200,18 @@ namespace FfxTool.Gui
             int d = radius * 2;
             path.AddArc(bounds.X, bounds.Y, d, d, 90, 180);
             path.AddArc(bounds.Right - d, bounds.Y, d, d, 270, 180);
+            path.CloseFigure();
+            return path;
+        }
+
+        static GraphicsPath RoundedRect(Rectangle bounds, int radius)
+        {
+            var path = new GraphicsPath();
+            int d = radius * 2;
+            path.AddArc(bounds.X, bounds.Y, d, d, 180, 90);
+            path.AddArc(bounds.Right - d, bounds.Y, d, d, 270, 90);
+            path.AddArc(bounds.Right - d, bounds.Bottom - d, d, d, 0, 90);
+            path.AddArc(bounds.X, bounds.Bottom - d, d, d, 90, 90);
             path.CloseFigure();
             return path;
         }

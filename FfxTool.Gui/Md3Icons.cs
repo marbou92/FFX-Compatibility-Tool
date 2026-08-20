@@ -22,6 +22,7 @@ namespace FfxTool.Gui
             FolderOpen, Convert, Settings, Check, Warning, Info,
             Palette, Sun, Moon, EffectList, Plugin, Logo,
             Diamond, Eye, Flare,
+            Add, AutoAwesome, Description, History, Analytics, Verified,
         }
 
         // Maps each Icon to its real Material Symbols Outlined ligature
@@ -50,6 +51,12 @@ namespace FfxTool.Gui
                 case Icon.Diamond: return "diamond";
                 case Icon.Eye: return "visibility";
                 case Icon.Flare: return "flare";
+                case Icon.Add: return "add";
+                case Icon.AutoAwesome: return "auto_awesome";
+                case Icon.Description: return "description";
+                case Icon.History: return "history";
+                case Icon.Analytics: return "analytics";
+                case Icon.Verified: return "verified";
                 default: return null;
             }
         }
@@ -86,6 +93,12 @@ namespace FfxTool.Gui
                     case Icon.Diamond: DrawDiamond(g, bounds, pen); break;
                     case Icon.Eye: DrawEye(g, bounds, pen); break;
                     case Icon.Flare: DrawFlare(g, bounds, pen); break;
+                    case Icon.Add: DrawAdd(g, bounds, pen); break;
+                    case Icon.AutoAwesome: DrawAutoAwesome(g, bounds, pen, brush); break;
+                    case Icon.Description: DrawDescription(g, bounds, pen); break;
+                    case Icon.History: DrawHistory(g, bounds, pen); break;
+                    case Icon.Analytics: DrawAnalytics(g, bounds, pen); break;
+                    case Icon.Verified: DrawVerified(g, bounds, pen, brush); break;
                 }
             }
 
@@ -259,6 +272,55 @@ namespace FfxTool.Gui
                 g.DrawLine(pen, x1, y1, x2, y2);
             }
             g.DrawEllipse(pen, center.X - b.Width * 0.1f, center.Y - b.Width * 0.1f, b.Width * 0.2f, b.Width * 0.2f);
+        }
+
+        static void DrawAdd(Graphics g, Rectangle b, Pen pen)
+        {
+            g.DrawLine(pen, P(b, 12, 6), P(b, 12, 18));
+            g.DrawLine(pen, P(b, 6, 12), P(b, 18, 12));
+        }
+
+        static void DrawAutoAwesome(Graphics g, Rectangle b, Pen pen, Brush brush)
+        {
+            var c = P(b, 12, 12);
+            // four-point star
+            var pts = new[] { P(b, 12, 3), P(b, 14, 10), P(b, 21, 12), P(b, 14, 14), P(b, 12, 21), P(b, 10, 14), P(b, 3, 12), P(b, 10, 10) };
+            g.DrawLines(pen, pts);
+            g.DrawLine(pen, pts[0], pts[0]); // close
+        }
+
+        static void DrawDescription(Graphics g, Rectangle b, Pen pen)
+        {
+            g.DrawRectangle(pen, P(b, 6, 4).X, P(b, 6, 4).Y, b.Width * 0.5f, b.Height * 0.66f);
+            g.DrawLine(pen, P(b, 9, 8), P(b, 15, 8));
+            g.DrawLine(pen, P(b, 9, 11), P(b, 15, 11));
+            g.DrawLine(pen, P(b, 9, 14), P(b, 13, 14));
+        }
+
+        static void DrawHistory(Graphics g, Rectangle b, Pen pen)
+        {
+            var c = P(b, 12, 12);
+            g.DrawArc(pen, c.X - b.Width * 0.35f, c.Y - b.Height * 0.35f, b.Width * 0.7f, b.Height * 0.7f, -30, 300);
+            g.DrawLine(pen, P(b, 12, 12), P(b, 12, 7));
+            g.DrawLine(pen, P(b, 12, 12), P(b, 15, 12));
+            g.DrawLine(pen, P(b, 12, 2), P(b, 10, 5));
+            g.DrawLine(pen, P(b, 12, 2), P(b, 14, 5));
+        }
+
+        static void DrawAnalytics(Graphics g, Rectangle b, Pen pen)
+        {
+            g.DrawLine(pen, P(b, 5, 18), P(b, 9, 10));
+            g.DrawLine(pen, P(b, 9, 10), P(b, 13, 14));
+            g.DrawLine(pen, P(b, 13, 14), P(b, 19, 6));
+            g.DrawLine(pen, P(b, 19, 6), P(b, 16, 6));
+            g.DrawLine(pen, P(b, 19, 6), P(b, 19, 9));
+        }
+
+        static void DrawVerified(Graphics g, Rectangle b, Pen pen, Brush brush)
+        {
+            var pts = new[] { P(b, 12, 3), P(b, 18, 5), P(b, 21, 11), P(b, 18, 17), P(b, 12, 21), P(b, 6, 17), P(b, 3, 11), P(b, 6, 5) };
+            g.DrawLines(pen, pts);
+            g.DrawLines(pen, new[] { P(b, 8, 12), P(b, 11, 15), P(b, 16, 9) });
         }
     }
 }

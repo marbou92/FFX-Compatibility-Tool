@@ -178,18 +178,25 @@ namespace FfxTool.Gui
                 default: fill = ThemeManager.Current.SurfaceContainer; outline = false; break; // Filled
             }
 
-            using (var path = RoundedRect(bounds, Md3Tokens.CornerMedium))
+            // expressive: Large (16) for vendor cards, use 3XL (32) manually where needed; default Large gives more expressive feel than Medium
+            using (var path = RoundedRect(bounds, Md3Tokens.CornerLarge))
             using (var fillBrush = new SolidBrush(fill))
             {
                 e.Graphics.FillPath(fillBrush, path);
                 if (outline)
                 {
-                    using (var pen = new Pen(ThemeManager.Current.OutlineVariant, 1))
+                    using (var pen = new Pen(Color.FromArgb(77, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B), 1))
                         e.Graphics.DrawPath(pen, path);
                 }
                 else if (_hovering)
                 {
-                    using (var pen = new Pen(ThemeManager.Current.OutlineVariant, 1))
+                    using (var pen = new Pen(Color.FromArgb(120, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B), 1))
+                        e.Graphics.DrawPath(pen, path);
+                }
+                // subtle expressive elevation hint — 1px shadow at 5% (Win7 safe, no DWM)
+                if (Variant == Md3CardVariant.Elevated && !_hovering)
+                {
+                    using (var pen = new Pen(Color.FromArgb(20, 0, 0, 0), 1))
                         e.Graphics.DrawPath(pen, path);
                 }
             }

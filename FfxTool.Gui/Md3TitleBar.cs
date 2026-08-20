@@ -44,13 +44,13 @@ namespace FfxTool.Gui
         {
             _owner = owner;
             Dock = DockStyle.Top;
-            Height = 56; // stitch spec h-20 (80px) includes padding; 56px is comfortable for WinForms with glass effect
-            BackColor = ThemeManager.Current.Surface; // will look glassy via alpha overlay painted below
+            Height = 64; // stitch spec h-20 (80px) → 64px expressive for WinForms (more breathing than 56)
+            BackColor = ThemeManager.Current.Surface; // glass approximated via alpha + border
 
             _title = new Label
             {
-                Text = title, Font = Md3Tokens.TitleMedium, ForeColor = ThemeManager.Current.OnSurface,
-                AutoSize = true, Location = new Point(Md3Tokens.Space6, 16),
+                Text = title, Font = Md3Tokens.TitleLarge, ForeColor = ThemeManager.Current.OnSurface,
+                AutoSize = true, Location = new Point(Md3Tokens.Space6, 20),
             };
             Controls.Add(_title);
 
