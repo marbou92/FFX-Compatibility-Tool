@@ -27,7 +27,7 @@ namespace FfxTool.Gui
             root.Controls.Add(title);
             root.Controls.Add(subtitle);
 
-            var cardsRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+            var cardsRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = true, MaximumSize = new Size(980, 0) };
             cardsRow.Controls.Add(BuildAppearanceCard());
             cardsRow.Controls.Add(BuildAboutCard());
             root.Controls.Add(cardsRow);

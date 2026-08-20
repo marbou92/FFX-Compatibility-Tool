@@ -67,25 +67,17 @@ namespace FfxTool.Gui
             var table = PluginLookup.LoadTable();
             var vendors = _profile.AllKnownVendors(table);
 
-            // 3-column bento grid, matching the real design's "grid-cols-3" —
-            // vendors plus one trailing "Add custom vendor" card
-            const int cols = 3;
-            const int cardW = 280, cardH = 96;
-            var grid = new TableLayoutPanel
+            // stitch responsive grid: grid-cols-1 md:2 xl:3 — use FlowLayout WrapContents so it collapses without clipping
+            const int cardW = 280, cardH = 116; // 116 to accommodate version badge (stitch has badge row)
+            var grid = new FlowLayoutPanel
             {
-                AutoSize = true, ColumnCount = cols,
-                RowCount = (int)Math.Ceiling((vendors.Count + 1) / (float)cols),
+                AutoSize = true, WrapContents = true, FlowDirection = FlowDirection.LeftToRight,
+                MaximumSize = new Size(920, 0), // caps at ~3 cols (280*3+ gaps) then wraps to 2/1 cols on narrow
                 Margin = new Padding(0, 0, 0, Md3Tokens.Space8),
             };
-            for (int c = 0; c < cols; c++) grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, cardW + Md3Tokens.Space6));
-
-            int col = 0, row = 0;
             foreach (var vendor in vendors)
-            {
-                grid.Controls.Add(BuildVendorCard(vendor, cardW, cardH), col, row);
-                col++; if (col >= cols) { col = 0; row++; }
-            }
-            grid.Controls.Add(BuildAddCustomCard(cardW, cardH), col, row);
+                grid.Controls.Add(BuildVendorCard(vendor, cardW, cardH));
+            grid.Controls.Add(BuildAddCustomCard(cardW, cardH));
             root.Controls.Add(grid);
 
             // --- footer: Automatic Plugin Discovery ---
@@ -107,7 +99,7 @@ namespace FfxTool.Gui
             });
 
             var footerRight = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, Anchor = AnchorStyles.Right, WrapContents = false };
-            var scanBtn = new Md3Button { Text = "Scan a plugins folder…", Icon = Md3Icons.Icon.FolderOpen, Variant = Md3ButtonVariant.Outlined, Width = 220 };
+            var scanBtn = new Md3Button { Text = "Scan System", Icon = Md3Icons.Icon.FolderOpen, Variant = Md3ButtonVariant.Outlined, Width = 180 };
             scanBtn.Click += (s, e) => ScanFolder();
             footerRight.Controls.Add(scanBtn);
             // Real design's caption claims specific AE version support
@@ -138,10 +130,11 @@ namespace FfxTool.Gui
 
         Control BuildVendorCard(string vendor, int w, int h)
         {
-            var card = new Md3Card { Width = w, Height = h, Margin = new Padding(0, 0, Md3Tokens.Space6, Md3Tokens.Space6), Variant = Md3CardVariant.Filled };
+            // stitch: bg-surface-container rounded-2xl border p-6 with version badge at bottom — 116h includes badge row
+            var card = new Md3Card { Width = w, Height = h, Margin = new Padding(0, 0, Md3Tokens.Space4, Md3Tokens.Space4), Variant = Md3CardVariant.Filled };
             var (icon, suites) = VendorMeta.TryGetValue(vendor, out var meta) ? meta : (Md3Icons.Icon.Plugin, "");
 
-            var iconBox = new Panel { Size = new Size(48, 48), Location = new Point(Md3Tokens.Space6, (h - 48) / 2) };
+            var iconBox = new Panel { Size = new Size(48, 48), Location = new Point(Md3Tokens.Space4, Md3Tokens.Space4) };
             iconBox.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
@@ -153,18 +146,18 @@ namespace FfxTool.Gui
 
             var title = new Label
             {
-                Text = vendor, Font = Md3Tokens.TitleMedium, ForeColor = ThemeManager.Current.OnSurface,
-                AutoSize = true, Location = new Point(iconBox.Right + Md3Tokens.Space4, iconBox.Top + 2),
+                Text = vendor, Font = Md3Tokens.TitleSmall, ForeColor = ThemeManager.Current.OnSurface,
+                AutoSize = true, Location = new Point(iconBox.Right + Md3Tokens.Space3, iconBox.Top + 2),
             };
             var subtitle = new Label
             {
-                Text = suites, Font = Md3Tokens.LabelMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant,
-                AutoSize = true, MaximumSize = new Size(w - iconBox.Right - Md3Tokens.Space6 - 60, 0),
-                Location = new Point(iconBox.Right + Md3Tokens.Space4, title.Bottom + 2),
+                Text = suites, Font = Md3Tokens.LabelSmall, ForeColor = ThemeManager.Current.OnSurfaceVariant,
+                AutoSize = true, MaximumSize = new Size(w - iconBox.Right - Md3Tokens.Space4 - 62, 32),
+                Location = new Point(iconBox.Right + Md3Tokens.Space3, title.Bottom + 1),
             };
 
             var sw = new Md3Switch { Checked = _profile.OwnedVendors.Contains(vendor), Width = 52, Height = 32 };
-            sw.Location = new Point(w - sw.Width - Md3Tokens.Space4, (h - sw.Height) / 2);
+            sw.Location = new Point(w - sw.Width - Md3Tokens.Space3, Md3Tokens.Space4);
             sw.CheckedChanged += (s, e) =>
             {
                 _profile.SetOwned(vendor, sw.Checked);
@@ -173,10 +166,28 @@ namespace FfxTool.Gui
             };
             _switches[vendor] = sw;
 
+            // stitch version badge: bg-surface-container-highest/50 rounded-xl with verified icon
+            var badge = new Panel { Size = new Size(w - Md3Tokens.Space4 * 2, 28), Location = new Point(Md3Tokens.Space4, h - 36), BackColor = Color.FromArgb(30, ThemeManager.Current.SurfaceContainerHigh.R, ThemeManager.Current.SurfaceContainerHigh.G, ThemeManager.Current.SurfaceContainerHigh.B) };
+            badge.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                var bounds = new Rectangle(0, 0, badge.Width - 1, badge.Height - 1);
+                using (var path = RoundedRect(bounds, Md3Tokens.CornerMedium))
+                using (var brush = new SolidBrush(Color.FromArgb(60, ThemeManager.Current.SurfaceContainerHigh.R, ThemeManager.Current.SurfaceContainerHigh.G, ThemeManager.Current.SurfaceContainerHigh.B))
+                )
+                {
+                    e.Graphics.FillPath(brush, path);
+                }
+                Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Check, new Rectangle(8, 6, 16, 16), ThemeManager.Current.Primary, 1.6f);
+            };
+            var badgeLabel = new Label { Text = "Profile linked", Font = Md3Tokens.LabelSmall, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Location = new Point(28, 7), BackColor = Color.Transparent };
+            badge.Controls.Add(badgeLabel);
+
             card.Controls.Add(iconBox);
             card.Controls.Add(title);
             card.Controls.Add(subtitle);
             card.Controls.Add(sw);
+            card.Controls.Add(badge);
             return card;
         }
 

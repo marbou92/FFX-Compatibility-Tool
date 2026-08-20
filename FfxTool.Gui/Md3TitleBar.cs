@@ -44,13 +44,13 @@ namespace FfxTool.Gui
         {
             _owner = owner;
             Dock = DockStyle.Top;
-            Height = 40;
-            BackColor = ThemeManager.Current.SurfaceContainerLowest;
+            Height = 56; // stitch spec h-20 (80px) includes padding; 56px is comfortable for WinForms with glass effect
+            BackColor = ThemeManager.Current.Surface; // will look glassy via alpha overlay painted below
 
             _title = new Label
             {
-                Text = title, Font = Md3Tokens.TitleSmall, ForeColor = ThemeManager.Current.OnSurface,
-                AutoSize = true, Location = new Point(Md3Tokens.Space4, 10),
+                Text = title, Font = Md3Tokens.TitleMedium, ForeColor = ThemeManager.Current.OnSurface,
+                AutoSize = true, Location = new Point(Md3Tokens.Space6, 16),
             };
             Controls.Add(_title);
 
@@ -85,9 +85,15 @@ namespace FfxTool.Gui
 
             ThemeManager.ThemeChanged += () =>
             {
-                BackColor = ThemeManager.Current.SurfaceContainerLowest;
+                BackColor = ThemeManager.Current.Surface;
                 _title.ForeColor = ThemeManager.Current.OnSurface;
                 Invalidate(true);
+            };
+            // stitch glass-pane bottom border 20% outline-variant
+            Paint += (s, e) =>
+            {
+                using (var pen = new Pen(Color.FromArgb(51, ThemeManager.Current.OutlineVariant)))
+                    e.Graphics.DrawLine(pen, 0, Height - 1, Width, Height - 1);
             };
         }
 
@@ -126,7 +132,7 @@ namespace FfxTool.Gui
             {
                 Text = glyph, Width = 46, Height = 32, FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 9f), ForeColor = ThemeManager.Current.OnSurfaceVariant,
-                BackColor = ThemeManager.Current.SurfaceContainerLowest, Cursor = Cursors.Hand,
+                BackColor = ThemeManager.Current.Surface, Cursor = Cursors.Hand,
                 TabStop = false,
             };
             btn.FlatAppearance.BorderSize = 0;
@@ -136,7 +142,7 @@ namespace FfxTool.Gui
             ThemeManager.ThemeChanged += () =>
             {
                 btn.ForeColor = ThemeManager.Current.OnSurfaceVariant;
-                btn.BackColor = ThemeManager.Current.SurfaceContainerLowest;
+                btn.BackColor = ThemeManager.Current.Surface;
                 btn.FlatAppearance.MouseOverBackColor = ThemeManager.Current.SurfaceContainerHigh;
                 btn.FlatAppearance.MouseDownBackColor = ThemeManager.Current.OutlineVariant;
             };

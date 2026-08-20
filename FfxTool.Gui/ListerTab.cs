@@ -39,6 +39,21 @@ namespace FfxTool.Gui
         {
             _profile = profile;
             BackColor = ThemeManager.Current.Surface;
+            AllowDrop = true;
+            DragEnter += (s, e) =>
+            {
+                if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                {
+                    var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                    if (files.Length > 0 && files[0].EndsWith(".ffx", StringComparison.OrdinalIgnoreCase))
+                        e.Effect = DragDropEffects.Copy;
+                }
+            };
+            DragDrop += (s, e) =>
+            {
+                var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (files.Length > 0) LoadFile(files[0]);
+            };
 
             var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -172,41 +187,52 @@ namespace FfxTool.Gui
 
         Panel BuildEmptyState()
         {
-            var container = new Panel { Dock = DockStyle.Fill, Visible = true };
+            // stitch spec: bg-surface-container-low/80 border-2 dashed rounded-[32px] p-16 min-h 500 hover border-primary/50
+            var container = new Panel { Dock = DockStyle.Fill, Visible = true, AutoScroll = false };
             container.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                var margin = 40;
-                var bounds = new Rectangle(margin, margin, container.Width - margin * 2, container.Height - margin * 2);
-                using (var pen = new Pen(ThemeManager.Current.OutlineVariant, 1.5f) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dash })
-                using (var path = RoundedRect(bounds, Md3Tokens.CornerLarge))
+                var margin = 32;
+                var bounds = new Rectangle(margin, margin, container.Width - margin * 2, Math.Max(360, container.Height - margin * 2));
+                using (var pen = new Pen(Color.FromArgb(120, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B), 1.8f) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dash })
+                using (var path = RoundedRect(bounds, Md3Tokens.CornerExtraLarge)) // 24 => 32px visual
+                {
+                    using (var brush = new SolidBrush(Color.FromArgb(20, ThemeManager.Current.SurfaceContainer.R, ThemeManager.Current.SurfaceContainer.G, ThemeManager.Current.SurfaceContainer.B)))
+                        e.Graphics.FillPath(brush, path);
                     e.Graphics.DrawPath(pen, path);
+                }
 
-                int cy = bounds.Top + 90;
-                Md3Icons.Draw(e.Graphics, Md3Icons.Icon.FolderOpen, new Rectangle(bounds.X + bounds.Width / 2 - 32, cy - 32, 64, 64), ThemeManager.Current.Outline, 2.0f);
+                int cy = bounds.Top + bounds.Height / 2 - 80;
+                // circular icon bg like stitch w-24 h-24 rounded-full
+                var iconBg = new Rectangle(bounds.X + bounds.Width / 2 - 48, cy - 36, 96, 96);
+                using (var path = RoundedRect(iconBg, 48))
+                using (var brush = new SolidBrush(Color.FromArgb(40, ThemeManager.Current.SurfaceVariant.R, ThemeManager.Current.SurfaceVariant.G, ThemeManager.Current.SurfaceVariant.B)))
+                    e.Graphics.FillPath(brush, path);
+                Md3Icons.Draw(e.Graphics, Md3Icons.Icon.FolderOpen, new Rectangle(bounds.X + bounds.Width / 2 - 28, cy - 20, 56, 56), ThemeManager.Current.OnSurfaceVariant, 1.6f);
 
                 TextRenderer.DrawText(e.Graphics, "No preset loaded", Md3Tokens.HeadlineSmall,
-                    new Rectangle(bounds.X, cy + 48, bounds.Width, 30), ThemeManager.Current.OnSurface, TextFormatFlags.HorizontalCenter);
+                    new Rectangle(bounds.X, cy + 68, bounds.Width, 30), ThemeManager.Current.OnSurface, TextFormatFlags.HorizontalCenter);
 
-                var msgRect = new Rectangle(bounds.X + bounds.Width / 2 - 220, cy + 82, 440, 50);
+                var msgRect = new Rectangle(bounds.X + bounds.Width / 2 - 240, cy + 102, 480, 50);
                 TextRenderer.DrawText(e.Graphics,
                     "Open a .ffx file to see its effects and check them against your plugin profile. You can also drag and drop a file directly into this workspace.",
                     Md3Tokens.BodyMedium, msgRect, ThemeManager.Current.OnSurfaceVariant,
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.WordBreak);
             };
 
-            // Two quick-action cards from the real design (Auto-Analyze,
-            // Recent Files) — shown disabled with a tooltip rather than
-            // wired up, since neither is an implemented feature yet.
-            // Showing them as working would misrepresent what the app
-            // actually does.
+            // stitch primary CTA h-16 px-10 rounded-full inside empty state
+            var ctaBtn = new Md3Button { Text = "Open .ffx file", Icon = Md3Icons.Icon.FolderOpen, Width = 200, Height = 48 };
+            ctaBtn.Click += (s, e) => OpenFile();
+            container.Controls.Add(ctaBtn);
+
             var cardsRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, Anchor = AnchorStyles.None };
             cardsRow.Controls.Add(MakeDisabledActionCard(Md3Icons.Icon.Check, "Auto-Analyze", "Verify compatibility on load", "Not yet implemented"));
             cardsRow.Controls.Add(MakeDisabledActionCard(Md3Icons.Icon.Warning, "Recent Files", "View last 5 analyzed presets", "Not yet implemented"));
             container.Controls.Add(cardsRow);
             container.Resize += (s, e) =>
             {
-                cardsRow.Location = new Point((container.Width - cardsRow.Width) / 2, container.Height / 2 + 90);
+                ctaBtn.Location = new Point((container.Width - ctaBtn.Width) / 2, container.Height / 2 + 60);
+                cardsRow.Location = new Point((container.Width - cardsRow.Width) / 2, container.Height / 2 + 120);
             };
 
             return container;

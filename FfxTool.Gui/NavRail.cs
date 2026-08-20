@@ -38,8 +38,8 @@ namespace FfxTool.Gui
 
         public event Action<int> SelectionChanged;
 
-        // Spec: rail-width: 80px (fixed, not collapsible)
-        public const int RailWidth = 80;
+        // Spec: rail-width 88px per stitch_visual_discovery_tool code.html tailwind spacing.rail-width (overrides DESIGN.md 80px)
+        public const int RailWidth = 88;
         const int LogoAreaHeight = 72;
         const int ItemHeight = 64; // icon + gap + label needs more vertical room than the old icon+label-beside layout
         const int PillSize = 44;   // spec: pill background sized to the icon, not the full item width

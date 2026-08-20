@@ -45,11 +45,32 @@ namespace FfxTool.Gui
             _convertTab = new ConvertTab(_profile) { Dock = DockStyle.Fill, Visible = false };
             _settingsTab = new SettingsTab { Dock = DockStyle.Fill, Visible = false };
 
-            _contentHost = new Panel { Dock = DockStyle.Fill, BackColor = ThemeManager.Current.Surface, Padding = new Padding(Md3Tokens.Space6) };
+            _contentHost = new Panel { Dock = DockStyle.Fill, BackColor = ThemeManager.Current.Surface, Padding = new Padding(Md3Tokens.Space6), AutoScroll = true };
             _contentHost.Controls.Add(_settingsTab);
             _contentHost.Controls.Add(_convertTab);
             _contentHost.Controls.Add(_profileTab);
             _contentHost.Controls.Add(_listerTab);
+            // Global drag-drop: allow dropping .ffx anywhere on the window; delegate to the active tab that supports file loading
+            AllowDrop = true;
+            DragEnter += (s, e) =>
+            {
+                if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                {
+                    var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                    if (files.Length > 0 && files[0].EndsWith(".ffx", System.StringComparison.OrdinalIgnoreCase))
+                        e.Effect = DragDropEffects.Copy;
+                }
+            };
+            DragDrop += (s, e) =>
+            {
+                var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (files.Length == 0) return;
+                var path = files[0];
+                // Route to the visible tab that can handle it
+                if (_listerTab.Visible) _listerTab.LoadFile(path);
+                else if (_convertTab.Visible) _convertTab.LoadFileForConvert(path);
+                else { _listerTab.LoadFile(path); ShowTab(0); }
+            };
 
             _navRail = new NavRail();
             _navRail.AddItem("Effect Lister", _listerTab, Md3Icons.Icon.EffectList);
@@ -64,11 +85,34 @@ namespace FfxTool.Gui
             _root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-            _body = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1 };
+            var supportPane = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(217, ThemeManager.Current.Surface.R, ThemeManager.Current.Surface.G, ThemeManager.Current.Surface.B), Visible = false, Width = 320 };
+            supportPane.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                using (var pen = new Pen(Color.FromArgb(51, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B)))
+                    e.Graphics.DrawLine(pen, 0, 0, 0, supportPane.Height);
+                TextRenderer.DrawText(e.Graphics, "Insights", Md3Tokens.TitleMedium, new Rectangle(16, 16, 200, 24), ThemeManager.Current.OnSurface, TextFormatFlags.Left);
+                TextRenderer.DrawText(e.Graphics, "Select a preset to see compatibility details here.", Md3Tokens.BodySmall, new Rectangle(16, 44, 288, 40), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.WordBreak);
+            };
+            ThemeManager.ThemeChanged += () => { supportPane.BackColor = Color.FromArgb(217, ThemeManager.Current.Surface.R, ThemeManager.Current.Surface.G, ThemeManager.Current.Surface.B); supportPane.Invalidate(); };
+            // stitch secondary pane: hidden xl:block — show only on wide windows
+            void UpdateSupportPane()
+            {
+                bool show = Width >= 1240;
+                supportPane.Visible = show;
+                _body.ColumnStyles[2].Width = show ? 320 : 0;
+            }
+            // initial
+            Load += (s, e) => UpdateSupportPane();
+            Resize += (s, e) => UpdateSupportPane();
+
+            _body = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 1 };
             _body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, NavRail.RailWidth));
             _body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            _body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 320));
             _body.Controls.Add(_navRail, 0, 0);
             _body.Controls.Add(_contentHost, 1, 0);
+            _body.Controls.Add(supportPane, 2, 0);
             _navRail.Dock = DockStyle.Fill;
 
             _root.Controls.Add(_titleBar, 0, 0);
