@@ -234,8 +234,8 @@ namespace FfxTool.Gui
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.WordBreak);
             };
 
-            // stitch primary CTA h-16 px-10 rounded-full inside empty state
-            var ctaBtn = new Md3Button { Text = "Open .ffx file", Icon = Md3Icons.Icon.FolderOpen, Width = 200, Height = 48 };
+            // compact CTA for adaptive density
+            var ctaBtn = new Md3Button { Text = "Open .ffx file", Icon = Md3Icons.Icon.FolderOpen, Width = 160, Height = 40 };
             ctaBtn.Click += (s, e) => OpenFile();
             container.Controls.Add(ctaBtn);
 
@@ -276,7 +276,7 @@ namespace FfxTool.Gui
 
         Control MakeDisabledActionCard(Md3Icons.Icon icon, string title, string subtitle, string tooltip)
         {
-            var card = new Panel { Width = 220, Height = 64, Margin = new Padding(Md3Tokens.Space2), Enabled = false };
+            var card = new Panel { Width = 180, Height = 56, Margin = new Padding(Md3Tokens.Space2), Enabled = false };
             var tip = new ToolTip();
             tip.SetToolTip(card, tooltip);
             card.Paint += (s, e) =>

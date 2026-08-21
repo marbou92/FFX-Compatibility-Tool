@@ -43,7 +43,7 @@ namespace FfxTool.Gui
 
         Control BuildAppearanceCard()
         {
-            var card = new Md3Card { Variant = Md3CardVariant.Filled, Width = 460, AutoSize = true, Padding = new Padding(Md3Tokens.Space6), Margin = new Padding(0, 0, Md3Tokens.Space6, 0), MinimumSize = new Size(320, 0) };
+            var card = new Md3Card { Variant = Md3CardVariant.Filled, Width = 420, AutoSize = true, Padding = new Padding(Md3Tokens.Space6), Margin = new Padding(0, 0, Md3Tokens.Space6, 0), MinimumSize = new Size(300, 0) };
             var flow = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false };
 
             var headerRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
@@ -142,7 +142,7 @@ namespace FfxTool.Gui
 
         Control BuildAboutCard()
         {
-            var card = new Md3Card { Variant = Md3CardVariant.Elevated, Width = 400, AutoSize = true, Padding = new Padding(Md3Tokens.Space6), MinimumSize = new Size(320, 0) };
+            var card = new Md3Card { Variant = Md3CardVariant.Elevated, Width = 360, AutoSize = true, Padding = new Padding(Md3Tokens.Space6), MinimumSize = new Size(300, 0) };
             var flow = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false };
 
             var headerRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };

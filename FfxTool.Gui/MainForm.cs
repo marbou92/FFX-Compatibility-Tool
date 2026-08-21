@@ -62,7 +62,7 @@ namespace FfxTool.Gui
             _contentHost.Controls.Add(_profileTab);
             _contentHost.Controls.Add(_listerTab);
 
-            var supportPane = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(217, ThemeManager.Current.Surface.R, ThemeManager.Current.Surface.G, ThemeManager.Current.Surface.B), Visible = false, Width = 360 };
+            var supportPane = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(217, ThemeManager.Current.Surface.R, ThemeManager.Current.Surface.G, ThemeManager.Current.Surface.B), Visible = false, Width = 320 };
             supportPane.Padding = new Padding(Md3Tokens.Space6);
             supportPane.Paint += (s, e) =>
             {
@@ -146,7 +146,7 @@ namespace FfxTool.Gui
             {
                 bool show = Width >= 1280;
                 supportPane.Visible = show;
-                _body.ColumnStyles[2].Width = show ? 360 : 0;
+                _body.ColumnStyles[2].Width = show ? 320 : 0;
             }
             // initial
             Load += (s, e) => UpdateSupportPane();
@@ -155,7 +155,7 @@ namespace FfxTool.Gui
             _body = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 1 };
             _body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, NavRail.RailWidth));
             _body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            _body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 360));
+            _body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 320));
             _body.Controls.Add(_navRail, 0, 0);
             _body.Controls.Add(_contentHost, 1, 0);
             _body.Controls.Add(supportPane, 2, 0);

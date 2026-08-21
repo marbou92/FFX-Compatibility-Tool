@@ -57,15 +57,16 @@ namespace FfxTool.Gui
         // anything else in this token pass. Flagging rather than
         // approximating it badly.
 
-        // --- Shape (spec: sm=4px(0.25rem), DEFAULT=8px(0.5rem),
-        // md=12px(0.75rem), lg=16px(1rem), xl=24px(1.5rem), 3xl=32px, full=pill) ---
-        // 32px is the stitch expressive container radius (rounded-[32px] in code.html) — larger than spec xl
+        // --- Shape — M3 Expressive 2026 10-step: none 0 / XS 4 / S 8 / M 12 / L 16 / L-inc 20 / XL 28 / XL-inc 32 / XXL 48 / full
         public const int CornerExtraSmall = 4;
         public const int CornerSmall = 8;
         public const int CornerMedium = 12;
         public const int CornerLarge = 16;
-        public const int CornerExtraLarge = 24; // spec's "xl"
-        public const int Corner3XL = 32; // expressive stitch containers
+        public const int CornerLargeIncreased = 20; // expressive L-inc
+        public const int CornerExtraLarge = 28; // M3 XL now 28 (was 24), keep 24 compat via alias
+        public const int Corner3XL = 32; // expressive XL-inc stitch hero 32
+        public const int CornerExtraExtraLarge = 48; // expressive XXL bento hero
+        public const int CornerLegacyXL24 = 24; // keep old 24 for Win7 compat where needed
 
         public const int ContentMaxWidth = 1440; // stitch: max-w 1440 centered on ultra-wide
 

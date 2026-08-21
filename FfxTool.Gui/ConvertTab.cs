@@ -48,7 +48,7 @@ namespace FfxTool.Gui
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // callout
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // list host — takes remaining, outer scroll handles overflow
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // target
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 220)); // console
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 180)); // console compact
             var heading = new Label { Text = "Convert Preset", Font = new Font(Md3Tokens.HeadlineMedium.FontFamily, 22f, FontStyle.Bold), ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
             ThemeManager.ThemeChanged += () => heading.ForeColor = ThemeManager.Current.OnSurface;
 
@@ -129,20 +129,20 @@ namespace FfxTool.Gui
 
             var targetCol = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0, 0, Md3Tokens.Space4, 0) };
             targetCol.Controls.Add(new Label { Text = "Target version", Font = Md3Tokens.LabelMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space1) });
-            _targetCombo = new Md3Dropdown { Width = 200 };
+            _targetCombo = new Md3Dropdown { Width = 180 };
             _targetCombo.SetItems(Pipeline.KnownVersions.Keys.OrderBy(k => k).Select(DisplayNameFor), 0);
             targetCol.Controls.Add(_targetCombo);
 
             var encodingCol = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0, 0, Md3Tokens.Space4, 0) };
             encodingCol.Controls.Add(new Label { Text = "Encoding Options", Font = Md3Tokens.LabelMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space1) });
-            var cleanMetadataCheck = new Md3Checkbox { Text = "Clean Metadata", Checked = true, Enabled = false, Width = 180, Height = 24 };
+            var cleanMetadataCheck = new Md3Checkbox { Text = "Clean Metadata", Checked = true, Enabled = false, Width = 160, Height = 24 };
             var tip = new ToolTip();
             tip.SetToolTip(cleanMetadataCheck, "Not yet implemented — the pipeline doesn't have a separate metadata-cleaning step");
-            _overwriteCheck = new Md3Checkbox { Text = "Overwrite File", Width = 180, Height = 24 };
+            _overwriteCheck = new Md3Checkbox { Text = "Overwrite File", Width = 160, Height = 24 };
             encodingCol.Controls.Add(cleanMetadataCheck);
             encodingCol.Controls.Add(_overwriteCheck);
 
-            _convertBtn = new Md3Button { Text = "Convert…", Icon = Md3Icons.Icon.Convert, Width = 150, Height = 46, Enabled = false };
+            _convertBtn = new Md3Button { Text = "Convert…", Icon = Md3Icons.Icon.Convert, Width = 130, Height = 40, Enabled = false };
             _convertBtn.Click += (s, e) => DoConvert();
             var convertHost = new Panel { AutoSize = true, Height = 46, Margin = new Padding(Md3Tokens.Space4, Md3Tokens.Space4, 0, 0) };
             convertHost.Controls.Add(_convertBtn);
