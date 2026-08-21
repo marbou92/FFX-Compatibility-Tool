@@ -1,3 +1,4 @@
+using System;
 using System.Drawing;
 using System.Reflection;
 using System.Windows.Forms;
@@ -52,9 +53,8 @@ namespace FfxTool.Gui
             headerRow.Controls.Add(new Label { Text = "Appearance", Font = Md3Tokens.TitleLarge, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(Md3Tokens.Space2, 2, 0, 0) });
             flow.Controls.Add(headerRow);
 
-            // "Dark Mode" sub-panel — responsive width (fills card, not fixed 400)
+            // "Dark Mode" sub-panel — responsive width (fills card, not fixed 400) — Win7-safe: keep tonal, no blur
             var darkRow = new Panel { Width = 412, Height = 64, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
-            card.Resize += (s, e) => { darkRow.Width = Math.Max(280, card.ClientWidth - Md3Tokens.Space4); darkSwitch.Location = new Point(darkRow.Width - 68, 16); };
             darkRow.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
@@ -67,6 +67,8 @@ namespace FfxTool.Gui
             var darkSwitch = new Md3Switch { Checked = ThemeManager.Mode == Md3Mode.Dark, Width = 60, Height = 32, Location = new Point(darkRow.Width - 68, 16) };
             darkSwitch.CheckedChanged += (s, e) => ThemeManager.Apply(darkSwitch.Checked ? Md3Mode.Dark : Md3Mode.Light, ThemeManager.Palette);
             darkRow.Controls.Add(darkSwitch);
+            // keep responsive without Math/ClientWidth confusion: use ClientSize.Width after darkSwitch exists
+            card.Resize += (s, e) => { darkRow.Width = Math.Max(280, card.ClientSize.Width - Md3Tokens.Space4); darkSwitch.Location = new Point(darkRow.Width - 68, 16); };
             flow.Controls.Add(darkRow);
 
             flow.Controls.Add(new Label { Text = "Color palette", Font = Md3Tokens.TitleSmall, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) });
@@ -174,7 +176,7 @@ namespace FfxTool.Gui
 
             var divider = new Panel { Width = 340, Height = 1, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
             divider.Paint += (s, e) => { using (var pen = new Pen(ThemeManager.Current.OutlineVariant)) e.Graphics.DrawLine(pen, 0, 0, divider.Width, 0); };
-            card.Resize += (s, e) => divider.Width = Math.Max(280, card.ClientWidth - Md3Tokens.Space6 * 2);
+            card.Resize += (s, e) => divider.Width = Math.Max(280, card.ClientSize.Width - Md3Tokens.Space6 * 2);
             flow.Controls.Add(divider);
 
             // Real design bolds/colors one phrase inline within the
