@@ -98,12 +98,12 @@ namespace FfxTool.Gui
             // --- Intelligent Conversion callout — stitch rounded-[32px] with gradient top accent ---
             var callout = new Md3Card { Variant = Md3CardVariant.Filled, Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
             callout.Padding = new Padding(Md3Tokens.Space6);
-            var calloutFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Dock = DockStyle.Fill, MaximumSize = new Size(900, 0) };
-            calloutFlow.Controls.Add(new Label { Text = "Intelligent Conversion", Font = Md3Tokens.TitleSmall, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space1) });
+            var calloutFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Dock = DockStyle.Fill, MaximumSize = new Size(900, 0), BackColor = Color.Transparent };
+            calloutFlow.Controls.Add(new Label { Text = "Intelligent Conversion", Font = Md3Tokens.TitleSmall, ForeColor = ThemeManager.Current.OnSurface, BackColor = Color.Transparent, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space1) });
             calloutFlow.Controls.Add(new Label
             {
                 Text = "The tool will automatically detect and suggest removal of missing or incompatible plugins based on your current host configuration. Presets will be re-encoded to the selected target version.",
-                Font = Md3Tokens.BodyMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant,
+                Font = Md3Tokens.BodyMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant, BackColor = Color.Transparent,
                 AutoSize = true, MaximumSize = new Size(720, 0),
             });
             callout.Controls.Add(calloutFlow);
@@ -241,6 +241,7 @@ namespace FfxTool.Gui
                 _fileChipLabel.Parent.Width = 34 + TextRenderer.MeasureText(_fileChipLabel.Text, Md3Tokens.BodyMedium).Width + Md3Tokens.Space6;
                 _fileChipLabel.Parent.Invalidate();
                 _convertBtn.Enabled = true;
+                HistoryStore.Push(path, _currentEffects.Count(e => !e.IsSentinel));
                 Log($"[INFO] Loaded {Path.GetFileName(path)} ({_inputData.Length} bytes).");
                 Refresh_();
             }

@@ -241,7 +241,29 @@ namespace FfxTool.Gui
 
             var cardsRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, Anchor = AnchorStyles.None };
             cardsRow.Controls.Add(MakeDisabledActionCard(Md3Icons.Icon.Check, "Auto-Analyze", "Verify compatibility on load", "Not yet implemented"));
-            cardsRow.Controls.Add(MakeDisabledActionCard(Md3Icons.Icon.Warning, "Recent Files", "View last 5 analyzed presets", "Not yet implemented"));
+            var recent = HistoryStore.Load().FirstOrDefault();
+            bool hasRecent = recent != null;
+            var recentCard = new Panel { Width = 220, Height = 64, Margin = new Padding(Md3Tokens.Space2), Enabled = hasRecent, Cursor = hasRecent ? Cursors.Hand : Cursors.Default };
+            if (!hasRecent) new ToolTip().SetToolTip(recentCard, "No recent files yet");
+            else new ToolTip().SetToolTip(recentCard, $"Open {recent.fileName}");
+            recentCard.Paint += (s2, e2) =>
+            {
+                e2.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                var bounds = new Rectangle(0, 0, recentCard.Width - 1, recentCard.Height - 1);
+                using (var path = RoundedRect(bounds, Md3Tokens.CornerMedium))
+                using (var brush = new SolidBrush(hasRecent ? ThemeManager.Current.SurfaceContainer : Color.FromArgb(180, ThemeManager.Current.SurfaceContainer.R, ThemeManager.Current.SurfaceContainer.G, ThemeManager.Current.SurfaceContainer.B)))
+                using (var pen = new Pen(hasRecent ? ThemeManager.Current.OutlineVariant : Color.FromArgb(120, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B)))
+                {
+                    e2.Graphics.FillPath(brush, path);
+                    e2.Graphics.DrawPath(pen, path);
+                }
+                Md3Icons.Draw(e2.Graphics, Md3Icons.Icon.History, new Rectangle(16, 20, 22, 22), hasRecent ? ThemeManager.Current.Primary : ThemeManager.Current.Outline, 1.6f);
+                TextRenderer.DrawText(e2.Graphics, "Recent Files", Md3Tokens.LabelMedium, new Rectangle(50, 12, recentCard.Width - 60, 18), hasRecent ? ThemeManager.Current.OnSurface : ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.Left);
+                string sub = hasRecent ? recent.fileName : "View last 5 analyzed presets";
+                TextRenderer.DrawText(e2.Graphics, sub, Md3Tokens.BodySmall, new Rectangle(50, 32, recentCard.Width - 60, 18), ThemeManager.Current.OutlineVariant, TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
+            };
+            if (hasRecent) recentCard.Click += (s2, e2) => { try { LoadFile(recent.path); } catch { } };
+            cardsRow.Controls.Add(recentCard);
             container.Controls.Add(cardsRow);
             container.Resize += (s, e) =>
             {
@@ -321,6 +343,7 @@ namespace FfxTool.Gui
                 }
                 var data = File.ReadAllBytes(path);
                 _currentEffects = Pipeline.ListEffects(data);
+                HistoryStore.Push(path, _currentEffects.Count(e => !e.IsSentinel));
                 Refresh_();
             }
             catch (Exception ex)

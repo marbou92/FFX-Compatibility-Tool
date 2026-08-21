@@ -1,4 +1,6 @@
+using System;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace FfxTool.Gui
@@ -66,10 +68,11 @@ namespace FfxTool.Gui
                 var files = (string[])e.Data.GetData(DataFormats.FileDrop);
                 if (files.Length == 0) return;
                 var path = files[0];
-                // Route to the visible tab that can handle it
+                // Route to the visible tab that can handle it and record history (M3 Expressive real wiring)
                 if (_listerTab.Visible) _listerTab.LoadFile(path);
                 else if (_convertTab.Visible) _convertTab.LoadFileForConvert(path);
                 else { _listerTab.LoadFile(path); ShowTab(0); }
+                try { HistoryStore.Push(path); supportPane.Invalidate(); } catch { }
             };
 
             _navRail = new NavRail();
@@ -93,12 +96,26 @@ namespace FfxTool.Gui
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                 using (var pen = new Pen(Color.FromArgb(51, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B)))
                     e.Graphics.DrawLine(pen, 0, 0, 0, supportPane.Height);
-                // stitch supporting pane: Recent Files + Stats
-                TextRenderer.DrawText(e.Graphics, "Recent Files", Md3Tokens.TitleMedium, new Rectangle(16, 16, 200, 24), ThemeManager.Current.OnSurface, TextFormatFlags.Left);
-                TextRenderer.DrawText(e.Graphics, "Glow_Soft_v2.ffx • 2 mins ago", Md3Tokens.BodySmall, new Rectangle(16, 44, 328, 20), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.Left);
-                TextRenderer.DrawText(e.Graphics, "Text_Bounce_In.ffx • Yesterday", Md3Tokens.BodySmall, new Rectangle(16, 68, 328, 20), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.Left);
-                TextRenderer.DrawText(e.Graphics, "Stats", Md3Tokens.TitleSmall, new Rectangle(16, 110, 200, 20), ThemeManager.Current.OnSurface, TextFormatFlags.Left);
-                TextRenderer.DrawText(e.Graphics, "0 Presets Scanned", Md3Tokens.LabelLarge, new Rectangle(16, 134, 328, 20), ThemeManager.Current.TertiaryContainer, TextFormatFlags.HorizontalCenter);
+                // M3 Expressive supporting pane — real history wired to HistoryStore
+                TextRenderer.DrawText(e.Graphics, "Recent Files", Md3Tokens.TitleMedium, new Rectangle(16, 16, 328, 24), ThemeManager.Current.OnSurface, TextFormatFlags.Left);
+                var recents = HistoryStore.Load();
+                if (recents.Count == 0)
+                {
+                    TextRenderer.DrawText(e.Graphics, "No recent files", Md3Tokens.BodySmall, new Rectangle(16, 44, 328, 20), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.Left);
+                }
+                else
+                {
+                    int y = 44;
+                    foreach (var r in recents.Take(3))
+                    {
+                        string line = $"{r.fileName} • {HistoryStore.TimeAgo(r.timestamp)} • {r.bytes / 1024} KB";
+                        TextRenderer.DrawText(e.Graphics, line, Md3Tokens.BodySmall, new Rectangle(16, y, 328, 20), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
+                        y += 22;
+                    }
+                }
+                int statsY = 44 + Math.Max(1, Math.Min(3, HistoryStore.Load().Count)) * 22 + 24;
+                TextRenderer.DrawText(e.Graphics, "Stats", Md3Tokens.TitleSmall, new Rectangle(16, statsY, 200, 20), ThemeManager.Current.OnSurface, TextFormatFlags.Left);
+                TextRenderer.DrawText(e.Graphics, $"{HistoryStore.Load().Count} Presets Scanned", Md3Tokens.LabelLarge, new Rectangle(16, statsY + 24, 328, 20), ThemeManager.Current.TertiaryContainer, TextFormatFlags.HorizontalCenter);
             };
             ThemeManager.ThemeChanged += () => { supportPane.BackColor = Color.FromArgb(217, ThemeManager.Current.Surface.R, ThemeManager.Current.Surface.G, ThemeManager.Current.Surface.B); supportPane.Invalidate(); };
             // stitch secondary pane: hidden xl:block — show only on wide windows (1280+ shows 360 pane)
