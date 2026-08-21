@@ -52,6 +52,38 @@ namespace FfxTool.Gui
             _contentHost.Controls.Add(_convertTab);
             _contentHost.Controls.Add(_profileTab);
             _contentHost.Controls.Add(_listerTab);
+
+            var supportPane = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(217, ThemeManager.Current.Surface.R, ThemeManager.Current.Surface.G, ThemeManager.Current.Surface.B), Visible = false, Width = 360 };
+            supportPane.Padding = new Padding(Md3Tokens.Space6);
+            supportPane.Paint += (s, e) =>
+            {
+                if (!supportPane.Visible) return;
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                using (var pen = new Pen(Color.FromArgb(51, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B)))
+                    e.Graphics.DrawLine(pen, 0, 0, 0, supportPane.Height);
+                // M3 Expressive supporting pane — real history wired to HistoryStore
+                TextRenderer.DrawText(e.Graphics, "Recent Files", Md3Tokens.TitleMedium, new Rectangle(16, 16, 328, 24), ThemeManager.Current.OnSurface, TextFormatFlags.Left);
+                var recents = HistoryStore.Load();
+                if (recents.Count == 0)
+                {
+                    TextRenderer.DrawText(e.Graphics, "No recent files", Md3Tokens.BodySmall, new Rectangle(16, 44, 328, 20), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.Left);
+                }
+                else
+                {
+                    int y = 44;
+                    foreach (var r in recents.Take(3))
+                    {
+                        string line = $"{r.fileName} • {HistoryStore.TimeAgo(r.timestamp)} • {r.bytes / 1024} KB";
+                        TextRenderer.DrawText(e.Graphics, line, Md3Tokens.BodySmall, new Rectangle(16, y, 328, 20), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
+                        y += 22;
+                    }
+                }
+                int statsY = 44 + Math.Max(1, Math.Min(3, HistoryStore.Load().Count)) * 22 + 24;
+                TextRenderer.DrawText(e.Graphics, "Stats", Md3Tokens.TitleSmall, new Rectangle(16, statsY, 200, 20), ThemeManager.Current.OnSurface, TextFormatFlags.Left);
+                TextRenderer.DrawText(e.Graphics, $"{HistoryStore.Load().Count} Presets Scanned", Md3Tokens.LabelLarge, new Rectangle(16, statsY + 24, 328, 20), ThemeManager.Current.TertiaryContainer, TextFormatFlags.HorizontalCenter);
+            };
+            ThemeManager.ThemeChanged += () => { supportPane.BackColor = Color.FromArgb(217, ThemeManager.Current.Surface.R, ThemeManager.Current.Surface.G, ThemeManager.Current.Surface.B); supportPane.Invalidate(); };
+
             // Global drag-drop: allow dropping .ffx anywhere on the window; delegate to the active tab that supports file loading
             AllowDrop = true;
             DragEnter += (s, e) =>
@@ -88,36 +120,6 @@ namespace FfxTool.Gui
             _root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-            var supportPane = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(217, ThemeManager.Current.Surface.R, ThemeManager.Current.Surface.G, ThemeManager.Current.Surface.B), Visible = false, Width = 360 };
-            supportPane.Padding = new Padding(Md3Tokens.Space6);
-            supportPane.Paint += (s, e) =>
-            {
-                if (!supportPane.Visible) return;
-                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                using (var pen = new Pen(Color.FromArgb(51, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B)))
-                    e.Graphics.DrawLine(pen, 0, 0, 0, supportPane.Height);
-                // M3 Expressive supporting pane — real history wired to HistoryStore
-                TextRenderer.DrawText(e.Graphics, "Recent Files", Md3Tokens.TitleMedium, new Rectangle(16, 16, 328, 24), ThemeManager.Current.OnSurface, TextFormatFlags.Left);
-                var recents = HistoryStore.Load();
-                if (recents.Count == 0)
-                {
-                    TextRenderer.DrawText(e.Graphics, "No recent files", Md3Tokens.BodySmall, new Rectangle(16, 44, 328, 20), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.Left);
-                }
-                else
-                {
-                    int y = 44;
-                    foreach (var r in recents.Take(3))
-                    {
-                        string line = $"{r.fileName} • {HistoryStore.TimeAgo(r.timestamp)} • {r.bytes / 1024} KB";
-                        TextRenderer.DrawText(e.Graphics, line, Md3Tokens.BodySmall, new Rectangle(16, y, 328, 20), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
-                        y += 22;
-                    }
-                }
-                int statsY = 44 + Math.Max(1, Math.Min(3, HistoryStore.Load().Count)) * 22 + 24;
-                TextRenderer.DrawText(e.Graphics, "Stats", Md3Tokens.TitleSmall, new Rectangle(16, statsY, 200, 20), ThemeManager.Current.OnSurface, TextFormatFlags.Left);
-                TextRenderer.DrawText(e.Graphics, $"{HistoryStore.Load().Count} Presets Scanned", Md3Tokens.LabelLarge, new Rectangle(16, statsY + 24, 328, 20), ThemeManager.Current.TertiaryContainer, TextFormatFlags.HorizontalCenter);
-            };
-            ThemeManager.ThemeChanged += () => { supportPane.BackColor = Color.FromArgb(217, ThemeManager.Current.Surface.R, ThemeManager.Current.Surface.G, ThemeManager.Current.Surface.B); supportPane.Invalidate(); };
             // stitch secondary pane: hidden xl:block — show only on wide windows (1280+ shows 360 pane)
             void UpdateSupportPane()
             {
