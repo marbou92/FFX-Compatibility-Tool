@@ -152,9 +152,9 @@ namespace FfxTool.Gui
             targetRow.Controls.Add(encodingCol);
             targetRow.Controls.Add(convertHost);
 
-            // --- console panel — fixed height 220, header 32 with real Label so CONSOLE OUTPUT never clips ---
-            var consolePanel = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(24, 24, 27) };
-            var consoleHeader = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 2, RowCount = 1, Height = 32, BackColor = Color.FromArgb(30, 30, 34) };
+            // --- console panel — THEMED (not hard dark) per your “make it themed” — uses SurfaceContainer tonal
+            var consolePanel = new Panel { Dock = DockStyle.Fill, BackColor = ThemeManager.Current.SurfaceContainerLow };
+            var consoleHeader = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 2, RowCount = 1, Height = 32, BackColor = ThemeManager.Current.SurfaceContainerHigh };
             consoleHeader.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             consoleHeader.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
@@ -170,17 +170,28 @@ namespace FfxTool.Gui
                     x += 18;
                 }
             };
-            // real label for CONSOLE OUTPUT so it measures correctly (fixes CONSOLE OU truncation)
-            var consoleTitleLabel = new Label { Text = "CONSOLE OUTPUT", Font = Md3Tokens.LabelSmall, ForeColor = Color.FromArgb(160, 255, 255, 255), AutoSize = true, Location = new Point(66, 9), BackColor = Color.Transparent };
+            // real label for CONSOLE OUTPUT so it measures correctly (fixes CONSOLE OU truncation) — themed
+            var consoleTitleLabel = new Label { Text = "CONSOLE OUTPUT", Font = Md3Tokens.LabelSmall, ForeColor = ThemeManager.Current.OnSurfaceVariant, AutoSize = true, Location = new Point(66, 9), BackColor = Color.Transparent };
             dotsPanel.Controls.Add(consoleTitleLabel);
 
-            var clearLogsBtn = new LinkLabel { Text = "Clear Logs", AutoSize = true, Anchor = AnchorStyles.Right, Font = Md3Tokens.LabelSmall, LinkColor = Color.FromArgb(160, 255, 255, 255), Margin = new Padding(0, 9, 12, 0) };
-            // _consoleBox is created before handler so capture works
+            var clearLogsBtn = new LinkLabel { Text = "Clear Logs", AutoSize = true, Anchor = AnchorStyles.Right, Font = Md3Tokens.LabelSmall, LinkColor = ThemeManager.Current.Primary, Margin = new Padding(0, 9, 12, 0) };
+            // _consoleBox is created before handler so capture works — themed
             _consoleBox = new TextBox
             {
                 Multiline = true, ReadOnly = true, Font = new Font("Consolas", 9f),
-                Dock = DockStyle.Fill, BackColor = Color.FromArgb(24, 24, 27), ForeColor = Color.FromArgb(190, 230, 190),
+                Dock = DockStyle.Fill, BackColor = ThemeManager.Current.SurfaceContainerLow, ForeColor = ThemeManager.Current.OnSurface,
                 BorderStyle = BorderStyle.None, ScrollBars = ScrollBars.Vertical,
+            };
+            // keep console themed on theme switch
+            ThemeManager.ThemeChanged += () =>
+            {
+                consolePanel.BackColor = ThemeManager.Current.SurfaceContainerLow;
+                consoleHeader.BackColor = ThemeManager.Current.SurfaceContainerHigh;
+                _consoleBox.BackColor = ThemeManager.Current.SurfaceContainerLow;
+                _consoleBox.ForeColor = ThemeManager.Current.OnSurface;
+                consoleTitleLabel.ForeColor = ThemeManager.Current.OnSurfaceVariant;
+                clearLogsBtn.LinkColor = ThemeManager.Current.Primary;
+                dotsPanel.Invalidate();
             };
             clearLogsBtn.LinkClicked += (s, e) => { _consoleBox.Clear(); Log("[SYSTEM] Log cleared."); };
             consoleHeader.Controls.Add(dotsPanel, 0, 0);
