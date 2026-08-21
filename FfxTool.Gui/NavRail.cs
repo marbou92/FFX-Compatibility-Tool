@@ -148,7 +148,7 @@ namespace FfxTool.Gui
             // FAB — stitch expressive w-full aspect-square bg-primary-container rounded-2xl below logo (real SVG direct)
             var fabBounds = new Rectangle((Width - 48) / 2, logoBg.Bottom + Md3Tokens.Space3, 48, 48);
             _fabBounds = fabBounds;
-            using (var path = RoundedRect(fabBounds, Md3Tokens.CornerLarge))
+            using (var path = RoundedRect(fabBounds, Md3Tokens.CornerLargeIncreased))
             using (var brush = new SolidBrush(ThemeManager.Current.PrimaryContainer))
                 e.Graphics.FillPath(brush, path);
             Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Add, new Rectangle(fabBounds.X + 12, fabBounds.Y + 12, 24, 24), ThemeManager.Current.OnPrimaryContainer, 1.8f);

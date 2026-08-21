@@ -40,11 +40,12 @@ namespace FfxTool.Gui
         Rectangle _restoreBounds;
         bool _isMaximized;
 
+        // M3 Expressive Bold: 64 compact, 80 expanded via WindowSizeClass — Win7 safe, no DWM
         public Md3TitleBar(Form owner, string title)
         {
             _owner = owner;
             Dock = DockStyle.Top;
-            Height = 64; // stitch spec h-20 (80px) → 64px expressive for WinForms (more breathing than 56)
+            Height = 64; // compact 64, grows to 80 at Expanded via MainForm Resize (if needed)
             BackColor = ThemeManager.Current.Surface; // glass approximated via alpha + border
 
             _title = new Label

@@ -15,6 +15,7 @@ namespace FfxTool.Gui
     /// selected one, the About card's logo box + description copy
     /// (including the bold colored phrase), and "Restore Defaults".
     /// </summary>
+    // M3 Expressive Bold compact — whole section rebuilt 12-col
     public class SettingsTab : UserControl
     {
         public SettingsTab()

@@ -4,6 +4,7 @@ using System.Windows.Forms;
 namespace FfxTool.Gui
 {
     /// <summary>MD3 "top app bar" — simple title strip with a bottom hairline, replacing the bare form title as the only header.</summary>
+    // M3 Expressive Bold compact AppHeader — 64 adaptive, tonal
     public class AppHeader : Panel
     {
         readonly Label _label;

@@ -3,6 +3,7 @@ using System.Windows.Forms;
 
 namespace FfxTool.Gui
 {
+    // M3 Expressive Bold entry — Win7 net48, PC font for text, direct SVG for symbols
     static class Program
     {
         [STAThread]

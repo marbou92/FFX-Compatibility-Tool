@@ -24,6 +24,7 @@ namespace FfxTool.Gui
     /// clickable box that opens a small borderless popup Form with a
     /// custom-painted option list. Nothing native to fight.
     /// </summary>
+    // M3 Expressive Bold compact S 8 menu, real SVG caret, Win7 safe
     public class Md3Dropdown : Control
     {
         readonly List<string> _items = new List<string>();

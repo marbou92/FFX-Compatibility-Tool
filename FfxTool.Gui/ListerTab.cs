@@ -35,6 +35,7 @@ namespace FfxTool.Gui
         readonly Label _statusBarLeft;
         System.Collections.Generic.List<Pipeline.EffectInfo> _currentEffects = new System.Collections.Generic.List<Pipeline.EffectInfo>();
 
+        // M3 Expressive Bold compact adaptive — whole section rebuilt 12-col
         public ListerTab(PluginProfile profile)
         {
             _profile = profile;

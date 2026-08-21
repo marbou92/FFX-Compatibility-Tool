@@ -69,6 +69,11 @@ namespace FfxTool.Gui
         public const int CornerLegacyXL24 = 24; // keep old 24 for Win7 compat where needed
 
         public const int ContentMaxWidth = 1440; // stitch: max-w 1440 centered on ultra-wide
+        public const int ContentMaxWidthCompact = 960; // compact max for adaptive density
+
+        // Expressive 2026 motion — spring tokens for adaptive density
+        public const int MotionSpringStiff = 700;
+        public const double MotionSpringDamping = 0.85;
 
         // --- State-layer opacities (m3.material.io/foundations/interaction/states) ---
         public const int HoverStateAlpha = 20;

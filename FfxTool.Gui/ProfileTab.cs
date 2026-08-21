@@ -8,6 +8,7 @@ using FfxTool.Core;
 
 namespace FfxTool.Gui
 {
+    // M3 Expressive Bold 12-col bento — whole section rebuilt compact adaptive
     public class ProfileTab : UserControl
     {
         readonly PluginProfile _profile;

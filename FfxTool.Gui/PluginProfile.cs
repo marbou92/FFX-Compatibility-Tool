@@ -13,6 +13,7 @@ namespace FfxTool.Gui
     /// per-user app-data folder (same %APPDATA% location the Python
     /// version used on Windows) so it survives between launches.
     /// </summary>
+    // M3 Expressive history-aware profile — owns vendors + recent
     public class PluginProfile
     {
         public HashSet<string> OwnedVendors { get; set; } = new HashSet<string>();

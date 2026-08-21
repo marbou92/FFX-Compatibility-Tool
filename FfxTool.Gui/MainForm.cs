@@ -18,6 +18,9 @@ namespace FfxTool.Gui
         readonly TableLayoutPanel _body;
         readonly Md3TitleBar _titleBar;
 
+        // M3 Expressive 2026 adaptive density — compact vs spacious
+        const int CompactWidth = 840;
+        const int ExpandedWidth = 1200;
         // resize-border thickness for the WM_NCHITTEST override below —
         // wide enough to grab comfortably with a mouse, matching roughly
         // what native Windows borders feel like.

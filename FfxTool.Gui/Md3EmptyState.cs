@@ -10,6 +10,7 @@ namespace FfxTool.Gui
     /// showed a bare empty box with no guidance — not a bug exactly, but
     /// a real gap flagged in the layout/UX pass.
     /// </summary>
+    // M3 Expressive Bold compact empty-state — XL-inc 32 dashed, centered
     public class Md3EmptyState : Panel
     {
         readonly Md3Icons.Icon _icon;

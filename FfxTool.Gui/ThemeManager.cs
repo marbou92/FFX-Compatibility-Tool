@@ -16,7 +16,7 @@ namespace FfxTool.Gui
     public class Md3Theme
     {
         public Color Primary, OnPrimary, PrimaryContainer, OnPrimaryContainer;
-        public Color Surface, SurfaceContainerLowest, SurfaceContainerLow, SurfaceContainer, SurfaceContainerHigh, OnSurface, OnSurfaceVariant;
+        public Color Surface, SurfaceContainerLowest, SurfaceContainerLow, SurfaceContainer, SurfaceContainerHigh, SurfaceContainerHighest, OnSurface, OnSurfaceVariant;
         public Color Outline, OutlineVariant;
         public Color Error, ErrorContainer, OnErrorContainer;
         public Color TertiaryContainer, OnTertiaryContainer;
@@ -29,6 +29,8 @@ namespace FfxTool.Gui
         public Color NavigationSurface;
         // Alias for legacy web naming: surface-variant #F2F2F7 maps to SurfaceContainer in this WinForms token set
         public Color SurfaceVariant => SurfaceContainer;
+        public Color SurfaceBright => SurfaceContainerHighest; // expressive 2026 bright tier
+        public Color SurfaceDim => SurfaceContainerLow; // expressive dim
 
         static Color H(string hex) => ColorTranslator.FromHtml(hex);
 
@@ -47,6 +49,7 @@ namespace FfxTool.Gui
         {
             if (t.SurfaceContainerLowest.IsEmpty) t.SurfaceContainerLowest = Blend(t.Surface, t.SurfaceContainer, 0.25f);
             if (t.SurfaceContainerLow.IsEmpty) t.SurfaceContainerLow = Blend(t.Surface, t.SurfaceContainer, 0.6f);
+            if (t.SurfaceContainerHighest.IsEmpty) t.SurfaceContainerHighest = Blend(t.SurfaceContainer, t.SurfaceContainerHigh, 0.5f);
             if (t.NavigationSurface.IsEmpty) t.NavigationSurface = t.SurfaceContainerLow;
             return t;
         }

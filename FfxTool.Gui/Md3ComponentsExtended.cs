@@ -17,6 +17,7 @@ namespace FfxTool.Gui
     /// + thumb toggle, distinct from a checkbox both visually and in what
     /// it communicates (an immediate on/off state, not a list selection).
     /// Used in ProfileTab in place of a plain CheckBox.</summary>
+    // M3 Expressive Bold compact: 52×32 track, adaptive density via WindowSizeClass
     public class Md3Switch : CheckBox
     {
         const int TrackWidth = 52;

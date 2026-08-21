@@ -87,7 +87,7 @@ namespace FfxTool.Gui
             {
                 Text = "Ready to process legacy After Effects presets. Supports version translation and plugin cleanup.",
                 Font = Md3Tokens.BodyMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant,
-                AutoSize = true, MaximumSize = new Size(460, 0), TextAlign = ContentAlignment.MiddleLeft,
+                AutoSize = true, MaximumSize = new Size(400, 0), TextAlign = ContentAlignment.MiddleLeft,
                 Margin = new Padding(Md3Tokens.Space2, 6, 0, Md3Tokens.Space4),
             };
 

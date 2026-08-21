@@ -178,8 +178,8 @@ namespace FfxTool.Gui
                 default: fill = ThemeManager.Current.SurfaceContainer; outline = false; break; // Filled
             }
 
-            // expressive: Large (16) for vendor cards, use 3XL (32) manually where needed; default Large gives more expressive feel than Medium
-            using (var path = RoundedRect(bounds, Md3Tokens.CornerLarge))
+            // expressive Bold: LargeIncreased 20 for cards, XL-inc 32 for heroes (M3 2026)
+            using (var path = RoundedRect(bounds, Md3Tokens.CornerLargeIncreased))
             using (var fillBrush = new SolidBrush(fill))
             {
                 e.Graphics.FillPath(fillBrush, path);

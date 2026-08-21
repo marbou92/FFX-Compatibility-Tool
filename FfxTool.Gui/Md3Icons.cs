@@ -15,6 +15,7 @@ namespace FfxTool.Gui
     /// detailed, matching MD3's own icon style rather than skeuomorphic
     /// detail.
     /// </summary>
+    // M3 Expressive Bold Rounded Soft — real SVG paths direct, no font bundle, PC font for text
     public static class Md3Icons
     {
         public enum Icon
