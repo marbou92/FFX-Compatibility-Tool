@@ -37,12 +37,14 @@ namespace FfxTool.Gui
         const int AnimMs = 150;
 
         public event Action<int> SelectionChanged;
+        public event Action FabClicked;
 
         // Spec: rail-width 88px per stitch code.html (overrides DESIGN.md 80px) — expressive uses 88 + FAB
         public const int RailWidth = 88;
         const int LogoAreaHeight = 140; // logo 32 + FAB 56 + gaps (stitch has FAB aspect-square below logo)
         const int ItemHeight = 72; // a bit taller for expressive touch targets (was 64)
         const int PillSize = 56;   // stitch w-16 h-10 => pill 64x40, use 56x32 for WinForms balance
+        Rectangle _fabBounds;
 
         public NavRail()
         {
@@ -92,6 +94,11 @@ namespace FfxTool.Gui
 
         void OnMouseClick(object sender, MouseEventArgs e)
         {
+            if (_fabBounds.Contains(e.Location))
+            {
+                FabClicked?.Invoke();
+                return;
+            }
             for (int i = 0; i < _itemBounds.Count; i++)
             {
                 if (_itemBounds[i].Contains(e.Location) && i != _selectedIndex)
@@ -138,12 +145,13 @@ namespace FfxTool.Gui
             var logoBounds = new Rectangle((Width - logoSize) / 2, logoBg.Y + (48 - logoSize) / 2, logoSize, logoSize);
             Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Logo, logoBounds, ThemeManager.Current.Primary, 2.0f);
 
-            // FAB — stitch expressive w-full aspect-square bg-primary-container rounded-2xl below logo
+            // FAB — stitch expressive w-full aspect-square bg-primary-container rounded-2xl below logo (real SVG direct)
             var fabBounds = new Rectangle((Width - 56) / 2, logoBg.Bottom + Md3Tokens.Space3, 56, 56);
+            _fabBounds = fabBounds;
             using (var path = RoundedRect(fabBounds, Md3Tokens.CornerLarge))
             using (var brush = new SolidBrush(ThemeManager.Current.PrimaryContainer))
                 e.Graphics.FillPath(brush, path);
-            Md3Icons.Draw(e.Graphics, Md3Icons.Icon.FolderOpen, new Rectangle(fabBounds.X + 16, fabBounds.Y + 16, 24, 24), ThemeManager.Current.OnPrimaryContainer, 1.8f);
+            Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Add, new Rectangle(fabBounds.X + 16, fabBounds.Y + 16, 24, 24), ThemeManager.Current.OnPrimaryContainer, 1.8f);
 
             using (var pen = new Pen(Color.FromArgb(60, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B)))
                 e.Graphics.DrawLine(pen, Md3Tokens.Space4, LogoAreaHeight - Md3Tokens.Space2, Width - Md3Tokens.Space4, LogoAreaHeight - Md3Tokens.Space2);

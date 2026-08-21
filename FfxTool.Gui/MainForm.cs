@@ -48,6 +48,15 @@ namespace FfxTool.Gui
             _settingsTab = new SettingsTab { Dock = DockStyle.Fill, Visible = false };
 
             _contentHost = new Panel { Dock = DockStyle.Fill, BackColor = ThemeManager.Current.Surface, Padding = new Padding(Md3Tokens.Space8), AutoScroll = true };
+            // M3 12-col: content max 1440 centered — keep 32 margin, 24 gutter via Space8/Space6
+            _contentHost.Resize += (s, e) =>
+            {
+                int maxW = Md3Tokens.ContentMaxWidth; // 1440
+                int avail = _contentHost.ClientSize.Width;
+                int pad = avail > maxW ? (avail - maxW) / 2 : Md3Tokens.Space8;
+                pad = Math.Max(Md3Tokens.Space6, pad);
+                _contentHost.Padding = new Padding(pad, Md3Tokens.Space8, pad, Md3Tokens.Space8);
+            };
             _contentHost.Controls.Add(_settingsTab);
             _contentHost.Controls.Add(_convertTab);
             _contentHost.Controls.Add(_profileTab);
@@ -113,6 +122,18 @@ namespace FfxTool.Gui
             _navRail.AddItem("Convert", _convertTab, Md3Icons.Icon.Convert);
             _navRail.AddItem("Settings", _settingsTab, Md3Icons.Icon.Settings, pinned: true);
             _navRail.SelectionChanged += OnNavSelectionChanged;
+            _navRail.FabClicked += () =>
+            {
+                using (var dlg = new OpenFileDialog { Filter = "After Effects Presets (*.ffx)|*.ffx" })
+                {
+                    if (dlg.ShowDialog() != DialogResult.OK) return;
+                    var path = dlg.FileName;
+                    if (_listerTab.Visible) _listerTab.LoadFile(path);
+                    else if (_convertTab.Visible) _convertTab.LoadFileForConvert(path);
+                    else { _listerTab.LoadFile(path); ShowTab(0); }
+                    try { HistoryStore.Push(path); } catch { }
+                }
+            };
 
             _titleBar = new Md3TitleBar(this, "FFX Compatibility Tool");
 

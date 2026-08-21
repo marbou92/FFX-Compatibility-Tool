@@ -207,7 +207,7 @@ namespace FfxTool.Gui
             {
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                 var margin = 32;
-                var bounds = new Rectangle(margin, margin, container.Width - margin * 2, Math.Max(360, container.Height - margin * 2));
+                var bounds = new Rectangle(margin, margin, container.Width - margin * 2, Math.Min(420, Math.Max(240, container.Height - margin * 2)));
                 using (var pen = new Pen(Color.FromArgb(120, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B), 1.8f) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dash })
                 using (var path = RoundedRect(bounds, Md3Tokens.CornerExtraLarge)) // 24 => 32px visual
                 {
