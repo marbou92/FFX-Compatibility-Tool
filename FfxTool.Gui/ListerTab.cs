@@ -65,13 +65,10 @@ namespace FfxTool.Gui
             var heading = new Label { Text = "Effect Lister", Font = new Font(Md3Tokens.HeadlineMedium.FontFamily, 22f, FontStyle.Bold), ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
             ThemeManager.ThemeChanged += () => heading.ForeColor = ThemeManager.Current.OnSurface;
 
-            // --- header row: open button, "info + no file loaded" pill, filter/sort icons ---
-            var headerRow = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 1, AutoSize = true };
-            headerRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            headerRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            headerRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            // --- header row: FlowLayout wrap (M3 adaptive) so pill/icons never clip at 960px ---
+            var headerRow = new FlowLayoutPanel { Dock = DockStyle.Top, FlowDirection = FlowDirection.LeftToRight, AutoSize = true, WrapContents = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
 
-            var openBtn = new Md3Button { Text = "Open .ffx file…", Icon = Md3Icons.Icon.FolderOpen, Width = 180, Margin = new Padding(0, 0, Md3Tokens.Space4, Md3Tokens.Space4) };
+            var openBtn = new Md3Button { Text = "Open .ffx file…", Icon = Md3Icons.Icon.FolderOpen, Width = 180, Margin = new Padding(0, 0, Md3Tokens.Space4, Md3Tokens.Space2) };
             openBtn.Click += (s, e) => OpenFile();
 
             // real design: an "info" icon + text inside a bordered pill,
@@ -98,13 +95,13 @@ namespace FfxTool.Gui
             fileChip.Controls.Add(_fileChipLabel);
             fileChip.Width = 38 + TextRenderer.MeasureText("No file loaded", Md3Tokens.BodyMedium).Width + Md3Tokens.Space3;
 
-            var iconButtonsRow = new FlowLayoutPanel { Dock = DockStyle.Right, AutoSize = true, FlowDirection = FlowDirection.RightToLeft, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
-            iconButtonsRow.Controls.Add(MakeIconButton(Md3Icons.Icon.Convert, "Sort"));  // closest existing glyph to "sort" — real Material Symbols "sort" comes in Phase 7
-            iconButtonsRow.Controls.Add(MakeIconButton(Md3Icons.Icon.Palette, "Filter")); // placeholder glyph until Phase 7's real icon font
+            var iconButtonsRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(Md3Tokens.Space4, 0, 0, Md3Tokens.Space2) };
+            iconButtonsRow.Controls.Add(MakeIconButton(Md3Icons.Icon.Palette, "Filter"));
+            iconButtonsRow.Controls.Add(MakeIconButton(Md3Icons.Icon.Convert, "Sort"));
 
-            headerRow.Controls.Add(openBtn, 0, 0);
-            headerRow.Controls.Add(fileChip, 1, 0);
-            headerRow.Controls.Add(iconButtonsRow, 2, 0);
+            headerRow.Controls.Add(openBtn);
+            headerRow.Controls.Add(fileChip);
+            headerRow.Controls.Add(iconButtonsRow);
 
             // --- data table ---
             _list = new ListView
@@ -146,6 +143,17 @@ namespace FfxTool.Gui
             _list.Columns.Add("Effect Name", 260);
             _list.Columns.Add("Plugin Vendor", 320);
             _list.Columns.Add("Compatibility", 220);
+            // M3 adaptive: responsive column weights (32/42/26) instead of fixed overflow at 800px
+            _list.Resize += (s, e) =>
+            {
+                if (_list.Width > 100)
+                {
+                    int w = _list.Width - 24; // scrollbar
+                    _list.Columns[0].Width = Math.Max(140, w * 32 / 100);
+                    _list.Columns[1].Width = Math.Max(180, w * 42 / 100);
+                    _list.Columns[2].Width = Math.Max(140, w * 26 / 100);
+                }
+            };
 
             _emptyState = BuildEmptyState();
             _listHost = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, Md3Tokens.Space2, 0, Md3Tokens.Space2) };
@@ -237,8 +245,8 @@ namespace FfxTool.Gui
             container.Controls.Add(cardsRow);
             container.Resize += (s, e) =>
             {
-                ctaBtn.Location = new Point((container.Width - ctaBtn.Width) / 2, container.Height / 2 + 60);
-                cardsRow.Location = new Point((container.Width - cardsRow.Width) / 2, container.Height / 2 + 120);
+                ctaBtn.Location = new Point((container.Width - ctaBtn.Width) / 2, container.Height / 2 + 90);
+                cardsRow.Location = new Point((container.Width - cardsRow.Width) / 2, container.Height / 2 + 150);
             };
 
             return container;
@@ -305,6 +313,12 @@ namespace FfxTool.Gui
             try
             {
                 _fileChipLabel.Text = Path.GetFileName(path);
+                var chip = _fileChipLabel.Parent as Panel;
+                if (chip != null)
+                {
+                    chip.Width = 38 + TextRenderer.MeasureText(_fileChipLabel.Text, Md3Tokens.BodyMedium).Width + Md3Tokens.Space6;
+                    chip.Invalidate();
+                }
                 var data = File.ReadAllBytes(path);
                 _currentEffects = Pipeline.ListEffects(data);
                 Refresh_();
@@ -313,6 +327,12 @@ namespace FfxTool.Gui
             {
                 MessageBox.Show(this, $"Failed to read '{Path.GetFileName(path)}':\n{ex.Message}", "Load failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 _fileChipLabel.Text = "No file loaded";
+                var chip = _fileChipLabel.Parent as Panel;
+                if (chip != null)
+                {
+                    chip.Width = 38 + TextRenderer.MeasureText(_fileChipLabel.Text, Md3Tokens.BodyMedium).Width + Md3Tokens.Space6;
+                    chip.Invalidate();
+                }
                 _currentEffects = new System.Collections.Generic.List<Pipeline.EffectInfo>();
                 Refresh_();
             }

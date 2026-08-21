@@ -37,26 +37,23 @@ namespace FfxTool.Gui
         {
             _profile = profile;
             BackColor = ThemeManager.Current.Surface;
-            AutoScroll = true;
+            AutoScroll = false; // single scroll owned by MainForm._contentHost (prevents nested scrollbars)
             AllowDrop = true;
             DragEnter += OnDragEnter;
             DragDrop += OnDragDrop;
 
-            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 6, AutoScroll = true };
+            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 6, AutoScroll = false };
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // heading
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // status row
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // callout
-            root.RowStyles.Add(new RowStyle(SizeType.Percent, 50)); // list host
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // list host — takes remaining, outer scroll handles overflow
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // target
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 220)); // console
             var heading = new Label { Text = "Convert Preset", Font = new Font(Md3Tokens.HeadlineMedium.FontFamily, 22f, FontStyle.Bold), ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
             ThemeManager.ThemeChanged += () => heading.ForeColor = ThemeManager.Current.OnSurface;
 
-            // --- status row: Open button + pill + description ---
-            var statusRow = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 3, RowCount = 1, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-            statusRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            statusRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            statusRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            // --- status row: FlowLayout wrap so pill + desc never clip at 960px (M3 adaptive) ---
+            var statusRow = new FlowLayoutPanel { Dock = DockStyle.Top, FlowDirection = FlowDirection.LeftToRight, AutoSize = true, WrapContents = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
 
             var openBtn = new Md3Button { Text = "Open .ffx file…", Icon = Md3Icons.Icon.FolderOpen, Width = 180, Margin = new Padding(0, 0, Md3Tokens.Space4, Md3Tokens.Space4) };
             openBtn.Click += (s, e) => OpenFile();
@@ -90,13 +87,13 @@ namespace FfxTool.Gui
             {
                 Text = "Ready to process legacy After Effects presets. Supports version translation and plugin cleanup.",
                 Font = Md3Tokens.BodyMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant,
-                AutoSize = true, MaximumSize = new Size(380, 0), TextAlign = ContentAlignment.TopRight, Anchor = AnchorStyles.Right,
-                Margin = new Padding(Md3Tokens.Space2, Md3Tokens.Space2, 0, Md3Tokens.Space4),
+                AutoSize = true, MaximumSize = new Size(460, 0), TextAlign = ContentAlignment.MiddleLeft,
+                Margin = new Padding(Md3Tokens.Space2, 6, 0, Md3Tokens.Space4),
             };
 
-            statusRow.Controls.Add(openBtn, 0, 0);
-            statusRow.Controls.Add(statusChip, 1, 0);
-            statusRow.Controls.Add(descLabel, 2, 0);
+            statusRow.Controls.Add(openBtn);
+            statusRow.Controls.Add(statusChip);
+            statusRow.Controls.Add(descLabel);
 
             // --- Intelligent Conversion callout — stitch rounded-[32px] with gradient top accent ---
             var callout = new Md3Card { Variant = Md3CardVariant.Filled, Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
@@ -122,24 +119,21 @@ namespace FfxTool.Gui
             // --- data table host ---
             _effectList = new CheckedListBox { Dock = DockStyle.Fill, Font = Md3Tokens.BodyMedium };
             _effectListEmptyState = BuildEmptyState();
-            _effectListHost = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, Md3Tokens.Space4), MinimumSize = new Size(0, 200), AutoScroll = false };
+            _effectListHost = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, Md3Tokens.Space4), MinimumSize = new Size(0, 160), AutoScroll = false };
             _effectListHost.Controls.Add(_effectList);
             _effectListHost.Controls.Add(_effectListEmptyState);
             _effectList.Visible = false;
 
-            // --- target version + encoding options + convert button — responsive ---
-            var targetRow = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 3, RowCount = 1, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
-            targetRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 220));
-            targetRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            targetRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 160));
+            // --- target version + encoding options + convert button — expressive wrap (M3 adaptive) ---
+            var targetRow = new FlowLayoutPanel { Dock = DockStyle.Top, FlowDirection = FlowDirection.LeftToRight, AutoSize = true, WrapContents = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
 
-            var targetCol = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Dock = DockStyle.Fill };
+            var targetCol = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0, 0, Md3Tokens.Space4, 0) };
             targetCol.Controls.Add(new Label { Text = "Target version", Font = Md3Tokens.LabelMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space1) });
             _targetCombo = new Md3Dropdown { Width = 200 };
             _targetCombo.SetItems(Pipeline.KnownVersions.Keys.OrderBy(k => k).Select(DisplayNameFor), 0);
             targetCol.Controls.Add(_targetCombo);
 
-            var encodingCol = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Dock = DockStyle.Fill };
+            var encodingCol = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0, 0, Md3Tokens.Space4, 0) };
             encodingCol.Controls.Add(new Label { Text = "Encoding Options", Font = Md3Tokens.LabelMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space1) });
             var cleanMetadataCheck = new Md3Checkbox { Text = "Clean Metadata", Checked = true, Enabled = false, Width = 180, Height = 24 };
             var tip = new ToolTip();
@@ -148,16 +142,15 @@ namespace FfxTool.Gui
             encodingCol.Controls.Add(cleanMetadataCheck);
             encodingCol.Controls.Add(_overwriteCheck);
 
-            _convertBtn = new Md3Button { Text = "Convert…", Icon = Md3Icons.Icon.Convert, Width = 150, Height = 46, Enabled = false, Anchor = AnchorStyles.Right };
+            _convertBtn = new Md3Button { Text = "Convert…", Icon = Md3Icons.Icon.Convert, Width = 150, Height = 46, Enabled = false };
             _convertBtn.Click += (s, e) => DoConvert();
-            var convertHost = new Panel { Dock = DockStyle.Fill, Height = 46 };
+            var convertHost = new Panel { AutoSize = true, Height = 46, Margin = new Padding(Md3Tokens.Space4, Md3Tokens.Space4, 0, 0) };
             convertHost.Controls.Add(_convertBtn);
-            _convertBtn.Location = new Point(10, 0);
-            convertHost.Resize += (s, e) => _convertBtn.Location = new Point(Math.Max(0, convertHost.Width - _convertBtn.Width), (convertHost.Height - _convertBtn.Height) / 2);
+            _convertBtn.Location = new Point(0, 0);
 
-            targetRow.Controls.Add(targetCol, 0, 0);
-            targetRow.Controls.Add(encodingCol, 1, 0);
-            targetRow.Controls.Add(convertHost, 2, 0);
+            targetRow.Controls.Add(targetCol);
+            targetRow.Controls.Add(encodingCol);
+            targetRow.Controls.Add(convertHost);
 
             // --- console panel — fixed height 220, header 32 with real Label so CONSOLE OUTPUT never clips ---
             var consolePanel = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(24, 24, 27) };
@@ -291,7 +284,7 @@ namespace FfxTool.Gui
             var browseBtn = new Md3Button { Text = "Browse Files", Icon = Md3Icons.Icon.Check, Variant = Md3ButtonVariant.Outlined, Width = 150, Height = 36 };
             browseBtn.Click += (s, e) => OpenFile();
             container.Controls.Add(browseBtn);
-            container.Resize += (s, e) => browseBtn.Location = new Point((container.Width - browseBtn.Width) / 2, container.Height / 2 + 60);
+            container.Resize += (s, e) => browseBtn.Location = new Point((container.Width - browseBtn.Width) / 2, container.Height / 2 + 90);
             browseBtn.Location = new Point(100, 100); // initial, will be corrected on Resize
             return container;
         }

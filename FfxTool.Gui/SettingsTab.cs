@@ -42,7 +42,7 @@ namespace FfxTool.Gui
 
         Control BuildAppearanceCard()
         {
-            var card = new Md3Card { Variant = Md3CardVariant.Filled, Width = 460, AutoSize = true, Padding = new Padding(Md3Tokens.Space6), Margin = new Padding(0, 0, Md3Tokens.Space6, 0) };
+            var card = new Md3Card { Variant = Md3CardVariant.Filled, Width = 460, AutoSize = true, Padding = new Padding(Md3Tokens.Space6), Margin = new Padding(0, 0, Md3Tokens.Space6, 0), MinimumSize = new Size(320, 0) };
             var flow = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false };
 
             var headerRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
@@ -52,10 +52,9 @@ namespace FfxTool.Gui
             headerRow.Controls.Add(new Label { Text = "Appearance", Font = Md3Tokens.TitleLarge, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(Md3Tokens.Space2, 2, 0, 0) });
             flow.Controls.Add(headerRow);
 
-            // "Dark Mode" sub-panel — a rounded surface-container row
-            // inside the card, matching the real design's nested-surface
-            // treatment (not just a bare label + switch).
-            var darkRow = new Panel { Width = 400, Height = 64, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
+            // "Dark Mode" sub-panel — responsive width (fills card, not fixed 400)
+            var darkRow = new Panel { Width = 412, Height = 64, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
+            card.Resize += (s, e) => { darkRow.Width = Math.Max(280, card.ClientWidth - Md3Tokens.Space4); darkSwitch.Location = new Point(darkRow.Width - 68, 16); };
             darkRow.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
@@ -71,7 +70,7 @@ namespace FfxTool.Gui
             flow.Controls.Add(darkRow);
 
             flow.Controls.Add(new Label { Text = "Color palette", Font = Md3Tokens.TitleSmall, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) });
-            var paletteRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, WrapContents = false };
+            var paletteRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, WrapContents = true };
             foreach (Md3Palette p in System.Enum.GetValues(typeof(Md3Palette)))
                 paletteRow.Controls.Add(BuildPaletteSwatch(p));
             flow.Controls.Add(paletteRow);
@@ -141,7 +140,7 @@ namespace FfxTool.Gui
 
         Control BuildAboutCard()
         {
-            var card = new Md3Card { Variant = Md3CardVariant.Elevated, Width = 400, AutoSize = true, Padding = new Padding(Md3Tokens.Space6) };
+            var card = new Md3Card { Variant = Md3CardVariant.Elevated, Width = 400, AutoSize = true, Padding = new Padding(Md3Tokens.Space6), MinimumSize = new Size(320, 0) };
             var flow = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false };
 
             var headerRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
@@ -175,6 +174,7 @@ namespace FfxTool.Gui
 
             var divider = new Panel { Width = 340, Height = 1, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
             divider.Paint += (s, e) => { using (var pen = new Pen(ThemeManager.Current.OutlineVariant)) e.Graphics.DrawLine(pen, 0, 0, divider.Width, 0); };
+            card.Resize += (s, e) => divider.Width = Math.Max(280, card.ClientWidth - Md3Tokens.Space6 * 2);
             flow.Controls.Add(divider);
 
             // Real design bolds/colors one phrase inline within the

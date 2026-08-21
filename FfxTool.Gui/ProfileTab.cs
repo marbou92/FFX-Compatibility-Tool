@@ -76,18 +76,30 @@ namespace FfxTool.Gui
             var grid = new FlowLayoutPanel
             {
                 AutoSize = true, WrapContents = true, FlowDirection = FlowDirection.LeftToRight,
-                MaximumSize = new Size(920, 0), // caps at ~3 cols (280*3+ gaps) then wraps to 2/1 cols on narrow
+                Dock = DockStyle.Top, // responsive: fills available width, wraps naturally (no fixed 920 cap)
                 Margin = new Padding(0, 0, 0, Md3Tokens.Space8),
+            };
+            // adaptive: shrink cards slightly on narrow (M3 medium vs expanded)
+            Resize += (s, e) =>
+            {
+                int avail = Width - 32;
+                if (avail < 620 && grid.Controls.Count > 0)
+                {
+                    // compact: 1 col, cards stretch
+                    foreach (Control c in grid.Controls) c.Width = Math.Max(260, avail - 16);
+                }
+                else if (avail < 900)
+                {
+                    foreach (Control c in grid.Controls) c.Width = cardW;
+                }
             };
             foreach (var vendor in vendors)
                 grid.Controls.Add(BuildVendorCard(vendor, cardW, cardH));
             grid.Controls.Add(BuildAddCustomCard(cardW, cardH));
             root.Controls.Add(grid);
 
-            // --- footer: Automatic Plugin Discovery ---
-            var footer = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, RowCount = 1 };
-            footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
-            footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
+            // --- footer: Automatic Plugin Discovery — FlowLayout wrap at compact (M3 adaptive) ---
+            var footer = new FlowLayoutPanel { AutoSize = true, WrapContents = true, FlowDirection = FlowDirection.LeftToRight, Dock = DockStyle.Top };
 
             var footerLeft = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
             footerLeft.Controls.Add(new Label
@@ -118,8 +130,8 @@ namespace FfxTool.Gui
                 AutoSize = true, Margin = new Padding(0, Md3Tokens.Space1, 0, 0),
             });
 
-            footer.Controls.Add(footerLeft, 0, 0);
-            footer.Controls.Add(footerRight, 1, 0);
+            footer.Controls.Add(footerLeft);
+            footer.Controls.Add(footerRight);
 
             var divider = new Panel { Height = 1, Dock = DockStyle.Top, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
             divider.Paint += (s, e) => { using (var pen = new Pen(ThemeManager.Current.OutlineVariant)) e.Graphics.DrawLine(pen, 0, 0, divider.Width, 0); };
@@ -151,12 +163,12 @@ namespace FfxTool.Gui
             var title = new Label
             {
                 Text = vendor, Font = Md3Tokens.TitleSmall, ForeColor = ThemeManager.Current.OnSurface,
-                AutoSize = true, Location = new Point(iconBox.Right + Md3Tokens.Space3, iconBox.Top + 2),
+                AutoSize = true, BackColor = Color.Transparent, Location = new Point(iconBox.Right + Md3Tokens.Space3, iconBox.Top + 2),
             };
             var subtitle = new Label
             {
                 Text = suites, Font = Md3Tokens.LabelSmall, ForeColor = ThemeManager.Current.OnSurfaceVariant,
-                AutoSize = true, MaximumSize = new Size(w - iconBox.Right - Md3Tokens.Space4 - 62, 32),
+                AutoSize = true, BackColor = Color.Transparent, MaximumSize = new Size(w - iconBox.Right - Md3Tokens.Space4 - 62, 32),
                 Location = new Point(iconBox.Right + Md3Tokens.Space3, title.Bottom + 1),
             };
 

@@ -45,7 +45,7 @@ namespace FfxTool.Gui
             _convertTab = new ConvertTab(_profile) { Dock = DockStyle.Fill, Visible = false };
             _settingsTab = new SettingsTab { Dock = DockStyle.Fill, Visible = false };
 
-            _contentHost = new Panel { Dock = DockStyle.Fill, BackColor = ThemeManager.Current.SurfaceContainerLowest, Padding = new Padding(Md3Tokens.Space8), AutoScroll = true };
+            _contentHost = new Panel { Dock = DockStyle.Fill, BackColor = ThemeManager.Current.Surface, Padding = new Padding(Md3Tokens.Space8), AutoScroll = true };
             _contentHost.Controls.Add(_settingsTab);
             _contentHost.Controls.Add(_convertTab);
             _contentHost.Controls.Add(_profileTab);
@@ -89,6 +89,7 @@ namespace FfxTool.Gui
             supportPane.Padding = new Padding(Md3Tokens.Space6);
             supportPane.Paint += (s, e) =>
             {
+                if (!supportPane.Visible) return;
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                 using (var pen = new Pen(Color.FromArgb(51, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B)))
                     e.Graphics.DrawLine(pen, 0, 0, 0, supportPane.Height);
@@ -120,8 +121,8 @@ namespace FfxTool.Gui
             _body.Controls.Add(supportPane, 2, 0);
             _navRail.Dock = DockStyle.Fill;
 
-            // expressive footer: h-12 glass with Profile + DB version (stitch footer)
-            var footer = new Panel { Dock = DockStyle.Bottom, Height = 48, BackColor = Color.FromArgb(230, ThemeManager.Current.SurfaceContainerLow.R, ThemeManager.Current.SurfaceContainerLow.G, ThemeManager.Current.SurfaceContainerLow.B) };
+            // expressive footer: h-12 glass with Profile + DB version (stitch footer) — Dock.Fill inside TableLayout cell, not Dock.Bottom
+            var footer = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(230, ThemeManager.Current.SurfaceContainerLow.R, ThemeManager.Current.SurfaceContainerLow.G, ThemeManager.Current.SurfaceContainerLow.B) };
             footer.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
