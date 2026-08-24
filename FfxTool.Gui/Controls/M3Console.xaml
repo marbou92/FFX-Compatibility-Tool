@@ -1,0 +1,42 @@
+<UserControl x:Class="FfxTool.Gui.M3Console"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Background="{DynamicResource B.SCLow}" CornerRadius="14" ClipToBounds="True">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="38"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- header: traffic dots + title + actions -->
+            <Grid Grid.Row="0" Background="Transparent">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
+                    <Ellipse Width="10" Height="10" Fill="#ED6A5E" Margin="0,0,8,0"/>
+                    <Ellipse Width="10" Height="10" Fill="#61AEEE" Margin="0,0,8,0"/>
+                    <Ellipse Width="10" Height="10" Fill="#9F78E0" Margin="0,0,12,0"/>
+                    <TextBlock Text="CONSOLE OUTPUT" FontSize="11" FontWeight="SemiBold"
+                               Foreground="{DynamicResource B.OnSurfaceVariant}" VerticalAlignment="Center"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0">
+                    <TextBlock x:Name="CopyBtn" Text="Copy" Style="{StaticResource M3Link}" Margin="0,0,14,0"
+                               MouseLeftButtonUp="Copy_Click"/>
+                    <TextBlock x:Name="ClearBtn" Text="Clear" Style="{StaticResource M3Link}"
+                               MouseLeftButtonUp="Clear_Click"/>
+                </StackPanel>
+            </Grid>
+            <Border Grid.Row="0" VerticalAlignment="Bottom" Height="1" Background="{DynamicResource B.OutlineVariant}" Opacity="0.5"/>
+
+            <!-- log lines -->
+            <ListBox x:Name="LogList" Grid.Row="1" Margin="6,4,2,6" Focusable="False"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     VirtualizingPanel.ScrollUnit="Pixel">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Text}" Foreground="{Binding Brush}" FontSize="12"
+                                   FontFamily="Consolas" TextWrapping="Wrap" Margin="8,1"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+    </Border>
+</UserControl>

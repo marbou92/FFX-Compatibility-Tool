@@ -1,13 +1,18 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- net48 — same reasoning as FfxTool.Core: last .NET version with
-         real Windows 7 support. Do not bump this. -->
-    <TargetFramework>net48</TargetFramework>
+    <!-- WPF on net48: WPF ships inside .NET Framework 4.8, so Windows 7
+         SP1 support is preserved (the whole point of net48 here) while
+         gaining real vector rendering, layout, animation and chrome. -->
     <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <LangVersion>latest</LangVersion>
-    <ApplicationIcon />
+    <Nullable>disable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>FfxTool.Gui</AssemblyName>
+    <RootNamespace>FfxTool.Gui</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

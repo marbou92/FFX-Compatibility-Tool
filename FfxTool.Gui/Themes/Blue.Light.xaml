@@ -1,0 +1,42 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- M3 Expressive 2026 — Blue seed, Light mode (values trace to the original design spec) -->
+    <Color x:Key="P.Primary">#005BBF</Color>
+    <Color x:Key="P.OnPrimary">#FFFFFF</Color>
+    <Color x:Key="P.PrimaryContainer">#1A73E8</Color>
+    <Color x:Key="P.OnPrimaryContainer">#FFFFFF</Color>
+    <Color x:Key="P.Surface">#FAF9FC</Color>
+    <Color x:Key="P.SCLowest">#FFFFFF</Color>
+    <Color x:Key="P.SCLow">#F5F3F7</Color>
+    <Color x:Key="P.SC">#EFEDF1</Color>
+    <Color x:Key="P.SCHigh">#E9E7EB</Color>
+    <Color x:Key="P.SCHighest">#E3E1E6</Color>
+    <Color x:Key="P.OnSurface">#1A1B20</Color>
+    <Color x:Key="P.OnSurfaceVariant">#44474E</Color>
+    <Color x:Key="P.Outline">#73787F</Color>
+    <Color x:Key="P.OutlineVariant">#C3C6CF</Color>
+    <Color x:Key="P.Error">#BA1A1A</Color>
+    <Color x:Key="P.ErrorContainer">#FFDAD6</Color>
+    <Color x:Key="P.OnErrorContainer">#410002</Color>
+    <Color x:Key="P.TertiaryContainer">#7C5DF0</Color>
+    <Color x:Key="P.OnTertiaryContainer">#050021</Color>
+    <SolidColorBrush x:Key="B.Primary" Color="{StaticResource P.Primary}"/>
+    <SolidColorBrush x:Key="B.OnPrimary" Color="{StaticResource P.OnPrimary}"/>
+    <SolidColorBrush x:Key="B.PrimaryContainer" Color="{StaticResource P.PrimaryContainer}"/>
+    <SolidColorBrush x:Key="B.OnPrimaryContainer" Color="{StaticResource P.OnPrimaryContainer}"/>
+    <SolidColorBrush x:Key="B.Surface" Color="{StaticResource P.Surface}"/>
+    <SolidColorBrush x:Key="B.SCLowest" Color="{StaticResource P.SCLowest}"/>
+    <SolidColorBrush x:Key="B.SCLow" Color="{StaticResource P.SCLow}"/>
+    <SolidColorBrush x:Key="B.SC" Color="{StaticResource P.SC}"/>
+    <SolidColorBrush x:Key="B.SCHigh" Color="{StaticResource P.SCHigh}"/>
+    <SolidColorBrush x:Key="B.SCHighest" Color="{StaticResource P.SCHighest}"/>
+    <SolidColorBrush x:Key="B.OnSurface" Color="{StaticResource P.OnSurface}"/>
+    <SolidColorBrush x:Key="B.OnSurfaceVariant" Color="{StaticResource P.OnSurfaceVariant}"/>
+    <SolidColorBrush x:Key="B.Outline" Color="{StaticResource P.Outline}"/>
+    <SolidColorBrush x:Key="B.OutlineVariant" Color="{StaticResource P.OutlineVariant}"/>
+    <SolidColorBrush x:Key="B.Error" Color="{StaticResource P.Error}"/>
+    <SolidColorBrush x:Key="B.ErrorContainer" Color="{StaticResource P.ErrorContainer}"/>
+    <SolidColorBrush x:Key="B.OnErrorContainer" Color="{StaticResource P.OnErrorContainer}"/>
+    <SolidColorBrush x:Key="B.TertiaryContainer" Color="{StaticResource P.TertiaryContainer}"/>
+    <SolidColorBrush x:Key="B.OnTertiaryContainer" Color="{StaticResource P.OnTertiaryContainer}"/>
+</ResourceDictionary>

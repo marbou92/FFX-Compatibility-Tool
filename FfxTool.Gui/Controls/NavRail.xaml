@@ -1,0 +1,62 @@
+<UserControl x:Class="FfxTool.Gui.NavRail"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:FfxTool.Gui"
+             Width="88">
+    <!-- M3 Expressive nav rail: brand mark, expressive FAB, icon-over-label
+         items with a spring-animated active-indicator pill (built in code). -->
+    <Border Background="{DynamicResource B.SCLow}" BorderBrush="{DynamicResource B.OutlineVariant}" BorderThickness="0,0,1,0">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="136"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0">
+                <Border Width="48" Height="48" CornerRadius="12" HorizontalAlignment="Center" Margin="0,16,0,0"
+                        Background="{DynamicResource B.PrimaryContainer}" Opacity="0.55">
+                    <controls:IconGlyph IconName="Logo" Width="28" Height="28"
+                                        Foreground="{DynamicResource B.Primary}"/>
+                </Border>
+                <Button x:Name="Fab" Width="56" Height="56" HorizontalAlignment="Center" Margin="0,12,0,0"
+                        Background="{DynamicResource B.PrimaryContainer}" Focusable="False"
+                        Cursor="Hand" ToolTip="Open a .ffx file">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="18">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bg" Property="Opacity" Value="0.88"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bg" Property="Opacity" Value="0.75"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                    <controls:IconGlyph x:Name="FabIcon" IconName="Add" Width="26" Height="26"
+                                        Foreground="{DynamicResource B.OnPrimaryContainer}"
+                                        RenderTransformOrigin="0.5,0.5">
+                        <controls:IconGlyph.RenderTransform>
+                            <RotateTransform Angle="0"/>
+                        </controls:IconGlyph.RenderTransform>
+                    </controls:IconGlyph>
+                </Button>
+            </StackPanel>
+
+            <Grid Grid.Row="1">
+                <Canvas x:Name="PillLayer" IsHitTestVisible="False">
+                    <Border x:Name="Pill" Width="48" Height="48" CornerRadius="24"
+                            Background="{DynamicResource B.PrimaryContainer}" Canvas.Left="20">
+                        <Border.RenderTransform>
+                            <TranslateTransform x:Name="PillMove" Y="8"/>
+                        </Border.RenderTransform>
+                    </Border>
+                </Canvas>
+                <StackPanel x:Name="Items"/>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

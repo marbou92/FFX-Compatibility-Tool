@@ -1,0 +1,70 @@
+<Window x:Class="FfxTool.Gui.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:controls="clr-namespace:FfxTool.Gui"
+        Title="FFX Compatibility Tool" Width="1180" Height="740"
+        MinWidth="960" MinHeight="620" WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource B.Surface}"
+        WindowStyle="None" AllowsTransparency="False" ResizeMode="CanResize">
+
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="64" ResizeBorderThickness="6"
+                            GlassFrameThickness="0" CornerRadius="0"
+                            UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="64"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="44"/>
+        </Grid.RowDefinitions>
+
+        <!-- ============ custom title bar (native drag/snap via WindowChrome) ============ -->
+        <Grid Grid.Row="0" Background="{DynamicResource B.Surface}">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="24,0,0,0">
+                <controls:IconGlyph IconName="Logo" Width="24" Height="24"
+                                    Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
+                <TextBlock Text="FFX Compatibility Tool" FontSize="16" FontWeight="SemiBold"
+                           Foreground="{DynamicResource B.OnSurface}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"
+                        WindowChrome.IsHitTestVisibleInChrome="True">
+                <Button x:Name="MinBtn" Style="{StaticResource ChromeButton}" ToolTip="Minimize">
+                    <controls:IconGlyph IconName="Minimize" Width="16" Height="16"/>
+                </Button>
+                <Button x:Name="MaxBtn" Style="{StaticResource ChromeButton}" ToolTip="Maximize">
+                    <controls:IconGlyph x:Name="MaxIcon" IconName="Maximize" Width="15" Height="15"/>
+                </Button>
+                <Button x:Name="CloseBtn" Style="{StaticResource ChromeButton}" ToolTip="Close">
+                    <controls:IconGlyph IconName="Close" Width="16" Height="16"/>
+                </Button>
+            </StackPanel>
+            <Border VerticalAlignment="Bottom" Height="1" Background="{DynamicResource B.OutlineVariant}" Opacity="0.6"/>
+        </Grid>
+
+        <!-- ============ body: rail + page host ============ -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="88"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <controls:NavRail x:Name="Rail" Grid.Column="0"/>
+            <ContentControl x:Name="PageHost" Grid.Column="1"/>
+        </Grid>
+
+        <!-- ============ status footer ============ -->
+        <Grid Grid.Row="2" Background="{DynamicResource B.SCLow}">
+            <Border VerticalAlignment="Top" Height="1" Background="{DynamicResource B.OutlineVariant}" Opacity="0.6"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="24,0,0,0">
+                <Ellipse Width="9" Height="9" Fill="#22C55E" VerticalAlignment="Center"/>
+                <TextBlock x:Name="FooterLeft" Text="Profile: 0 vendor(s)" FontSize="11.5"
+                           Foreground="{DynamicResource B.OnSurfaceVariant}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock x:Name="FooterRight" Text="Plugin DB: — entries" FontSize="11.5"
+                       Foreground="{DynamicResource B.OnSurfaceVariant}" HorizontalAlignment="Right"
+                       Margin="0,0,24,0" VerticalAlignment="Center"/>
+        </Grid>
+    </Grid>
+</Window>

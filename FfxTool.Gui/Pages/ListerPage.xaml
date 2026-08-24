@@ -1,0 +1,138 @@
+<UserControl x:Class="FfxTool.Gui.ListerPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:FfxTool.Gui"
+             AllowDrop="True" DragEnter="Page_DragEnter" Drop="Page_Drop">
+    <Grid Margin="32,24,32,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Effect Lister" Style="{StaticResource TitlePage}" Margin="0,0,0,20"/>
+
+        <!-- ============ workspace ============ -->
+        <Grid Grid.Row="1">
+            <!-- empty state -->
+            <Border x:Name="EmptyState" CornerRadius="28" Background="Transparent" Margin="8">
+                <Grid>
+                    <Rectangle x:Name="EmptyDash" RadiusX="28" RadiusY="28" Fill="{DynamicResource B.SCLow}"
+                               Stroke="{DynamicResource B.OutlineVariant}" StrokeThickness="1.6"
+                               StrokeDashArray="4 3" IsHitTestVisible="False"/>
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Border Width="84" Height="84" CornerRadius="42" Background="{DynamicResource B.SCHigh}"
+                                HorizontalAlignment="Center" Margin="0,0,0,16">
+                            <controls:IconGlyph IconName="FolderOpen" Width="42" Height="42"
+                                                Foreground="{DynamicResource B.OnSurfaceVariant}"/>
+                        </Border>
+                        <TextBlock Text="No preset loaded" FontSize="20" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource B.OnSurface}" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                        <TextBlock Text="Open a .ffx file to see its effects and check them against your plugin profile. You can also drag and drop a file directly into this workspace."
+                                   Style="{StaticResource BodySecondary}" TextAlignment="Center" MaxWidth="460"
+                                   TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,0,0,18"/>
+                        <Button Content="Open .ffx file" Width="170" Click="Open_Click" HorizontalAlignment="Center" Margin="0,0,0,22"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Border Style="{StaticResource Card}" Width="196" Padding="16" Opacity="0.55" Margin="0,0,12,0"
+                                    ToolTip="Not yet implemented">
+                                <StackPanel Orientation="Horizontal">
+                                    <controls:IconGlyph IconName="AutoAwesome" Width="22" Height="22"
+                                                        Foreground="{DynamicResource B.OnSurfaceVariant}" VerticalAlignment="Center"/>
+                                    <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="Auto-Analyze" Style="{StaticResource Body}" FontWeight="Medium" FontSize="12.5"/>
+                                        <TextBlock Text="Verify compatibility on load" Style="{StaticResource Caption}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="RecentCard" Style="{StaticResource Card}" Width="220" Padding="16"
+                                    MouseLeftButtonUp="Recent_Click" Cursor="Hand">
+                                <StackPanel Orientation="Horizontal">
+                                    <controls:IconGlyph IconName="History" Width="22" Height="22"
+                                                        Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
+                                    <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="Recent Files" Style="{StaticResource Body}" FontWeight="Medium" FontSize="12.5"/>
+                                        <TextBlock x:Name="RecentText" Text="View last 5 analyzed presets"
+                                                   Style="{StaticResource Caption}" TextTrimming="CharacterEllipsis" MaxWidth="160"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- list -->
+            <Grid x:Name="ListHost" Visibility="Collapsed" Margin="8,0,8,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <!-- column header -->
+                <Grid Grid.Row="0" Margin="14,0,14,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="1.2*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="EFFECT NAME" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Column="1" Text="PLUGIN VENDOR" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Column="2" Text="COMPATIBILITY" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                </Grid>
+                <ListBox x:Name="EffectList" Grid.Row="1" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         VirtualizingPanel.ScrollUnit="Pixel" Focusable="False">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{Binding RowBrush}" CornerRadius="10" Padding="14,9" Margin="0,1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2*"/>
+                                        <ColumnDefinition Width="2*"/>
+                                        <ColumnDefinition Width="1.2*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="Medium"
+                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding VendorLabel}" Style="{StaticResource BodySecondary}"
+                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding Status}" Style="{StaticResource Body}"
+                                               VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Grid>
+
+        <!-- ============ header + status bar ============ -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Height="0"/>
+
+        <Grid Grid.Row="2" Margin="0,14,0,0">
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="OpenBtn" Content="Open .ffx file…" Width="170" Click="Open_Click"/>
+                <Border Style="{StaticResource Chip}" Margin="12,0,0,0">
+                    <StackPanel Orientation="Horizontal">
+                        <controls:IconGlyph IconName="Info" Width="16" Height="16"
+                                            Foreground="{DynamicResource B.OnSurfaceVariant}" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="FileChipText" Text="No file loaded" Style="{StaticResource BodySecondary}"
+                                   Margin="8,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+                <Button x:Name="FilterBtn" Width="40" Height="40" Margin="12,0,0,0" Click="Filter_Click"
+                        Style="{StaticResource OutlinedButton}" Padding="0" ToolTip="Cycle filter: all / missing only / compatible only">
+                    <controls:IconGlyph x:Name="FilterIcon" IconName="Palette" Width="20" Height="20"/>
+                </Button>
+                <Button x:Name="SortBtn" Width="40" Height="40" Margin="8,0,0,0" Click="Sort_Click"
+                        Style="{StaticResource OutlinedButton}" Padding="0" ToolTip="Toggle sort direction (by effect name)">
+                    <controls:IconGlyph x:Name="SortIcon" IconName="SwapHoriz" Width="20" Height="20"/>
+                </Button>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                <TextBlock x:Name="StatusBarLeft" Text="" Style="{StaticResource Caption}"/>
+                <TextBlock Text="    ·    " Style="{StaticResource Caption}"/>
+                <TextBlock x:Name="StatusBarVersion" Style="{StaticResource Caption}"/>
+                <TextBlock x:Name="StatusBarMode" Text="Ready" Style="{StaticResource Caption}" Margin="24,0,0,0"
+                           Foreground="{DynamicResource B.Outline}"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>
