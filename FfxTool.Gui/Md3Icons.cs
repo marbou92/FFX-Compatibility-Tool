@@ -171,10 +171,21 @@ namespace FfxTool.Gui
 
         static void DrawPalette(Graphics g, Rectangle b, Pen pen)
         {
-            g.DrawArc(pen, P(b, 3, 3).X, P(b, 3, 3).Y, b.Width * 0.75f, b.Height * 0.75f, 20, 320);
-            g.DrawEllipse(pen, P(b, 8, 8).X, P(b, 8, 8).Y, b.Width * 0.1f, b.Height * 0.1f);
-            g.DrawEllipse(pen, P(b, 14, 8).X, P(b, 14, 8).Y, b.Width * 0.1f, b.Height * 0.1f);
-            g.DrawEllipse(pen, P(b, 11, 14).X, P(b, 11, 14).Y, b.Width * 0.1f, b.Height * 0.1f);
+            // M3 palette glyph: thick ring + three paint wells. The previous
+            // arc + micro-circles read as a "smiley" at icon sizes.
+            var center = P(b, 12, 12);
+            float r = b.Width * 0.40f;
+            using (var thick = (Pen)pen.Clone())
+            {
+                thick.Width = System.Math.Max(1.6f, pen.Width * 2.1f);
+                g.DrawEllipse(thick, center.X - r, center.Y - r, r * 2, r * 2);
+            }
+            using (var brush = new SolidBrush(pen.Color))
+            {
+                float wr = System.Math.Max(1.4f, b.Width * 0.075f);
+                foreach (var well in new[] { P(b, 8.4f, 10.2f), P(b, 12f, 7.8f), P(b, 15.6f, 10.2f) })
+                    g.FillEllipse(brush, well.X - wr, well.Y - wr, wr * 2, wr * 2);
+            }
         }
 
         static void DrawSun(Graphics g, Rectangle b, Pen pen)

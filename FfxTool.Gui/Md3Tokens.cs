@@ -29,8 +29,10 @@ namespace FfxTool.Gui
         public const int Space8 = 32;  // spec: margin-desktop
 
         // --- Type scale (spec px -> pt at 0.75 ratio) ---
-        public static Font DisplayLarge => Md3Fonts.Get(24f);              // spec has no display tier; reusing headline-lg's weight/style at a larger size
-        public static Font DisplayMedium => Md3Fonts.Get(21f);
+        // M3 Expressive 2026: page titles get the Display tier — bigger and
+        // bolder than the old headline usage, per the expressive type push.
+        public static Font DisplayLarge => Md3Fonts.Get(28f, medium: true);   // page titles
+        public static Font DisplayMedium => Md3Fonts.Get(24f, medium: true);
         public static Font DisplaySmall => Md3Fonts.Get(18f);
 
         public static Font HeadlineLarge => Md3Fonts.Get(24f);   // spec: headline-lg, 32px/400
@@ -69,6 +71,16 @@ namespace FfxTool.Gui
 
         public const int ContentMaxWidth = 1440; // stitch: max-w 1440 centered on ultra-wide
         public const int ContentMaxWidthCompact = 960; // compact max for adaptive density
+
+        // --- M3 Expressive component sizing ---
+        public const int FabSize = 56;          // expressive large FAB (was 48)
+        public const int ButtonHeight = 40;     // expressive M-size button (was 36)
+        public const int NavItemHeight = 64;    // rail item hit target
+        public const int PillSize = 48;         // rail active-indicator pill
+
+        // --- Expressive spring motion (Win7-safe: timer-driven, short) ---
+        public const int MotionDurationMs = 160;     // nav pill / FAB feedback
+        public const float MotionOvershoot = 1.12f;  // subtle springy overshoot factor
 
         // --- State-layer opacities (m3.material.io/foundations/interaction/states) ---
         public const int HoverStateAlpha = 20;

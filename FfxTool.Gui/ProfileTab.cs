@@ -48,7 +48,7 @@ namespace FfxTool.Gui
             centered.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             Resize += (s,e) => centered.Width = Math.Min(Md3Tokens.ContentMaxWidth, ClientSize.Width - 32);
 
-            var heading = new Label { Text = "Plugin Profiles", Font = Md3Tokens.HeadlineLarge, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(Md3Tokens.Space6, Md3Tokens.Space6, 0, Md3Tokens.Space1) };
+            var heading = new Label { Text = "Plugin Profiles", Font = Md3Tokens.DisplayLarge, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(Md3Tokens.Space6, Md3Tokens.Space6, 0, Md3Tokens.Space1) };
             var intro = new Label
             {
                 Text = "Check off every plugin vendor you have installed in your target After Effects version. This ensures converted FFX files only reference available effects.",
@@ -60,55 +60,76 @@ namespace FfxTool.Gui
             var table = PluginLookup.LoadTable();
             var vendors = _profile.AllKnownVendors(table);
 
-            // 12-col bento: at expanded 3 cols (Span 4 each), medium 2 cols (Span 6), compact 1 col (Span 12)
-            var grid = new FlowLayoutPanel { AutoSize = true, WrapContents = true, FlowDirection = FlowDirection.LeftToRight, Dock = DockStyle.Top, Margin = new Padding(Md3Tokens.Space6, 0, 0, Md3Tokens.Space8) };
-            const int baseW = 260; // compact expressive Span 4 — not too big for place
+            // Bento grid: 3 cols expanded / 2 medium / 1 compact. Width math
+            // accounts for the grid's left margin AND each card's right margin
+            // (the old formula clamped card width to 320, which made the
+            // 3rd column not fit and left ~40% dead space).
+            var grid = new FlowLayoutPanel { AutoSize = true, WrapContents = true, FlowDirection = FlowDirection.LeftToRight, Dock = DockStyle.Top, Margin = new Padding(Md3Tokens.Space6, 0, Md3Tokens.Space2, Md3Tokens.Space4) };
+            const int baseW = 280;
             foreach (var vendor in vendors)
-                grid.Controls.Add(BuildVendorCard(vendor, baseW, 116));
-            grid.Controls.Add(BuildAddCustomCard(baseW, 116));
+                grid.Controls.Add(BuildVendorCard(vendor, baseW, 120));
+            grid.Controls.Add(BuildAddCustomCard(baseW, 120));
+            var discovery = BuildDiscoveryCard(baseW, 120);
+            grid.Controls.Add(discovery);
 
-            // Responsive: recompute card widths on resize to Span 12/6/4
-            Resize += (s,e) =>
+            void RelayoutGrid()
             {
-                int avail = ClientSize.Width - 64; // margins
-                int cols = avail >= 900 ? 3 : avail >= 600 ? 2 : 1;
+                int gridW = centered.Width - Md3Tokens.Space6 - Md3Tokens.Space2; // grid margins
+                int cols = gridW >= 900 ? 3 : gridW >= 600 ? 2 : 1;
                 int gutter = Md3Tokens.Space4;
-                int cardW = cols == 1 ? Math.Max(260, avail - gutter) : (avail - (cols-1)*gutter) / cols;
-                cardW = Math.Min(320, Math.Max(240, cardW));
-                foreach (Control c in grid.Controls) c.Width = cardW;
-            };
-
-            var divider = new Panel { Height = 1, Dock = DockStyle.Top, Margin = new Padding(Md3Tokens.Space6, 0, Md3Tokens.Space6, Md3Tokens.Space6) };
-            divider.Paint += (s,e) => { using(var pen=new Pen(ThemeManager.Current.OutlineVariant)) e.Graphics.DrawLine(pen,0,0,divider.Width,0); };
-            divider.Resize += (s,e) => divider.Invalidate();
-
-            var footer = new FlowLayoutPanel { AutoSize = true, WrapContents = true, FlowDirection = FlowDirection.LeftToRight, Dock = DockStyle.Top, Margin = new Padding(Md3Tokens.Space6, 0, 0, 0) };
-            var footerLeft = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0,0,Md3Tokens.Space8,0) };
-            footerLeft.Controls.Add(new Label { Text = "Automatic Plugin Discovery", Font = Md3Tokens.TitleMedium, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0,0,0,Md3Tokens.Space1) });
-            footerLeft.Controls.Add(new Label { Text = "Select your After Effects 'Plug-ins' directory and we'll automatically check matching vendors.", Font = Md3Tokens.BodyMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant, AutoSize = true, MaximumSize = new Size(480,0) });
-            var footerRight = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-            var scanBtn = new Md3Button { Text = "Scan System", Icon = Md3Icons.Icon.FolderOpen, Variant = Md3ButtonVariant.Outlined, Width = 180 };
-            scanBtn.Click += (s,e) => ScanFolder();
-            footerRight.Controls.Add(scanBtn);
-            footerRight.Controls.Add(new Label { Text = "Looks for known vendor files in the folder you select.", Font = Md3Tokens.LabelSmall, ForeColor = ThemeManager.Current.OnSurfaceVariant, AutoSize = true, Margin = new Padding(0,Md3Tokens.Space1,0,0) });
-            footer.Controls.Add(footerLeft);
-            footer.Controls.Add(footerRight);
+                int cardW = cols == 1
+                    ? Math.Max(280, gridW - gutter)
+                    : (gridW - (cols - 1) * gutter - cols * gutter) / cols;
+                cardW = Math.Max(240, cardW);
+                foreach (Control c in grid.Controls)
+                {
+                    c.Width = c == discovery ? Math.Max(280, gridW - gutter) : cardW;
+                }
+            }
+            Resize += (s, e) => { RelayoutGrid(); };
+            centered.Resize += (s, e) => { RelayoutGrid(); };
 
             centered.Controls.Add(heading);
             centered.Controls.Add(intro);
             centered.Controls.Add(grid);
-            centered.Controls.Add(divider);
-            centered.Controls.Add(footer);
-            // Use TableLayout for vertical stacking inside centered
-            centered.Controls.SetChildIndex(footer, 0);
-            centered.Controls.SetChildIndex(divider, 1);
-            centered.Controls.SetChildIndex(grid, 2);
-            centered.Controls.SetChildIndex(intro, 3);
-            centered.Controls.SetChildIndex(heading, 4);
+            // Dock order inside the plain centered panel: last-added docks
+            // first, so reverse the visual order via SetChildIndex.
+            centered.Controls.SetChildIndex(grid, 0);
+            centered.Controls.SetChildIndex(intro, 1);
+            centered.Controls.SetChildIndex(heading, 2);
 
             outer.Controls.Add(centered);
             Controls.Add(outer);
             ThemeManager.ThemeChanged += () => BackColor = ThemeManager.Current.Surface;
+        }
+
+        Control BuildDiscoveryCard(int w, int h)
+        {
+            // Full-width bento card for Automatic Plugin Discovery — replaces
+            // the old divider + bare footer row where the Scan System button
+            // ended up below the visible area.
+            var card = new Md3Card { Width = w, Height = h, Margin = new Padding(0, 0, Md3Tokens.Space4, Md3Tokens.Space4), Variant = Md3CardVariant.Filled };
+
+            var title = new Label { Text = "Automatic Plugin Discovery", Font = Md3Tokens.TitleMedium, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, BackColor = Color.Transparent, Location = new Point(Md3Tokens.Space4, Md3Tokens.Space4) };
+            var desc = new Label
+            {
+                Text = "Select your After Effects 'Plug-ins' directory and we'll automatically check matching vendors.",
+                Font = Md3Tokens.BodyMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant,
+                AutoSize = true, BackColor = Color.Transparent, MaximumSize = new Size(440, 0),
+                Location = new Point(Md3Tokens.Space4, Md3Tokens.Space4 + 26),
+            };
+            var scanBtn = new Md3Button { Text = "Scan System", Icon = Md3Icons.Icon.FolderOpen, Variant = Md3ButtonVariant.Tonal, Width = 180, Height = Md3Tokens.ButtonHeight };
+            scanBtn.Click += (s, e) => ScanFolder();
+            card.Controls.Add(title);
+            card.Controls.Add(desc);
+            card.Controls.Add(scanBtn);
+
+            card.Resize += (s, e) =>
+            {
+                scanBtn.Location = new Point(card.ClientSize.Width - scanBtn.Width - Md3Tokens.Space4, (card.ClientSize.Height - scanBtn.Height) / 2);
+                desc.MaximumSize = new Size(Math.Max(240, card.ClientSize.Width - scanBtn.Width - Md3Tokens.Space8 * 3), 0);
+            };
+            return card;
         }
 
         Control BuildVendorCard(string vendor, int w, int h)
@@ -130,17 +151,32 @@ namespace FfxTool.Gui
             sw.CheckedChanged += (s,e) => { _profile.SetOwned(vendor, sw.Checked); _profile.Save(); _onChange(); };
             _switches[vendor]=sw;
             var badge = new BufferedPanel { Size = new Size(w-32,28), Location = new Point(Md3Tokens.Space4, h-36), BackColor = Color.Transparent };
+            // Badge reflects the live switch state — previously it always
+            // said "Profile linked" whether the vendor was on or off.
             badge.Paint += (s,e) =>
             {
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                bool owned = sw.Checked;
                 var b = new Rectangle(0,0,badge.Width-1,badge.Height-1);
                 using(var path = RoundedRect(b, Md3Tokens.CornerMedium))
-                using(var brush = new SolidBrush(Color.FromArgb(60, ThemeManager.Current.SurfaceContainerHigh.R, ThemeManager.Current.SurfaceContainerHigh.G, ThemeManager.Current.SurfaceContainerHigh.B)))
+                using(var brush = new SolidBrush(owned
+                    ? Color.FromArgb(60, ThemeManager.Current.SurfaceContainerHigh.R, ThemeManager.Current.SurfaceContainerHigh.G, ThemeManager.Current.SurfaceContainerHigh.B)
+                    : Color.FromArgb(30, ThemeManager.Current.SurfaceContainerHigh.R, ThemeManager.Current.SurfaceContainerHigh.G, ThemeManager.Current.SurfaceContainerHigh.B)))
                     e.Graphics.FillPath(brush, path);
-                Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Verified, new Rectangle(8,6,16,16), ThemeManager.Current.Primary, 1.6f);
+                if (owned)
+                    Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Verified, new Rectangle(8,6,16,16), ThemeManager.Current.Primary, 1.6f);
+                else
+                    Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Info, new Rectangle(8,6,16,16), ThemeManager.Current.OnSurfaceVariant, 1.6f);
             };
-            var badgeLabel = new Label { Text = "Profile linked", Font = Md3Tokens.LabelSmall, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, BackColor = Color.Transparent, Location = new Point(28,7) };
+            var badgeLabel = new Label { Text = sw.Checked ? "Profile linked" : "Not in profile", Font = Md3Tokens.LabelSmall, ForeColor = ThemeManager.Current.OnSurfaceVariant, AutoSize = true, BackColor = Color.Transparent, Location = new Point(28,7) };
             badge.Controls.Add(badgeLabel);
+            sw.CheckedChanged += (s,e) =>
+            {
+                badgeLabel.Text = sw.Checked ? "Profile linked" : "Not in profile";
+                badgeLabel.ForeColor = sw.Checked ? ThemeManager.Current.OnSurface : ThemeManager.Current.OnSurfaceVariant;
+                badge.Invalidate();
+            };
+            ThemeManager.ThemeChanged += () => badge.Invalidate();
             card.Controls.Add(iconBox); card.Controls.Add(title); card.Controls.Add(subtitle); card.Controls.Add(sw); card.Controls.Add(badge);
             // keep switch/badge aligned on resize
             card.Resize += (s,e) => { sw.Location = new Point(card.ClientSize.Width - 56, Md3Tokens.Space4); subtitle.MaximumSize = new Size(card.ClientSize.Width - iconBox.Right - 70, 32); badge.Width = card.ClientSize.Width - 32; badge.Location = new Point(Md3Tokens.Space4, card.ClientSize.Height-36); };

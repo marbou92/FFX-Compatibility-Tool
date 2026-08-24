@@ -54,7 +54,10 @@ namespace FfxTool.Gui
             g.Clear(ThemeManager.Current.SurfaceContainer);
 
             var trackRect = new Rectangle(0, 2, TrackWidth, TrackHeight);
-            var trackColor = Checked ? ThemeManager.Current.Primary : ThemeManager.Current.SurfaceContainerHigh;
+            // Unchecked track uses SurfaceContainerHighest (not High) — on a
+            // SurfaceContainer card the old color had near-zero contrast, so
+            // the switch looked invisible until toggled.
+            var trackColor = Checked ? ThemeManager.Current.Primary : ThemeManager.Current.SurfaceContainerHighest;
             var outlineColor = Checked ? ThemeManager.Current.Primary : ThemeManager.Current.Outline;
             var labelColor = ThemeManager.Current.OnSurface;
             if (!Enabled)

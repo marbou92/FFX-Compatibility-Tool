@@ -147,7 +147,7 @@ namespace FfxTool.Gui
             var btn = new Button
             {
                 Text = glyph, Width = 46, Height = 32, FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 9f), ForeColor = ThemeManager.Current.OnSurfaceVariant,
+                Font = new Font("Segoe UI", 10.5f), ForeColor = ThemeManager.Current.OnSurfaceVariant,
                 BackColor = ThemeManager.Current.Surface, Cursor = Cursors.Hand,
                 TabStop = false,
             };

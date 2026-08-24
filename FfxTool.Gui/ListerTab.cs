@@ -69,8 +69,8 @@ namespace FfxTool.Gui
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            // --- expressive heading: stitch h1 36px bold ---
-            var heading = new Label { Text = "Effect Lister", Font = Md3Tokens.HeadlineLarge, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
+            // --- expressive heading: M3E Display tier ---
+            var heading = new Label { Text = "Effect Lister", Font = Md3Tokens.DisplayLarge, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
             ThemeManager.ThemeChanged += () => heading.ForeColor = ThemeManager.Current.OnSurface;
 
             // --- header row: FlowLayout wrap (M3 adaptive) so pill/icons never clip at 960px ---
@@ -218,7 +218,7 @@ namespace FfxTool.Gui
 
         Control MakeIconButton(Md3Icons.Icon icon, string tooltip, Action onClick = null, Func<bool> isActive = null)
         {
-            var btn = new BufferedPanel { Width = 36, Height = 36, Margin = new Padding(Md3Tokens.Space1), Cursor = onClick != null ? Cursors.Hand : Cursors.Default };
+            var btn = new BufferedPanel { Width = 40, Height = 40, Margin = new Padding(Md3Tokens.Space1), Cursor = onClick != null ? Cursors.Hand : Cursors.Default };
             var tip = new ToolTip();
             tip.SetToolTip(btn, tooltip);
             if (onClick != null) btn.Click += (s, e) => onClick();
@@ -229,55 +229,30 @@ namespace FfxTool.Gui
             {
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                 bool active = isActive != null && isActive();
-                if (_hover)
+                if (_hover || active)
                 {
-                    using (var path = RoundedRect(new Rectangle(0, 0, 35, 35), Md3Tokens.CornerSmall))
-                    using (var brush = new SolidBrush(Color.FromArgb(Md3Tokens.HoverStateAlpha, ThemeManager.Current.OnSurfaceVariant)))
+                    using (var path = RoundedRect(new Rectangle(0, 0, 39, 39), Md3Tokens.CornerMedium))
+                    using (var brush = new SolidBrush(Color.FromArgb(active ? Md3Tokens.PressStateAlpha : Md3Tokens.HoverStateAlpha, active ? ThemeManager.Current.Primary : ThemeManager.Current.OnSurfaceVariant)))
                         e.Graphics.FillPath(brush, path);
                 }
                 var color = active ? ThemeManager.Current.Primary : ThemeManager.Current.OnSurfaceVariant;
-                Md3Icons.Draw(e.Graphics, icon, new Rectangle(8, 8, 20, 20), color, active ? 1.9f : 1.6f);
+                Md3Icons.Draw(e.Graphics, icon, new Rectangle(9, 9, 22, 22), color, active ? 2.0f : 1.7f);
             };
             return btn;
         }
 
         Panel BuildEmptyState()
         {
-            // stitch spec: bg-surface-container-low/80 border-2 dashed rounded-[32px] p-16 min-h 500 hover border-primary/50
-            var container = new Panel { Dock = DockStyle.Fill, Visible = true, AutoScroll = false };
-            container.Paint += (s, e) =>
-            {
-                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                var margin = 32;
-                var bounds = new Rectangle(margin, margin, container.Width - margin * 2, Math.Min(420, Math.Max(240, container.Height - margin * 2)));
-                using (var pen = new Pen(Color.FromArgb(120, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B), 1.8f) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dash })
-                using (var path = RoundedRect(bounds, Md3Tokens.CornerExtraLarge)) // 24 => 32px visual
-                {
-                    using (var brush = new SolidBrush(Color.FromArgb(20, ThemeManager.Current.SurfaceContainer.R, ThemeManager.Current.SurfaceContainer.G, ThemeManager.Current.SurfaceContainer.B)))
-                        e.Graphics.FillPath(brush, path);
-                    e.Graphics.DrawPath(pen, path);
-                }
+            // Measured vertical stack INSIDE the dashed box — icon, title,
+            // message, CTA and the two quick-action cards all centered and
+            // guaranteed to fit (previously the cards sat below the box at
+            // magic offsets and got clipped in half).
+            const int IconBg = 88, TitleH = 30, MsgH = 40, CtaH = 40, CardsH = 64;
+            const int StackH = IconBg + 20 + TitleH + 10 + MsgH + 22 + CtaH + 18 + CardsH;
 
-                int cy = bounds.Top + bounds.Height / 2 - 80;
-                // circular icon bg like stitch w-24 h-24 rounded-full
-                var iconBg = new Rectangle(bounds.X + bounds.Width / 2 - 48, cy - 36, 96, 96);
-                using (var path = RoundedRect(iconBg, 48))
-                using (var brush = new SolidBrush(Color.FromArgb(40, ThemeManager.Current.SurfaceContainerHigh.R, ThemeManager.Current.SurfaceContainerHigh.G, ThemeManager.Current.SurfaceContainerHigh.B)))
-                    e.Graphics.FillPath(brush, path);
-                Md3Icons.Draw(e.Graphics, Md3Icons.Icon.FolderOpen, new Rectangle(bounds.X + bounds.Width / 2 - 28, cy - 20, 56, 56), ThemeManager.Current.OnSurfaceVariant, 1.6f);
+            var container = new BufferedPanel { Dock = DockStyle.Fill, Visible = true, AutoScroll = false };
 
-                TextRenderer.DrawText(e.Graphics, "No preset loaded", Md3Tokens.HeadlineSmall,
-                    new Rectangle(bounds.X, cy + 68, bounds.Width, 30), ThemeManager.Current.OnSurface, TextFormatFlags.HorizontalCenter);
-
-                var msgRect = new Rectangle(bounds.X + bounds.Width / 2 - 240, cy + 102, 480, 50);
-                TextRenderer.DrawText(e.Graphics,
-                    "Open a .ffx file to see its effects and check them against your plugin profile. You can also drag and drop a file directly into this workspace.",
-                    Md3Tokens.BodyMedium, msgRect, ThemeManager.Current.OnSurfaceVariant,
-                    TextFormatFlags.HorizontalCenter | TextFormatFlags.WordBreak);
-            };
-
-            // compact CTA for adaptive density
-            var ctaBtn = new Md3Button { Text = "Open .ffx file", Icon = Md3Icons.Icon.FolderOpen, Width = 160, Height = 40 };
+            var ctaBtn = new Md3Button { Text = "Open .ffx file", Icon = Md3Icons.Icon.FolderOpen, Width = 170, Height = CtaH };
             ctaBtn.Click += (s, e) => OpenFile();
             container.Controls.Add(ctaBtn);
 
@@ -285,7 +260,7 @@ namespace FfxTool.Gui
             cardsRow.Controls.Add(MakeDisabledActionCard(Md3Icons.Icon.Check, "Auto-Analyze", "Verify compatibility on load", "Not yet implemented"));
             var recent = HistoryStore.Load().FirstOrDefault();
             bool hasRecent = recent != null;
-            var recentCard = new BufferedPanel { Width = 220, Height = 64, Margin = new Padding(Md3Tokens.Space2), Enabled = hasRecent, Cursor = hasRecent ? Cursors.Hand : Cursors.Default };
+            var recentCard = new BufferedPanel { Width = 220, Height = 56, Margin = new Padding(Md3Tokens.Space2), Enabled = hasRecent, Cursor = hasRecent ? Cursors.Hand : Cursors.Default };
             if (!hasRecent) new ToolTip().SetToolTip(recentCard, "No recent files yet");
             else new ToolTip().SetToolTip(recentCard, $"Open {recent.fileName}");
             recentCard.Paint += (s2, e2) =>
@@ -299,18 +274,62 @@ namespace FfxTool.Gui
                     e2.Graphics.FillPath(brush, path);
                     e2.Graphics.DrawPath(pen, path);
                 }
-                Md3Icons.Draw(e2.Graphics, Md3Icons.Icon.History, new Rectangle(16, 20, 22, 22), hasRecent ? ThemeManager.Current.Primary : ThemeManager.Current.Outline, 1.6f);
-                TextRenderer.DrawText(e2.Graphics, "Recent Files", Md3Tokens.LabelMedium, new Rectangle(50, 12, recentCard.Width - 60, 18), hasRecent ? ThemeManager.Current.OnSurface : ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.Left);
+                Md3Icons.Draw(e2.Graphics, Md3Icons.Icon.History, new Rectangle(14, 17, 22, 22), hasRecent ? ThemeManager.Current.Primary : ThemeManager.Current.Outline, 1.6f);
+                TextRenderer.DrawText(e2.Graphics, "Recent Files", Md3Tokens.LabelMedium, new Rectangle(46, 9, recentCard.Width - 56, 18), hasRecent ? ThemeManager.Current.OnSurface : ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.Left);
                 string sub = hasRecent ? recent.fileName : "View last 5 analyzed presets";
-                TextRenderer.DrawText(e2.Graphics, sub, Md3Tokens.BodySmall, new Rectangle(50, 32, recentCard.Width - 60, 18), ThemeManager.Current.OutlineVariant, TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
+                TextRenderer.DrawText(e2.Graphics, sub, Md3Tokens.BodySmall, new Rectangle(46, 29, recentCard.Width - 56, 18), ThemeManager.Current.OutlineVariant, TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
             };
             if (hasRecent) recentCard.Click += (s2, e2) => LoadFile(recent.path); // LoadFile handles its own errors
             cardsRow.Controls.Add(recentCard);
             container.Controls.Add(cardsRow);
-            container.Resize += (s, e) =>
+
+            // Shared geometry so the Paint and the child positioning always agree.
+            Rectangle Box(Rectangle area)
             {
-                ctaBtn.Location = new Point((container.Width - ctaBtn.Width) / 2, container.Height / 2 + 90);
-                cardsRow.Location = new Point((container.Width - cardsRow.Width) / 2, container.Height / 2 + 150);
+                int margin = Md3Tokens.Space6;
+                int h = Math.Min(StackH + Md3Tokens.Space8, Math.Max(240, area.Height - margin * 2));
+                return new Rectangle(margin, Math.Max(margin, (area.Height - h) / 2), Math.Max(0, area.Width - margin * 2), h);
+            }
+            int StackTop(Rectangle box) => box.Top + Math.Max(0, (box.Height - StackH) / 2);
+
+            void LayoutChildren()
+            {
+                var box = Box(new Rectangle(0, 0, container.Width, container.Height));
+                int top = StackTop(box);
+                ctaBtn.Location = new Point(box.X + (box.Width - ctaBtn.Width) / 2, top + IconBg + 20 + TitleH + 10 + MsgH + 22);
+                cardsRow.Location = new Point(box.X + (box.Width - cardsRow.Width) / 2, top + IconBg + 20 + TitleH + 10 + MsgH + 22 + CtaH + 18);
+            }
+            container.Resize += (s, e) => LayoutChildren();
+
+            container.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                var box = Box(new Rectangle(0, 0, container.Width, container.Height));
+                using (var pen = new Pen(Color.FromArgb(120, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B), 1.8f) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dash })
+                using (var path = RoundedRect(box, Md3Tokens.CornerExtraLarge))
+                {
+                    using (var brush = new SolidBrush(Color.FromArgb(20, ThemeManager.Current.SurfaceContainer.R, ThemeManager.Current.SurfaceContainer.G, ThemeManager.Current.SurfaceContainer.B)))
+                        e.Graphics.FillPath(brush, path);
+                    e.Graphics.DrawPath(pen, path);
+                }
+
+                int top = StackTop(box);
+                int cx = box.X + box.Width / 2;
+                // circular icon bg like stitch w-24 h-24 rounded-full
+                var iconBg = new Rectangle(cx - IconBg / 2, top, IconBg, IconBg);
+                using (var path = RoundedRect(iconBg, IconBg / 2))
+                using (var brush = new SolidBrush(Color.FromArgb(40, ThemeManager.Current.SurfaceContainerHigh.R, ThemeManager.Current.SurfaceContainerHigh.G, ThemeManager.Current.SurfaceContainerHigh.B)))
+                    e.Graphics.FillPath(brush, path);
+                Md3Icons.Draw(e.Graphics, Md3Icons.Icon.FolderOpen, new Rectangle(cx - 26, top + (IconBg - 52) / 2, 52, 52), ThemeManager.Current.OnSurfaceVariant, 1.6f);
+
+                TextRenderer.DrawText(e.Graphics, "No preset loaded", Md3Tokens.HeadlineSmall,
+                    new Rectangle(box.X, top + IconBg + 20, box.Width, TitleH), ThemeManager.Current.OnSurface, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+                int msgW = Math.Min(480, Math.Max(160, box.Width - Md3Tokens.Space8));
+                TextRenderer.DrawText(e.Graphics,
+                    "Open a .ffx file to see its effects and check them against your plugin profile. You can also drag and drop a file directly into this workspace.",
+                    Md3Tokens.BodyMedium, new Rectangle(cx - msgW / 2, top + IconBg + 20 + TitleH + 10, msgW, MsgH), ThemeManager.Current.OnSurfaceVariant,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.WordBreak);
             };
 
             return container;

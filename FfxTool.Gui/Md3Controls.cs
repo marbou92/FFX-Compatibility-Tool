@@ -91,7 +91,7 @@ namespace FfxTool.Gui
             FlatStyle = FlatStyle.Flat;
             FlatAppearance.BorderSize = 0;
             Font = Md3Tokens.LabelLarge;
-            Height = 36;
+            Height = Md3Tokens.ButtonHeight;
             Cursor = Cursors.Hand;
             MouseEnter += (s, e) => { _hovering = true; Invalidate(); };
             MouseLeave += (s, e) => { _hovering = false; Invalidate(); };
@@ -248,8 +248,8 @@ namespace FfxTool.Gui
                 default: fill = ThemeManager.Current.SurfaceContainer; outline = false; break; // Filled
             }
 
-            // expressive Bold: LargeIncreased 20 for cards, XL-inc 32 for heroes (M3 2026)
-            using (var path = RoundedRect(bounds, Md3Tokens.CornerLargeIncreased))
+            // expressive Bold: XL 28 default card radius (M3 Expressive 2026)
+            using (var path = RoundedRect(bounds, Md3Tokens.CornerExtraLarge))
             using (var fillBrush = new SolidBrush(fill))
             {
                 e.Graphics.FillPath(fillBrush, path);
@@ -258,10 +258,16 @@ namespace FfxTool.Gui
                     using (var pen = new Pen(Color.FromArgb(77, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B), 1))
                         e.Graphics.DrawPath(pen, path);
                 }
-                else if (_hovering)
+                else
                 {
-                    using (var pen = new Pen(Color.FromArgb(120, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B), 1))
-                        e.Graphics.DrawPath(pen, path);
+                    // hover: state-layer tint + border fade-in (M3 interaction states)
+                    if (_hovering)
+                        Md3StateLayer.Paint(e.Graphics, path, ThemeManager.Current.OnSurface, Md3Tokens.HoverStateAlpha - 8);
+                    if (_hovering)
+                    {
+                        using (var pen = new Pen(Color.FromArgb(120, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B), 1))
+                            e.Graphics.DrawPath(pen, path);
+                    }
                 }
                 // subtle expressive elevation hint — 1px shadow at 5% (Win7 safe, no DWM)
                 if (Variant == Md3CardVariant.Elevated && !_hovering)

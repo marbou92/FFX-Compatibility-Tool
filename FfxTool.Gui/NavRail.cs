@@ -22,7 +22,6 @@ namespace FfxTool.Gui
         public class NavItem
         {
             public string Text;
-            public Control Content;
             public Md3Icons.Icon Icon;
             public bool Pinned; // rendered in the bottom group, separated by a gap
         }
@@ -30,20 +29,27 @@ namespace FfxTool.Gui
         readonly List<NavItem> _items = new List<NavItem>();
         readonly List<Rectangle> _itemBounds = new List<Rectangle>();
         int _selectedIndex = -1;
+        int _hoverIndex = -1;   // hovered nav item (-1 = none)
+        bool _fabHover, _fabPressed;
 
         readonly Timer _animTimer;
-        float _pillY, _pillTargetY;
+        float _pillY;                 // current drawn pill position
+        float _animFromY, _animToY;   // interpolation endpoints
         DateTime _animStart;
-        const int AnimMs = 150;
+        const int AnimMs = Md3Tokens.MotionDurationMs;
+        // ease-out-back: fast start, gentle spring overshoot at the end —
+        // the M3 Expressive "springy" feel, subtle enough for a desktop tool
+        const float Overshoot = 1.35f;
 
         public event Action<int> SelectionChanged;
         public event Action FabClicked;
 
         // Spec: rail-width 88px per stitch code.html (overrides DESIGN.md 80px) — expressive uses 88 + FAB
         public const int RailWidth = 88;
-        const int LogoAreaHeight = 128; // compact expressive: logo 32 + FAB 48 + gaps
-        const int ItemHeight = 64; // compact for Win7, not 72
-        const int PillSize = 48;   // compact pill, not 56
+        const int LogoAreaHeight = 136; // expressive: logo 48 + gap 12 + FAB 56 + gap
+        const int ItemHeight = Md3Tokens.NavItemHeight;
+        const int PillSize = Md3Tokens.PillSize;
+        const int FabSize = Md3Tokens.FabSize;
         Rectangle _fabBounds;
 
         public NavRail()
@@ -55,6 +61,10 @@ namespace FfxTool.Gui
             Cursor = Cursors.Hand;
 
             MouseClick += OnMouseClick;
+            MouseMove += OnMouseMove;
+            MouseDown += (s, e) => { if (_fabBounds.Contains(e.Location)) { _fabPressed = true; Invalidate(); } };
+            MouseUp += (s, e) => { if (_fabPressed) { _fabPressed = false; Invalidate(); } };
+            MouseLeave += (s, e) => { if (_hoverIndex != -1 || _fabHover) { _hoverIndex = -1; _fabHover = false; Invalidate(); } };
             ThemeManager.ThemeChanged += () => { BackColor = ThemeManager.Current.NavigationSurface; Invalidate(); };
 
             _animTimer = new Timer { Interval = 15 };
@@ -73,11 +83,11 @@ namespace FfxTool.Gui
 
         public void AddItem(string text, Control content, Md3Icons.Icon icon, bool pinned = false)
         {
-            _items.Add(new NavItem { Text = text, Content = content, Icon = icon, Pinned = pinned });
+            _items.Add(new NavItem { Text = text, Icon = icon, Pinned = pinned });
             if (_selectedIndex == -1)
             {
                 _selectedIndex = 0;
-                _pillY = _pillTargetY = ItemBoundsY(0);
+                _pillY = _animFromY = _animToY = ItemBoundsY(0);
             }
             Invalidate();
         }
@@ -102,6 +112,22 @@ namespace FfxTool.Gui
             }
         }
 
+        void OnMouseMove(object sender, MouseEventArgs e)
+        {
+            bool overFab = _fabBounds.Contains(e.Location);
+            int overItem = -1;
+            if (!overFab)
+                for (int i = 0; i < _itemBounds.Count; i++)
+                    if (_itemBounds[i].Contains(e.Location)) { overItem = i; break; }
+
+            if (overItem != _hoverIndex || overFab != _fabHover)
+            {
+                _hoverIndex = overItem;
+                _fabHover = overFab;
+                Invalidate();
+            }
+        }
+
         void OnMouseClick(object sender, MouseEventArgs e)
         {
             if (_fabBounds.Contains(e.Location))
@@ -114,7 +140,8 @@ namespace FfxTool.Gui
                 if (_itemBounds[i].Contains(e.Location) && i != _selectedIndex)
                 {
                     _selectedIndex = i;
-                    _pillTargetY = ItemBoundsY(i);
+                    _animFromY = _pillY;
+                    _animToY = ItemBoundsY(i);
                     _animStart = DateTime.Now;
                     _animTimer.Start();
                     SelectionChanged?.Invoke(i);
@@ -125,13 +152,15 @@ namespace FfxTool.Gui
 
         void TickAnimation()
         {
-            var elapsed = (DateTime.Now - _animStart).TotalMilliseconds;
+            double elapsed = (DateTime.Now - _animStart).TotalMilliseconds;
             float t = (float)Math.Min(1.0, elapsed / AnimMs);
-            float eased = 1f - (float)Math.Pow(1f - t, 3);
-            _pillY += (_pillTargetY - _pillY) * eased * 0.5f;
-            if (Math.Abs(_pillY - _pillTargetY) < 0.5f || t >= 1.0f)
+            // ease-out-back with a gentle single overshoot
+            float u = t - 1f;
+            float eased = 1f + (Overshoot + 1f) * u * u * u + Overshoot * u * u;
+            _pillY = _animFromY + (_animToY - _animFromY) * eased;
+            if (t >= 1.0f)
             {
-                _pillY = _pillTargetY;
+                _pillY = _animToY;
                 _animTimer.Stop();
             }
             Invalidate();
@@ -146,22 +175,29 @@ namespace FfxTool.Gui
             using (var pen = new Pen(Color.FromArgb(77, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B)))
                 e.Graphics.DrawLine(pen, Width - 1, 0, Width - 1, Height);
 
-            // brand mark — larger expressive 32px with pill bg
+            // brand mark — expressive 48px tonal square with 32px logo
             int logoSize = 32;
             var logoBg = new Rectangle((Width - 48) / 2, Md3Tokens.Space4, 48, 48);
-            using (var path = PillPath(new Rectangle(logoBg.X, logoBg.Y, 48, 48)))
+            using (var path = RoundedRect(new Rectangle(logoBg.X, logoBg.Y, 48, 48), Md3Tokens.CornerMedium))
             using (var brush = new SolidBrush(Color.FromArgb(20, ThemeManager.Current.Primary.R, ThemeManager.Current.Primary.G, ThemeManager.Current.Primary.B)))
                 e.Graphics.FillPath(brush, path);
             var logoBounds = new Rectangle((Width - logoSize) / 2, logoBg.Y + (48 - logoSize) / 2, logoSize, logoSize);
             Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Logo, logoBounds, ThemeManager.Current.Primary, 2.0f);
 
-            // FAB — stitch expressive w-full aspect-square bg-primary-container rounded-2xl below logo (real SVG direct)
-            var fabBounds = new Rectangle((Width - 48) / 2, logoBg.Bottom + Md3Tokens.Space3, 48, 48);
-            _fabBounds = fabBounds;
+            // FAB — expressive large (56px), hover state-layer + press scale
+            int fabSize = _fabPressed ? (int)(FabSize * 0.94f) : FabSize;
+            int fabX = (Width - fabSize) / 2;
+            int fabY = logoBg.Bottom + Md3Tokens.Space3 + (FabSize - fabSize) / 2;
+            var fabBounds = new Rectangle(fabX, fabY, fabSize, fabSize);
+            _fabBounds = new Rectangle((Width - FabSize) / 2, logoBg.Bottom + Md3Tokens.Space3, FabSize, FabSize); // stable hit target
             using (var path = RoundedRect(fabBounds, Md3Tokens.CornerLargeIncreased))
             using (var brush = new SolidBrush(ThemeManager.Current.PrimaryContainer))
                 e.Graphics.FillPath(brush, path);
-            Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Add, new Rectangle(fabBounds.X + 12, fabBounds.Y + 12, 24, 24), ThemeManager.Current.OnPrimaryContainer, 1.8f);
+            if (_fabHover && !_fabPressed)
+                using (var path = RoundedRect(fabBounds, Md3Tokens.CornerLargeIncreased))
+                    Md3StateLayer.Paint(e.Graphics, path, ThemeManager.Current.OnPrimaryContainer, Md3Tokens.HoverStateAlpha);
+            int fabIcon = (int)(fabSize * (24f / FabSize));
+            Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Add, new Rectangle(fabBounds.X + (fabSize - fabIcon) / 2, fabBounds.Y + (fabSize - fabIcon) / 2, fabIcon, fabIcon), ThemeManager.Current.OnPrimaryContainer, 1.8f);
 
             using (var pen = new Pen(Color.FromArgb(60, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B)))
                 e.Graphics.DrawLine(pen, Md3Tokens.Space4, LogoAreaHeight - Md3Tokens.Space2, Width - Md3Tokens.Space4, LogoAreaHeight - Md3Tokens.Space2);
@@ -187,12 +223,15 @@ namespace FfxTool.Gui
 
                 var itemColor = selected ? ThemeManager.Current.Primary : ThemeManager.Current.OnSurfaceVariant;
 
-                // pill sized to just the icon (spec: "Active State is
-                // indicated by a Pill background behind the icon"), not
-                // stretched to the item's full width — a real difference
-                // from the earlier expanded-rail version, which used a
-                // full-width pill since it had a label sitting beside the
-                // icon rather than below it.
+                // hover state-layer on unselected items (M3 interaction states)
+                if (i == _hoverIndex && !selected)
+                {
+                    var hoverBounds = new Rectangle((Width - PillSize) / 2, bounds.Y + Md3Tokens.Space1, PillSize, PillSize);
+                    using (var path = PillPath(hoverBounds))
+                        Md3StateLayer.Paint(e.Graphics, path, ThemeManager.Current.OnSurfaceVariant, Md3Tokens.HoverStateAlpha);
+                }
+
+                // active indicator pill behind just the icon (spec), spring-animated
                 if (selected)
                 {
                     var pillBounds = new Rectangle((Width - PillSize) / 2, (int)_pillY + Md3Tokens.Space1, PillSize, PillSize);

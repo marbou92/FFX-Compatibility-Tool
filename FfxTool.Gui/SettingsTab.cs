@@ -22,16 +22,27 @@ namespace FfxTool.Gui
         {
             BackColor = ThemeManager.Current.Surface;
 
-            var root = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true };
+            var root = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true, Margin = new Padding(0) };
 
-            var title = new Label { Text = "Settings", Font = Md3Tokens.HeadlineMedium, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space1) };
+            var title = new Label { Text = "Settings", Font = Md3Tokens.DisplayLarge, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space1) };
             var subtitle = new Label { Text = "Manage your preferences and system configuration.", Font = Md3Tokens.BodyMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
             root.Controls.Add(title);
             root.Controls.Add(subtitle);
 
-            var cardsRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = true, MaximumSize = new Size(980, 0) };
-            cardsRow.Controls.Add(BuildAppearanceCard());
-            cardsRow.Controls.Add(BuildAboutCard());
+            // Balanced two-card row: Appearance flexes to the available
+            // width, About keeps a comfortable fixed width — previously a
+            // narrow Appearance card left ~60% dead space to its right.
+            var cardsRow = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 2, RowCount = 1, AutoSize = true, Margin = new Padding(0) };
+            cardsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            cardsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 400));
+            var appearance = BuildAppearanceCard();
+            appearance.Dock = DockStyle.Fill;
+            appearance.Margin = new Padding(0, 0, Md3Tokens.Space6, 0);
+            var about = BuildAboutCard();
+            about.Dock = DockStyle.Fill;
+            about.Margin = new Padding(0);
+            cardsRow.Controls.Add(appearance, 0, 0);
+            cardsRow.Controls.Add(about, 1, 0);
             root.Controls.Add(cardsRow);
 
             var restoreLink = new LinkLabel { Text = "Restore Defaults", Font = Md3Tokens.LabelLarge, AutoSize = true, Margin = new Padding(0, Md3Tokens.Space6, 0, 0) };
@@ -42,20 +53,30 @@ namespace FfxTool.Gui
             ThemeManager.ThemeChanged += () => BackColor = ThemeManager.Current.Surface;
         }
 
+        /// <summary>M3 Expressive section header: 40px tonal icon chip + title.</summary>
+        Control BuildSectionHeader(Md3Icons.Icon icon, string text)
+        {
+            var headerRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
+            var chip = new BufferedPanel { Width = 40, Height = 40, Margin = new Padding(0, 0, Md3Tokens.Space3, 0) };
+            chip.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                using (var path = RoundedRect(new Rectangle(0, 0, 39, 39), Md3Tokens.CornerMedium))
+                using (var brush = new SolidBrush(ThemeManager.Current.SurfaceContainerHigh))
+                    e.Graphics.FillPath(brush, path);
+                Md3Icons.Draw(e.Graphics, icon, new Rectangle(9, 9, 22, 22), ThemeManager.Current.Primary, 1.8f);
+            };
+            headerRow.Controls.Add(chip);
+            headerRow.Controls.Add(new Label { Text = text, Font = Md3Tokens.TitleLarge, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 10, 0, 0) });
+            return headerRow;
+        }
+
         Control BuildAppearanceCard()
         {
             var card = new Md3Card { Variant = Md3CardVariant.Filled, Width = 420, AutoSize = true, Padding = new Padding(Md3Tokens.Space6), Margin = new Padding(0, 0, Md3Tokens.Space6, 0), MinimumSize = new Size(300, 0) };
-            var flow = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false };
+            var flow = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Dock = DockStyle.Fill };
 
-            var headerRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
-            // Fixed 24×24 box for the painted icon: an AutoSize label with
-            // empty text collapses to near-zero width, which would clip the
-            // icon to a sliver depending on layout-pass ordering.
-            var iconLbl = new Label { AutoSize = false, Width = 24, Height = 24 };
-            iconLbl.Paint += (s, e) => Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Palette, new Rectangle(0, 0, 22, 22), ThemeManager.Current.Primary, 1.8f);
-            headerRow.Controls.Add(iconLbl);
-            headerRow.Controls.Add(new Label { Text = "Appearance", Font = Md3Tokens.TitleLarge, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(Md3Tokens.Space2, 2, 0, 0) });
-            flow.Controls.Add(headerRow);
+            flow.Controls.Add(BuildSectionHeader(Md3Icons.Icon.Palette, "Appearance"));
 
             // "Dark Mode" sub-panel — responsive width (fills card, not fixed 400) — Win7-safe: keep tonal, no blur
             var darkRow = new BufferedPanel { Width = 412, Height = 64, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
@@ -66,8 +87,8 @@ namespace FfxTool.Gui
                 using (var brush = new SolidBrush(ThemeManager.Current.SurfaceContainer))
                     e.Graphics.FillPath(brush, path);
             };
-            darkRow.Controls.Add(new Label { Text = "Dark Mode", Font = Md3Tokens.TitleSmall, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Location = new Point(Md3Tokens.Space4, 12) });
-            darkRow.Controls.Add(new Label { Text = "Switch between light and dark UI themes", Font = Md3Tokens.BodySmall, ForeColor = ThemeManager.Current.OnSurfaceVariant, AutoSize = true, Location = new Point(Md3Tokens.Space4, 34) });
+            darkRow.Controls.Add(new Label { Text = "Dark Mode", Font = Md3Tokens.TitleSmall, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Location = new Point(Md3Tokens.Space4, 12), BackColor = Color.Transparent });
+            darkRow.Controls.Add(new Label { Text = "Switch between light and dark UI themes", Font = Md3Tokens.BodySmall, ForeColor = ThemeManager.Current.OnSurfaceVariant, AutoSize = true, Location = new Point(Md3Tokens.Space4, 34), BackColor = Color.Transparent });
             var darkSwitch = new Md3Switch { Checked = ThemeManager.Mode == Md3Mode.Dark, Width = 60, Height = 32, Location = new Point(darkRow.Width - 68, 16) };
             // Guard flag must precede both handlers (locals can't be
             // referenced textually before their declaration).
@@ -167,15 +188,10 @@ namespace FfxTool.Gui
 
         Control BuildAboutCard()
         {
-            var card = new Md3Card { Variant = Md3CardVariant.Elevated, Width = 360, AutoSize = true, Padding = new Padding(Md3Tokens.Space6), MinimumSize = new Size(300, 0) };
-            var flow = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false };
+            var card = new Md3Card { Variant = Md3CardVariant.Elevated, AutoSize = true, Padding = new Padding(Md3Tokens.Space6), MinimumSize = new Size(300, 0) };
+            var flow = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Dock = DockStyle.Fill };
 
-            var headerRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
-            var infoIcon = new Label { AutoSize = false, Width = 24, Height = 24 };
-            infoIcon.Paint += (s, e) => Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Info, new Rectangle(0, 0, 22, 22), ThemeManager.Current.OnSurfaceVariant, 1.8f);
-            headerRow.Controls.Add(infoIcon);
-            headerRow.Controls.Add(new Label { Text = "About", Font = Md3Tokens.TitleLarge, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(Md3Tokens.Space2, 2, 0, 0) });
-            flow.Controls.Add(headerRow);
+            flow.Controls.Add(BuildSectionHeader(Md3Icons.Icon.Info, "About"));
 
             var logoRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
             var logoBox = new BufferedPanel { Width = 64, Height = 64, Margin = new Padding(0, 0, Md3Tokens.Space4, 0) };
