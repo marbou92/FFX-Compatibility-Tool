@@ -35,14 +35,19 @@ namespace FfxTool.Gui
             _lister = new ListerPage(_profile);
             _profilePage = new ProfilePage(_profile, OnProfileChanged);
             _convert = new ConvertPage(_profile);
-            _settings = new SettingsPage();
+            _settings = new SettingsPage(_profilePage);
 
-            Rail.AddItem("Effect Lister", "List");
-            Rail.AddItem("Plugin Profile", "Plugin");
+            // Convert-first: it's the main thing this tool does.
             Rail.AddItem("Convert", "SwapHoriz");
+            Rail.AddItem("Effect Lister", "List");
             Rail.AddItem("Settings", "Settings");
             Rail.SelectionChanged += i => ShowSection(i);
-            Rail.FabClicked += () => ActiveSection()?.OpenFile();
+            // the + is the upload button: jump to Convert and pick a file
+            Rail.FabClicked += () =>
+            {
+                Rail.Select(0);
+                _convert.OpenFile();
+            };
 
             MinBtn.Click += (s, e) => WindowState = WindowState.Minimized;
             MaxBtn.Click += (s, e) => ToggleMaximize();
@@ -51,19 +56,14 @@ namespace FfxTool.Gui
                 WindowState == WindowState.Maximized ? "Restore" : "Maximize";
 
             ShowSection(0);
-            UpdateFooter();
-
-            ThemeService.Changed += () => UpdateFooter();
         }
 
         private ISection ActiveSection()
         {
             switch (Rail.SelectedIndex)
             {
-                case 0: return _lister;
-                case 1: return null;
-                case 2: return _convert;
-                case 3: return null;
+                case 0: return _convert;
+                case 1: return _lister;
                 default: return null;
             }
         }
@@ -72,10 +72,9 @@ namespace FfxTool.Gui
         {
             switch (index)
             {
-                case 0: PageHost.Content = _lister; break;
-                case 1: PageHost.Content = _profilePage; break;
-                case 2: PageHost.Content = _convert; break;
-                case 3: PageHost.Content = _settings; break;
+                case 0: PageHost.Content = _convert; break;
+                case 1: PageHost.Content = _lister; break;
+                case 2: PageHost.Content = _settings; break;
             }
             (PageHost.Content as ISection)?.OnShown();
         }
@@ -84,15 +83,6 @@ namespace FfxTool.Gui
         {
             _convert.OnProfileChanged();
             _lister.OnProfileChanged();
-            UpdateFooter();
-        }
-
-        private void UpdateFooter()
-        {
-            FooterLeft.Text = $"Profile: {_profile.OwnedVendors.Count} vendor(s)";
-            int db = 0;
-            try { db = PluginLookup.LoadTable().Count; } catch { }
-            FooterRight.Text = db > 0 ? $"Plugin DB: {db} entries" : "Plugin DB: not found";
         }
 
         protected override void OnPreviewKeyDown(KeyEventArgs e)
@@ -103,10 +93,11 @@ namespace FfxTool.Gui
                 ActiveSection()?.OpenFile();
                 e.Handled = true;
             }
-            else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key >= Key.D1 && e.Key <= Key.D4)
+            else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key >= Key.D1 && e.Key <= Key.D3)
             {
-                Rail.SelectWithoutNotify((int)e.Key - (int)Key.D1);
-                ShowSection((int)e.Key - (int)Key.D1);
+                int index = (int)e.Key - (int)Key.D1;
+                Rail.SelectWithoutNotify(index);
+                ShowSection(index);
                 e.Handled = true;
             }
         }

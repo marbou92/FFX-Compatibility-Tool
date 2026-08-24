@@ -2,12 +2,13 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:FfxTool.Gui">
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="32,24,24,24">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0">
         <StackPanel>
-            <TextBlock Text="Plugin Profiles" Style="{StaticResource TitlePage}" Margin="0,0,0,8"/>
+            <!-- Embedded as a Settings sub-view: the section header lives in
+                 Settings' sub-nav, so no page title here — just the intro. -->
             <TextBlock Text="Check off every plugin vendor you have installed in your target After Effects version. This ensures converted FFX files only reference available effects."
-                       Style="{StaticResource BodySecondary}" MaxWidth="720" TextWrapping="Wrap"
-                       TextAlignment="Left" HorizontalAlignment="Left" Margin="0,0,0,24"/>
+                       Style="{StaticResource BodySecondary}" MaxWidth="760" TextWrapping="Wrap"
+                       TextAlignment="Left" HorizontalAlignment="Left" Margin="0,0,0,20"/>
 
             <!-- bento grid: vendor cards + add-custom + discovery (built in code) -->
             <WrapPanel x:Name="Cards" Margin="0,0,16,16"/>

@@ -1,14 +1,14 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
 
 namespace FfxTool.Gui
 {
     /// <summary>
-    /// Settings: live theme controls (dark mode switch, palette swatches)
-    /// and the About card. Theme changes apply instantly via ThemeService.
+    /// Settings hub with sub-settings: Appearance, Plugin Profiles (the
+    /// existing ProfilePage embedded verbatim — its logic is untouched) and
+    /// About. Theme changes apply instantly via ThemeService.
     /// </summary>
     public partial class SettingsPage : UserControl
     {
@@ -22,11 +22,13 @@ namespace FfxTool.Gui
 
         private bool _syncing;
 
-        public SettingsPage()
+        public SettingsPage(ProfilePage profilePage)
         {
             InitializeComponent();
             VersionText.Text = "Version " +
                 System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+
+            ProfileHost.Content = profilePage ?? throw new ArgumentNullException(nameof(profilePage));
 
             DarkSwitch.Checked += (s, e) => ApplyMode(Md3Mode.Dark);
             DarkSwitch.Unchecked += (s, e) => ApplyMode(Md3Mode.Light);
@@ -37,6 +39,14 @@ namespace FfxTool.Gui
             // keep the switch in sync when the mode changes elsewhere
             // (Restore Defaults) — previously a stale-switch desync bug
             ThemeService.Changed += SyncFromTheme;
+        }
+
+        private void SubNav_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (AppearanceView == null) return; // XAML not loaded yet
+            AppearanceView.Visibility = SubNav.SelectedIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
+            ProfileHost.Visibility = SubNav.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
+            AboutView.Visibility = SubNav.SelectedIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void SyncFromTheme()
@@ -81,7 +91,7 @@ namespace FfxTool.Gui
                     BorderBrush = Brushes.Transparent,
                     Padding = new Thickness(4),
                     Child = circle,
-                    Cursor = Cursors.Hand
+                    Cursor = System.Windows.Input.Cursors.Hand
                 };
                 var name = new TextBlock
                 {
@@ -119,7 +129,7 @@ namespace FfxTool.Gui
             }
         }
 
-        private void Restore_Click(object sender, MouseButtonEventArgs e)
+        private void Restore_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             ThemeService.Apply(Md3Mode.Light, Md3Palette.Teal);
         }

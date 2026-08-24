@@ -17,7 +17,8 @@ namespace FfxTool.Gui
         public event Action<int> SelectionChanged;
         public event Action FabClicked;
 
-        private const int ItemHeight = 64;
+        private const int ItemHeight = 68;
+        private const int PillSize = 50;
         private readonly System.Collections.Generic.List<Button> _buttons = new System.Collections.Generic.List<Button>();
         private int _selectedIndex;
 
@@ -95,7 +96,7 @@ namespace FfxTool.Gui
 
         private void ApplySelectionVisuals(int index, bool animate)
         {
-            double targetY = index * ItemHeight + (ItemHeight - 48) / 2.0;
+            double targetY = index * ItemHeight + (ItemHeight - PillSize) / 2.0;
             if (animate)
             {
                 var anim = new DoubleAnimation(targetY, TimeSpan.FromMilliseconds(220))

@@ -66,7 +66,6 @@ namespace FfxTool.Gui
         }
 
         private const int CardW = 300;
-        private const int CardH = 122;
 
         private Border BuildVendorCard(string vendor)
         {
@@ -129,10 +128,12 @@ namespace FfxTool.Gui
 
             var badgeIcon = new IconGlyph
             {
-                IconName = "Verified",
-                Width = 15,
-                Height = 15,
-                Foreground = (Brush)FindResource("B.Primary")
+                IconName = sw.IsChecked == true ? "Check" : "Info",
+                Width = 14,
+                Height = 14,
+                Foreground = sw.IsChecked == true
+                    ? (Brush)FindResource("B.Primary")
+                    : (Brush)FindResource("B.OnSurfaceVariant")
             };
             var badgeText = new TextBlock
             {
@@ -158,7 +159,7 @@ namespace FfxTool.Gui
             {
                 Style = (Style)FindResource("Card"),
                 Width = CardW,
-                Height = CardH,
+                MinHeight = 128, // auto-height: wrapped subtitles no longer crush the badge row out of the card
                 Margin = new Thickness(0, 0, 16, 16),
                 Child = new Grid
                 {
@@ -168,6 +169,7 @@ namespace FfxTool.Gui
             };
             Grid.SetRow(badge, 1);
             badge.VerticalAlignment = VerticalAlignment.Bottom;
+            badge.Margin = new Thickness(0, 8, 0, 0);
 
             var pair = new ToggleButtonSwitchPair { Toggle = sw, Badge = badge, BadgeText = badgeText, BadgeIcon = badgeIcon };
             _switches[vendor] = pair;
@@ -183,7 +185,7 @@ namespace FfxTool.Gui
             bool owned = pair.Toggle.IsChecked == true;
             pair.BadgeText.Text = owned ? "Profile linked" : "Not in profile";
             pair.Badge.Opacity = owned ? 1 : 0.6;
-            pair.BadgeIcon.IconName = owned ? "Verified" : "Info";
+            pair.BadgeIcon.IconName = owned ? "Check" : "Info";
             pair.BadgeIcon.Foreground = owned
                 ? (Brush)FindResource("B.Primary")
                 : (Brush)FindResource("B.OnSurfaceVariant");
@@ -201,7 +203,7 @@ namespace FfxTool.Gui
             var card = new Border
             {
                 Width = CardW,
-                Height = CardH,
+                Height = 128,
                 Margin = new Thickness(0, 0, 16, 16),
                 CornerRadius = new CornerRadius(20),
                 Background = (Brush)FindResource("B.SCLow"),

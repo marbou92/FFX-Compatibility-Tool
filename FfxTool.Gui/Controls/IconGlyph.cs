@@ -31,6 +31,16 @@ namespace FfxTool.Gui
             set => SetValue(ForegroundProperty, value);
         }
 
+        public IconGlyph()
+        {
+            // Center by default: with the inherited Stretch alignment and an
+            // explicit Width/Height, WPF left-top-aligns the glyph inside its
+            // container (rail items, icon chips, logo boxes...) — every icon
+            // in the app sat off-center. Fixed once, here, for all usages.
+            HorizontalAlignment = HorizontalAlignment.Center;
+            VerticalAlignment = VerticalAlignment.Center;
+        }
+
         private Geometry _geometry;
         private string _resolvedFrom;
 

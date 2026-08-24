@@ -14,7 +14,7 @@
 
             <StackPanel Grid.Row="0">
                 <Border Width="48" Height="48" CornerRadius="12" HorizontalAlignment="Center" Margin="0,16,0,0"
-                        Background="{DynamicResource B.PrimaryContainer}" Opacity="0.55">
+                        Background="{DynamicResource B.PrimaryContainer}">
                     <controls:IconGlyph IconName="Logo" Width="28" Height="28"
                                         Foreground="{DynamicResource B.Primary}"/>
                 </Border>
@@ -48,8 +48,8 @@
 
             <Grid Grid.Row="1">
                 <Canvas x:Name="PillLayer" IsHitTestVisible="False">
-                    <Border x:Name="Pill" Width="48" Height="48" CornerRadius="24"
-                            Background="{DynamicResource B.PrimaryContainer}" Canvas.Left="20">
+                    <Border x:Name="Pill" Width="50" Height="50" CornerRadius="25"
+                            Background="{DynamicResource B.PrimaryContainer}" Canvas.Left="19">
                         <Border.RenderTransform>
                             <TranslateTransform x:Name="PillMove" Y="8"/>
                         </Border.RenderTransform>

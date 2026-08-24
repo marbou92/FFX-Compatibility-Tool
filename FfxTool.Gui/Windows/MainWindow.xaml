@@ -18,7 +18,6 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="64"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="44"/>
         </Grid.RowDefinitions>
 
         <!-- ============ custom title bar (native drag/snap via WindowChrome) ============ -->
@@ -52,19 +51,6 @@
             </Grid.ColumnDefinitions>
             <controls:NavRail x:Name="Rail" Grid.Column="0"/>
             <ContentControl x:Name="PageHost" Grid.Column="1"/>
-        </Grid>
-
-        <!-- ============ status footer ============ -->
-        <Grid Grid.Row="2" Background="{DynamicResource B.SCLow}">
-            <Border VerticalAlignment="Top" Height="1" Background="{DynamicResource B.OutlineVariant}" Opacity="0.6"/>
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="24,0,0,0">
-                <Ellipse Width="9" Height="9" Fill="#22C55E" VerticalAlignment="Center"/>
-                <TextBlock x:Name="FooterLeft" Text="Profile: 0 vendor(s)" FontSize="11.5"
-                           Foreground="{DynamicResource B.OnSurfaceVariant}" Margin="10,0,0,0" VerticalAlignment="Center"/>
-            </StackPanel>
-            <TextBlock x:Name="FooterRight" Text="Plugin DB: — entries" FontSize="11.5"
-                       Foreground="{DynamicResource B.OnSurfaceVariant}" HorizontalAlignment="Right"
-                       Margin="0,0,24,0" VerticalAlignment="Center"/>
         </Grid>
     </Grid>
 </Window>
