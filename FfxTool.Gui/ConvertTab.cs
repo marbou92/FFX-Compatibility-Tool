@@ -165,12 +165,12 @@ namespace FfxTool.Gui
             _consoleBox = new TextBox
             {
                 Multiline = true, ReadOnly = true, Font = new Font("Consolas", 9f),
-                Dock = DockStyle.Fill, BackColor = ThemeManager.Current.SurfaceContainer, ForeColor = ThemeManager.Current.OnSurface,
+                Dock = DockStyle.Fill, BackColor = ThemeManager.Current.SurfaceContainerLow, ForeColor = ThemeManager.Current.OnSurface,
                 BorderStyle = BorderStyle.None, ScrollBars = ScrollBars.Vertical,
             };
             ThemeManager.ThemeChanged += () =>
             {
-                _consoleBox.BackColor = ThemeManager.Current.SurfaceContainer;
+                _consoleBox.BackColor = ThemeManager.Current.SurfaceContainerLow;
                 _consoleBox.ForeColor = ThemeManager.Current.OnSurface;
                 consoleTitleLabel.ForeColor = ThemeManager.Current.OnSurfaceVariant;
                 clearLogsBtn.LinkColor = ThemeManager.Current.Primary;
@@ -185,9 +185,12 @@ namespace FfxTool.Gui
 
             rightCard.Controls.Add(calloutFlow);
             rightCard.Controls.Add(consoleHost);
-            // dock order: callout (top) first, console fills the remainder
-            rightCard.Controls.SetChildIndex(calloutFlow, 0);
-            rightCard.Controls.SetChildIndex(consoleHost, 1);
+            // Docking processes the HIGHEST child index first: calloutFlow at
+            // index 1 (Top) claims its strip, then consoleHost (index 0, Fill)
+            // takes the remainder — the previous order let the callout
+            // overlay the console header row, hiding it completely.
+            rightCard.Controls.SetChildIndex(consoleHost, 0);
+            rightCard.Controls.SetChildIndex(calloutFlow, 1);
             // gradient accent bar (stitch top h-2 primary->tertiary) on the card
             rightCard.Paint += (s, e) =>
             {

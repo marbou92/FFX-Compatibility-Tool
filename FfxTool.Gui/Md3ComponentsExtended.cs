@@ -24,6 +24,14 @@ namespace FfxTool.Gui
         const int TrackHeight = 32;
         const int ThumbMargin = 4;
 
+        /// <summary>
+        /// Optional backing-color provider for the corner-clear. Null =
+        /// auto-resolve from the parent surface (Md3Surface.BackingFor).
+        /// Set this when the parent paints its own custom fill that the
+        /// auto resolution can't know about (e.g. Settings' dark-mode row).
+        /// </summary>
+        public Func<Color> BackingProvider;
+
         public Md3Switch()
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.SupportsTransparentBackColor |
@@ -42,16 +50,10 @@ namespace FfxTool.Gui
         {
             var g = pevent.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            // Both Md3Switch and Md3Checkbox live inside an Md3Card in every
-            // real usage in this app, and Md3Card no longer keeps its
-            // BackColor property in sync with the live theme (it paints
-            // SurfaceContainer directly in its own OnPaint instead) —
-            // reading Parent.BackColor here was picking up a stale/wrong
-            // color, which caused the switch track to visibly mismatch
-            // its card and overlap/obscure the label text next to it.
-            // Reading the theme's SurfaceContainer directly instead is
-            // correct for this app's actual layout, not just a workaround.
-            g.Clear(ThemeManager.Current.SurfaceContainer);
+            // Corners must blend into whatever surface we sit on. Auto
+            // resolution handles Md3Card variants and plain surfaces; a
+            // BackingProvider overrides for custom-painted parents.
+            g.Clear(BackingProvider != null ? BackingProvider() : Md3Surface.BackingFor(Parent));
 
             var trackRect = new Rectangle(0, 2, TrackWidth, TrackHeight);
             // Unchecked track uses SurfaceContainerHighest (not High) — on a
@@ -117,6 +119,9 @@ namespace FfxTool.Gui
     {
         const int BoxSize = 20;
 
+        /// <summary>See Md3Switch.BackingProvider — overrides the auto parent-surface resolution.</summary>
+        public Func<Color> BackingProvider;
+
         public Md3Checkbox()
         {
             SetStyle(ControlStyles.UserPaint |
@@ -133,16 +138,10 @@ namespace FfxTool.Gui
         {
             var g = pevent.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            // Both Md3Switch and Md3Checkbox live inside an Md3Card in every
-            // real usage in this app, and Md3Card no longer keeps its
-            // BackColor property in sync with the live theme (it paints
-            // SurfaceContainer directly in its own OnPaint instead) —
-            // reading Parent.BackColor here was picking up a stale/wrong
-            // color, which caused the switch track to visibly mismatch
-            // its card and overlap/obscure the label text next to it.
-            // Reading the theme's SurfaceContainer directly instead is
-            // correct for this app's actual layout, not just a workaround.
-            g.Clear(ThemeManager.Current.SurfaceContainer);
+            // Parent-aware backing: checkboxes also live directly on tab
+            // surfaces (Convert's encoding options), where a hardcoded card
+            // color painted visible gray boxes around them.
+            g.Clear(BackingProvider != null ? BackingProvider() : Md3Surface.BackingFor(Parent));
 
             var boxRect = new Rectangle(0, (Height - BoxSize) / 2, BoxSize, BoxSize);
             Color boxFill = ThemeManager.Current.Primary;

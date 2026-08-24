@@ -90,6 +90,9 @@ namespace FfxTool.Gui
             darkRow.Controls.Add(new Label { Text = "Dark Mode", Font = Md3Tokens.TitleSmall, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Location = new Point(Md3Tokens.Space4, 12), BackColor = Color.Transparent });
             darkRow.Controls.Add(new Label { Text = "Switch between light and dark UI themes", Font = Md3Tokens.BodySmall, ForeColor = ThemeManager.Current.OnSurfaceVariant, AutoSize = true, Location = new Point(Md3Tokens.Space4, 34), BackColor = Color.Transparent });
             var darkSwitch = new Md3Switch { Checked = ThemeManager.Mode == Md3Mode.Dark, Width = 60, Height = 32, Location = new Point(darkRow.Width - 68, 16) };
+            // darkRow paints its own SurfaceContainer fill — tell the switch
+            // so its corner-clear matches instead of auto-resolving to Surface.
+            darkSwitch.BackingProvider = () => ThemeManager.Current.SurfaceContainer;
             // Guard flag must precede both handlers (locals can't be
             // referenced textually before their declaration).
             bool syncingDarkSwitch = false;

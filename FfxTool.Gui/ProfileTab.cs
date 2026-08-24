@@ -41,12 +41,12 @@ namespace FfxTool.Gui
             AutoScroll = true;
             Dock = DockStyle.Fill;
 
-            // M3 Expressive 12-col scaffold: outer Flow TopDown with centered max 1440
+            // Pure-flow scaffold: heading → intro → grid as FlowLayoutPanel
+            // children. The previous "AutoSize plain Panel + Dock=Top" stack
+            // stopped growing with the grid, clipping everything below the
+            // first card row with no scrollbar. Flow children size naturally
+            // and the outer panel's AutoScroll engages correctly.
             var outer = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true, Padding = new Padding(0) };
-            var centered = new Panel { AutoSize = true, MaximumSize = new Size(Md3Tokens.ContentMaxWidth, 0), Dock = DockStyle.Top };
-            centered.Width = Md3Tokens.ContentMaxWidth;
-            centered.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            Resize += (s,e) => centered.Width = Math.Min(Md3Tokens.ContentMaxWidth, ClientSize.Width - 32);
 
             var heading = new Label { Text = "Plugin Profiles", Font = Md3Tokens.DisplayLarge, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(Md3Tokens.Space6, Md3Tokens.Space6, 0, Md3Tokens.Space1) };
             var intro = new Label
@@ -64,7 +64,7 @@ namespace FfxTool.Gui
             // accounts for the grid's left margin AND each card's right margin
             // (the old formula clamped card width to 320, which made the
             // 3rd column not fit and left ~40% dead space).
-            var grid = new FlowLayoutPanel { AutoSize = true, WrapContents = true, FlowDirection = FlowDirection.LeftToRight, Dock = DockStyle.Top, Margin = new Padding(Md3Tokens.Space6, 0, Md3Tokens.Space2, Md3Tokens.Space4) };
+            var grid = new FlowLayoutPanel { AutoSize = true, WrapContents = true, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(Md3Tokens.Space6, 0, Md3Tokens.Space2, Md3Tokens.Space4) };
             const int baseW = 280;
             foreach (var vendor in vendors)
                 grid.Controls.Add(BuildVendorCard(vendor, baseW, 120));
@@ -74,7 +74,8 @@ namespace FfxTool.Gui
 
             void RelayoutGrid()
             {
-                int gridW = centered.Width - Md3Tokens.Space6 - Md3Tokens.Space2; // grid margins
+                int gridW = Math.Min(Md3Tokens.ContentMaxWidth, outer.ClientSize.Width) - Md3Tokens.Space6 - Md3Tokens.Space2;
+                grid.Width = Math.Max(280, gridW);
                 int cols = gridW >= 900 ? 3 : gridW >= 600 ? 2 : 1;
                 int gutter = Md3Tokens.Space4;
                 int cardW = cols == 1
@@ -86,20 +87,14 @@ namespace FfxTool.Gui
                     c.Width = c == discovery ? Math.Max(280, gridW - gutter) : cardW;
                 }
             }
-            Resize += (s, e) => { RelayoutGrid(); };
-            centered.Resize += (s, e) => { RelayoutGrid(); };
+            Resize += (s, e) => RelayoutGrid();
+            outer.Resize += (s, e) => RelayoutGrid();
 
-            centered.Controls.Add(heading);
-            centered.Controls.Add(intro);
-            centered.Controls.Add(grid);
-            // Dock order inside the plain centered panel: last-added docks
-            // first, so reverse the visual order via SetChildIndex.
-            centered.Controls.SetChildIndex(grid, 0);
-            centered.Controls.SetChildIndex(intro, 1);
-            centered.Controls.SetChildIndex(heading, 2);
-
-            outer.Controls.Add(centered);
+            outer.Controls.Add(heading);
+            outer.Controls.Add(intro);
+            outer.Controls.Add(grid);
             Controls.Add(outer);
+            RelayoutGrid(); // initial pass — cards ship at bento width, not the 280 placeholder
             ThemeManager.ThemeChanged += () => BackColor = ThemeManager.Current.Surface;
         }
 

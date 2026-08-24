@@ -118,32 +118,34 @@ namespace FfxTool.Gui
 
         static void DrawConvert(Graphics g, Rectangle b, Pen pen)
         {
-            // two opposing curved arrows — a simple "transform/convert" glyph
-            g.DrawArc(pen, P(b, 4, 4).X, P(b, 4, 4).Y, b.Width * 0.55f, b.Height * 0.55f, 90, 200);
-            g.DrawLine(pen, P(b, 4, 13), P(b, 7, 16));
-            g.DrawLine(pen, P(b, 4, 13), P(b, 8, 11));
+            // Material "swap_horiz": top arrow pointing right, bottom arrow
+            // pointing left — the old double-arc version read as a scribble.
+            g.DrawLine(pen, P(b, 5, 8), P(b, 19, 8));
+            g.DrawLine(pen, P(b, 15.5f, 4.5f), P(b, 19, 8));
+            g.DrawLine(pen, P(b, 15.5f, 11.5f), P(b, 19, 8));
 
-            g.DrawArc(pen, P(b, 8, 15).X, P(b, 15, 15).Y, b.Width * 0.55f, b.Height * 0.55f, 270, 200);
-            g.DrawLine(pen, P(b, 20, 11), P(b, 17, 8));
-            g.DrawLine(pen, P(b, 20, 11), P(b, 16, 13));
+            g.DrawLine(pen, P(b, 19, 16), P(b, 5, 16));
+            g.DrawLine(pen, P(b, 8.5f, 12.5f), P(b, 5, 16));
+            g.DrawLine(pen, P(b, 8.5f, 19.5f), P(b, 5, 16));
         }
 
         static void DrawSettings(Graphics g, Rectangle b, Pen pen, Brush brush)
         {
+            // Gear: body ring + center dot + 8 teeth (offset 22.5° so teeth
+            // sit between the compass points, like the real glyph).
             var center = P(b, 12, 12);
-            float outerR = b.Width * 0.38f;
-            float innerR = b.Width * 0.15f;
+            float outerR = b.Width * 0.30f;
+            float toothLen = b.Width * 0.14f;
+            float innerR = b.Width * 0.10f;
             g.DrawEllipse(pen, center.X - outerR, center.Y - outerR, outerR * 2, outerR * 2);
             g.FillEllipse(brush, center.X - innerR, center.Y - innerR, innerR * 2, innerR * 2);
-            // 6 simple teeth
-            for (int i = 0; i < 6; i++)
+            for (int i = 0; i < 8; i++)
             {
-                double angle = i * (System.Math.PI / 3);
-                float x1 = center.X + (float)(System.Math.Cos(angle) * outerR);
-                float y1 = center.Y + (float)(System.Math.Sin(angle) * outerR);
-                float x2 = center.X + (float)(System.Math.Cos(angle) * (outerR + b.Width * 0.09f));
-                float y2 = center.Y + (float)(System.Math.Sin(angle) * (outerR + b.Width * 0.09f));
-                g.DrawLine(pen, x1, y1, x2, y2);
+                double angle = i * (System.Math.PI / 4) + System.Math.PI / 8;
+                float cos = (float)System.Math.Cos(angle), sin = (float)System.Math.Sin(angle);
+                g.DrawLine(pen,
+                    center.X + cos * outerR, center.Y + sin * outerR,
+                    center.X + cos * (outerR + toothLen), center.Y + sin * (outerR + toothLen));
             }
         }
 

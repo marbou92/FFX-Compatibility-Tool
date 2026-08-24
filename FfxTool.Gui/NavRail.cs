@@ -28,8 +28,10 @@ namespace FfxTool.Gui
 
         readonly List<NavItem> _items = new List<NavItem>();
         readonly List<Rectangle> _itemBounds = new List<Rectangle>();
+        readonly ToolTip _tip = new ToolTip();
         int _selectedIndex = -1;
         int _hoverIndex = -1;   // hovered nav item (-1 = none)
+        int _pressedItem = -1;  // mouse-down item (press feedback)
         bool _fabHover, _fabPressed;
 
         readonly Timer _animTimer;
@@ -62,21 +64,40 @@ namespace FfxTool.Gui
 
             MouseClick += OnMouseClick;
             MouseMove += OnMouseMove;
-            MouseDown += (s, e) => { if (_fabBounds.Contains(e.Location)) { _fabPressed = true; Invalidate(); } };
-            MouseUp += (s, e) => { if (_fabPressed) { _fabPressed = false; Invalidate(); } };
-            MouseLeave += (s, e) => { if (_hoverIndex != -1 || _fabHover) { _hoverIndex = -1; _fabHover = false; Invalidate(); } };
+            MouseDown += (s, e) =>
+            {
+                if (_fabBounds.Contains(e.Location)) { _fabPressed = true; Invalidate(); return; }
+                int over = ItemAt(e.Location);
+                if (over != -1 && over != _selectedIndex) { _pressedItem = over; Invalidate(); }
+            };
+            MouseUp += (s, e) =>
+            {
+                if (_fabPressed) { _fabPressed = false; Invalidate(); }
+                if (_pressedItem != -1) { _pressedItem = -1; Invalidate(); }
+            };
+            MouseLeave += (s, e) =>
+            {
+                if (_hoverIndex != -1 || _fabHover) { _hoverIndex = -1; _fabHover = false; _tip.Hide(this); Invalidate(); }
+            };
             ThemeManager.ThemeChanged += () => { BackColor = ThemeManager.Current.NavigationSurface; Invalidate(); };
 
             _animTimer = new Timer { Interval = 15 };
             _animTimer.Tick += (s, e) => TickAnimation();
         }
 
+        int ItemAt(Point location)
+        {
+            for (int i = 0; i < _itemBounds.Count; i++)
+                if (_itemBounds[i].Contains(location)) return i;
+            return -1;
+        }
+
         protected override void Dispose(bool disposing)
         {
-            if (disposing && _animTimer != null)
+            if (disposing)
             {
-                _animTimer.Stop();
-                _animTimer.Dispose();
+                if (_animTimer != null) { _animTimer.Stop(); _animTimer.Dispose(); }
+                _tip.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -115,15 +136,18 @@ namespace FfxTool.Gui
         void OnMouseMove(object sender, MouseEventArgs e)
         {
             bool overFab = _fabBounds.Contains(e.Location);
-            int overItem = -1;
-            if (!overFab)
-                for (int i = 0; i < _itemBounds.Count; i++)
-                    if (_itemBounds[i].Contains(e.Location)) { overItem = i; break; }
+            int overItem = overFab ? -1 : ItemAt(e.Location);
 
             if (overItem != _hoverIndex || overFab != _fabHover)
             {
                 _hoverIndex = overItem;
                 _fabHover = overFab;
+                // per-item tooltip (the rail is one control, so WinForms
+                // ToolTips can't map regions automatically)
+                if (overItem >= 0 && overItem != _selectedIndex)
+                    _tip.Show(_items[overItem].Text, this, e.X + 14, e.Y + 14, 1500);
+                else
+                    _tip.Hide(this);
                 Invalidate();
             }
         }
@@ -229,6 +253,13 @@ namespace FfxTool.Gui
                     var hoverBounds = new Rectangle((Width - PillSize) / 2, bounds.Y + Md3Tokens.Space1, PillSize, PillSize);
                     using (var path = PillPath(hoverBounds))
                         Md3StateLayer.Paint(e.Graphics, path, ThemeManager.Current.OnSurfaceVariant, Md3Tokens.HoverStateAlpha);
+                }
+                // press state-layer (deeper) while the item is being clicked
+                if (i == _pressedItem)
+                {
+                    var pressBounds = new Rectangle((Width - PillSize) / 2, bounds.Y + Md3Tokens.Space1, PillSize, PillSize);
+                    using (var path = PillPath(pressBounds))
+                        Md3StateLayer.Paint(e.Graphics, path, selected ? ThemeManager.Current.Primary : ThemeManager.Current.OnSurfaceVariant, Md3Tokens.PressStateAlpha);
                 }
 
                 // active indicator pill behind just the icon (spec), spring-animated
