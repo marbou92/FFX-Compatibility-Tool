@@ -103,7 +103,6 @@ namespace FfxTool.Gui
                     finally { _syncing = false; }
                     RefreshSwatchSelection();
                 };
-                ring.Tag = (name, p);
                 PaletteRow.Children.Add(tag);
             }
             RefreshSwatchSelection();
@@ -113,7 +112,7 @@ namespace FfxTool.Gui
         {
             foreach (StackPanel tag in PaletteRow.Children)
             {
-                var (ring, name, p) = ((Border, TextBlock, Md3Palette))((StackPanel)tag.Children[0]).Tag;
+                var (ring, name, p) = ((Border, TextBlock, Md3Palette))tag.Tag;
                 bool selected = ThemeService.Palette == p;
                 ring.BorderBrush = selected ? (Brush)FindResource("B.Primary") : Brushes.Transparent;
                 name.Foreground = selected ? (Brush)FindResource("B.Primary") : (Brush)FindResource("B.OnSurfaceVariant");
