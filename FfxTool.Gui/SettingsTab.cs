@@ -48,14 +48,17 @@ namespace FfxTool.Gui
             var flow = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false };
 
             var headerRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
-            var iconLbl = new Label { AutoSize = true, Width = 24, Height = 24 };
+            // Fixed 24×24 box for the painted icon: an AutoSize label with
+            // empty text collapses to near-zero width, which would clip the
+            // icon to a sliver depending on layout-pass ordering.
+            var iconLbl = new Label { AutoSize = false, Width = 24, Height = 24 };
             iconLbl.Paint += (s, e) => Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Palette, new Rectangle(0, 0, 22, 22), ThemeManager.Current.Primary, 1.8f);
             headerRow.Controls.Add(iconLbl);
             headerRow.Controls.Add(new Label { Text = "Appearance", Font = Md3Tokens.TitleLarge, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(Md3Tokens.Space2, 2, 0, 0) });
             flow.Controls.Add(headerRow);
 
             // "Dark Mode" sub-panel — responsive width (fills card, not fixed 400) — Win7-safe: keep tonal, no blur
-            var darkRow = new Panel { Width = 412, Height = 64, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
+            var darkRow = new BufferedPanel { Width = 412, Height = 64, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
             darkRow.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
@@ -66,8 +69,29 @@ namespace FfxTool.Gui
             darkRow.Controls.Add(new Label { Text = "Dark Mode", Font = Md3Tokens.TitleSmall, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Location = new Point(Md3Tokens.Space4, 12) });
             darkRow.Controls.Add(new Label { Text = "Switch between light and dark UI themes", Font = Md3Tokens.BodySmall, ForeColor = ThemeManager.Current.OnSurfaceVariant, AutoSize = true, Location = new Point(Md3Tokens.Space4, 34) });
             var darkSwitch = new Md3Switch { Checked = ThemeManager.Mode == Md3Mode.Dark, Width = 60, Height = 32, Location = new Point(darkRow.Width - 68, 16) };
-            darkSwitch.CheckedChanged += (s, e) => ThemeManager.Apply(darkSwitch.Checked ? Md3Mode.Dark : Md3Mode.Light, ThemeManager.Palette);
+            // Guard flag must precede both handlers (locals can't be
+            // referenced textually before their declaration).
+            bool syncingDarkSwitch = false;
+            darkSwitch.CheckedChanged += (s, e) =>
+            {
+                if (!syncingDarkSwitch)
+                    ThemeManager.Apply(darkSwitch.Checked ? Md3Mode.Dark : Md3Mode.Light, ThemeManager.Palette);
+            };
             darkRow.Controls.Add(darkSwitch);
+            // Keep the switch in sync when the mode changes from elsewhere
+            // (Restore Defaults link, palette switches) — previously the
+            // switch kept its old visual state while the app re-themed,
+            // showing "on" in light mode until the next manual toggle.
+            ThemeManager.ThemeChanged += () =>
+            {
+                bool wantDark = ThemeManager.Mode == Md3Mode.Dark;
+                if (!syncingDarkSwitch && darkSwitch.Checked != wantDark)
+                {
+                    syncingDarkSwitch = true;
+                    try { darkSwitch.Checked = wantDark; }
+                    finally { syncingDarkSwitch = false; }
+                }
+            };
             // keep responsive without Math/ClientWidth confusion: use ClientSize.Width after darkSwitch exists
             card.Resize += (s, e) => { darkRow.Width = Math.Max(280, card.ClientSize.Width - Md3Tokens.Space4); darkSwitch.Location = new Point(darkRow.Width - 68, 16); };
             flow.Controls.Add(darkRow);
@@ -88,7 +112,7 @@ namespace FfxTool.Gui
             // in white on the selected one, a subtle ring/border on
             // selection, and the palette name below.
             var container = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, Md3Tokens.Space4, 0) };
-            var swatch = new Panel { Width = 48, Height = 48, Cursor = Cursors.Hand };
+            var swatch = new BufferedPanel { Width = 48, Height = 48, Cursor = Cursors.Hand };
             var nameLbl = new Label { Text = PaletteName(palette), Font = Md3Tokens.LabelSmall, AutoSize = true, Anchor = AnchorStyles.Top };
 
             void Repaint()
@@ -147,14 +171,14 @@ namespace FfxTool.Gui
             var flow = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false };
 
             var headerRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
-            var infoIcon = new Label { AutoSize = true, Width = 24, Height = 24 };
+            var infoIcon = new Label { AutoSize = false, Width = 24, Height = 24 };
             infoIcon.Paint += (s, e) => Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Info, new Rectangle(0, 0, 22, 22), ThemeManager.Current.OnSurfaceVariant, 1.8f);
             headerRow.Controls.Add(infoIcon);
             headerRow.Controls.Add(new Label { Text = "About", Font = Md3Tokens.TitleLarge, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(Md3Tokens.Space2, 2, 0, 0) });
             flow.Controls.Add(headerRow);
 
             var logoRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
-            var logoBox = new Panel { Width = 64, Height = 64, Margin = new Padding(0, 0, Md3Tokens.Space4, 0) };
+            var logoBox = new BufferedPanel { Width = 64, Height = 64, Margin = new Padding(0, 0, Md3Tokens.Space4, 0) };
             logoBox.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
@@ -175,7 +199,7 @@ namespace FfxTool.Gui
             logoRow.Controls.Add(nameCol);
             flow.Controls.Add(logoRow);
 
-            var divider = new Panel { Width = 340, Height = 1, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
+            var divider = new BufferedPanel { Width = 340, Height = 1, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
             divider.Paint += (s, e) => { using (var pen = new Pen(ThemeManager.Current.OutlineVariant)) e.Graphics.DrawLine(pen, 0, 0, divider.Width, 0); };
             card.Resize += (s, e) => divider.Width = Math.Max(280, card.ClientSize.Width - Md3Tokens.Space6 * 2);
             flow.Controls.Add(divider);

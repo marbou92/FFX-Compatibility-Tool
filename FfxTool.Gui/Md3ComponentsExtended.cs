@@ -26,7 +26,8 @@ namespace FfxTool.Gui
 
         public Md3Switch()
         {
-            SetStyle(ControlStyles.UserPaint | ControlStyles.SupportsTransparentBackColor, true);
+            SetStyle(ControlStyles.UserPaint | ControlStyles.SupportsTransparentBackColor |
+                     ControlStyles.ResizeRedraw | ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
             Appearance = Appearance.Button; // suppress the default checkbox glyph, we paint our own
             FlatStyle = FlatStyle.Flat;
             FlatAppearance.BorderSize = 0;
@@ -34,6 +35,7 @@ namespace FfxTool.Gui
             Font = Md3Tokens.BodyLarge;
             AutoSize = false;
             Height = TrackHeight + 4;
+            EnabledChanged += (s, e) => Invalidate();
         }
 
         protected override void OnPaint(PaintEventArgs pevent)
@@ -54,6 +56,14 @@ namespace FfxTool.Gui
             var trackRect = new Rectangle(0, 2, TrackWidth, TrackHeight);
             var trackColor = Checked ? ThemeManager.Current.Primary : ThemeManager.Current.SurfaceContainerHigh;
             var outlineColor = Checked ? ThemeManager.Current.Primary : ThemeManager.Current.Outline;
+            var labelColor = ThemeManager.Current.OnSurface;
+            if (!Enabled)
+            {
+                // MD3 disabled switch: muted track + thumb + label
+                trackColor = Md3Surface.Mute(trackColor, 0.55f);
+                outlineColor = Md3Surface.Mute(outlineColor, 0.55f);
+                labelColor = Md3Surface.Mute(ThemeManager.Current.OnSurfaceVariant, 0.45f);
+            }
 
             using (var path = PillPath(trackRect))
             using (var fillBrush = new SolidBrush(trackColor))
@@ -73,12 +83,13 @@ namespace FfxTool.Gui
                 : trackRect.X + (ThumbMargin / 2) + 4;
 
             var thumbColor = Checked ? ThemeManager.Current.OnPrimary : ThemeManager.Current.Outline;
+            if (!Enabled) thumbColor = Md3Surface.Mute(thumbColor, 0.55f);
             using (var thumbBrush = new SolidBrush(thumbColor))
                 g.FillEllipse(thumbBrush, thumbX, thumbY, thumbDiameter, thumbDiameter);
 
             // label, to the right of the track
             var labelRect = new Rectangle(TrackWidth + Md3Tokens.Space3, 0, Width - TrackWidth - Md3Tokens.Space3, Height);
-            TextRenderer.DrawText(g, Text, Font, labelRect, ThemeManager.Current.OnSurface,
+            TextRenderer.DrawText(g, Text, Font, labelRect, labelColor,
                 TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
         }
 
@@ -105,12 +116,14 @@ namespace FfxTool.Gui
 
         public Md3Checkbox()
         {
-            SetStyle(ControlStyles.UserPaint, true);
+            SetStyle(ControlStyles.UserPaint |
+                     ControlStyles.ResizeRedraw | ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
             Appearance = Appearance.Button;
             FlatStyle = FlatStyle.Flat;
             FlatAppearance.BorderSize = 0;
             Cursor = Cursors.Hand;
             Font = Md3Tokens.BodyLarge;
+            EnabledChanged += (s, e) => Invalidate();
         }
 
         protected override void OnPaint(PaintEventArgs pevent)
@@ -129,24 +142,36 @@ namespace FfxTool.Gui
             g.Clear(ThemeManager.Current.SurfaceContainer);
 
             var boxRect = new Rectangle(0, (Height - BoxSize) / 2, BoxSize, BoxSize);
+            Color boxFill = ThemeManager.Current.Primary;
+            Color boxOutline = ThemeManager.Current.Outline;
+            Color checkColor = ThemeManager.Current.OnPrimary;
+            Color labelColor = ThemeManager.Current.OnSurface;
+            if (!Enabled)
+            {
+                // MD3 disabled checkbox: muted box + label
+                boxFill = Md3Surface.Mute(boxFill, 0.55f);
+                boxOutline = Md3Surface.Mute(boxOutline, 0.55f);
+                checkColor = Md3Surface.Mute(checkColor, 0.55f);
+                labelColor = Md3Surface.Mute(ThemeManager.Current.OnSurfaceVariant, 0.45f);
+            }
 
-            using (var path = RoundedRect(boxRect, 4))
+            using (var path = RoundedRect(boxRect, Md3Tokens.CornerExtraSmall))
             {
                 if (Checked)
                 {
-                    using (var brush = new SolidBrush(ThemeManager.Current.Primary))
+                    using (var brush = new SolidBrush(boxFill))
                         g.FillPath(brush, path);
                 }
                 else
                 {
-                    using (var pen = new Pen(ThemeManager.Current.Outline, 1.5f))
+                    using (var pen = new Pen(boxOutline, 1.5f))
                         g.DrawPath(pen, path);
                 }
             }
 
             if (Checked)
             {
-                using (var pen = new Pen(ThemeManager.Current.OnPrimary, 2f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round })
+                using (var pen = new Pen(checkColor, 2f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round })
                 {
                     var p1 = new Point(boxRect.X + 4, boxRect.Y + 10);
                     var p2 = new Point(boxRect.X + 8, boxRect.Y + 14);
@@ -156,7 +181,7 @@ namespace FfxTool.Gui
             }
 
             var labelRect = new Rectangle(BoxSize + Md3Tokens.Space2, 0, Width - BoxSize - Md3Tokens.Space2, Height);
-            TextRenderer.DrawText(g, Text, Font, labelRect, ThemeManager.Current.OnSurface,
+            TextRenderer.DrawText(g, Text, Font, labelRect, labelColor,
                 TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
         }
 

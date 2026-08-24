@@ -65,11 +65,32 @@ namespace FfxTool.Gui
             catch (Exception) { return false; }
         }
 
-        /// <summary>Get an Inter font at the given size/weight, or a Segoe UI fallback.</summary>
+        // Fonts are requested from inside OnPaint paths all over the app
+        // (tokens properties, NavRail labels, list sub-items...). Creating
+        // a new GDI+ Font per request churned handles every frame; these
+        // are immutable value-combos, so cache one instance per key.
+        // Callers must treat returned Fonts as shared — do NOT dispose.
+        static readonly System.Collections.Generic.Dictionary<string, Font> _cache =
+            new System.Collections.Generic.Dictionary<string, Font>();
+
         public static Font Get(float sizePt, bool medium = false, bool semiBold = false)
         {
-            EnsureLoaded();
+            string key = sizePt.ToString(System.Globalization.CultureInfo.InvariantCulture) + "|" + (medium ? "m" : "") + (semiBold ? "sb" : "");
+            Font cached;
+            lock (_cache)
+            {
+                if (_cache.TryGetValue(key, out cached)) return cached;
+            }
 
+            EnsureLoaded();
+            var created = Create(sizePt, medium, semiBold);
+
+            lock (_cache) { _cache[key] = created; }
+            return created;
+        }
+
+        static Font Create(float sizePt, bool medium, bool semiBold)
+        {
             if (semiBold && _hasSemiBold)
                 return new Font(_collection.Families[FamilyIndex("Inter SemiBold")], sizePt, FontStyle.Regular);
             if (medium && _hasMedium)

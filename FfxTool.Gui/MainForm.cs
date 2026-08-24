@@ -18,9 +18,6 @@ namespace FfxTool.Gui
         readonly TableLayoutPanel _body;
         readonly Md3TitleBar _titleBar;
 
-        // M3 Expressive 2026 adaptive density — compact vs spacious
-        const int CompactWidth = 840;
-        const int ExpandedWidth = 1200;
         // resize-border thickness for the WM_NCHITTEST override below —
         // wide enough to grab comfortably with a mouse, matching roughly
         // what native Windows borders feel like.
@@ -36,6 +33,7 @@ namespace FfxTool.Gui
             // Md3TitleBar.cs for why these specific techniques were chosen
             // over anything deeper/riskier.
             FormBorderStyle = FormBorderStyle.None;
+            DoubleBuffered = true;
 
             Text = "FFX Compatibility Tool";
             MinimumSize = new Size(960, 620);
@@ -65,7 +63,7 @@ namespace FfxTool.Gui
             _contentHost.Controls.Add(_profileTab);
             _contentHost.Controls.Add(_listerTab);
 
-            var supportPane = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(217, ThemeManager.Current.Surface.R, ThemeManager.Current.Surface.G, ThemeManager.Current.Surface.B), Visible = false, Width = 320 };
+            var supportPane = new BufferedPanel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(217, ThemeManager.Current.Surface.R, ThemeManager.Current.Surface.G, ThemeManager.Current.Surface.B), Visible = false, Width = 320 };
             supportPane.Padding = new Padding(Md3Tokens.Space6);
             supportPane.Paint += (s, e) =>
             {
@@ -74,11 +72,12 @@ namespace FfxTool.Gui
                 using (var pen = new Pen(Color.FromArgb(51, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B)))
                     e.Graphics.DrawLine(pen, 0, 0, 0, supportPane.Height);
                 // M3 Expressive supporting pane — real history wired to HistoryStore
-                TextRenderer.DrawText(e.Graphics, "Recent Files", Md3Tokens.TitleMedium, new Rectangle(16, 16, 328, 24), ThemeManager.Current.OnSurface, TextFormatFlags.Left);
                 var recents = HistoryStore.Load();
+                int usable = Math.Max(120, supportPane.ClientSize.Width - Md3Tokens.Space8); // stay inside the pane's own padding
+                TextRenderer.DrawText(e.Graphics, "Recent Files", Md3Tokens.TitleMedium, new Rectangle(16, 16, usable, 24), ThemeManager.Current.OnSurface, TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
                 if (recents.Count == 0)
                 {
-                    TextRenderer.DrawText(e.Graphics, "No recent files", Md3Tokens.BodySmall, new Rectangle(16, 44, 328, 20), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.Left);
+                    TextRenderer.DrawText(e.Graphics, "No recent files", Md3Tokens.BodySmall, new Rectangle(16, 44, usable, 20), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.Left);
                 }
                 else
                 {
@@ -86,13 +85,13 @@ namespace FfxTool.Gui
                     foreach (var r in recents.Take(3))
                     {
                         string line = $"{r.fileName} • {HistoryStore.TimeAgo(r.timestamp)} • {r.bytes / 1024} KB";
-                        TextRenderer.DrawText(e.Graphics, line, Md3Tokens.BodySmall, new Rectangle(16, y, 328, 20), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
+                        TextRenderer.DrawText(e.Graphics, line, Md3Tokens.BodySmall, new Rectangle(16, y, usable, 20), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
                         y += 22;
                     }
                 }
-                int statsY = 44 + Math.Max(1, Math.Min(3, HistoryStore.Load().Count)) * 22 + 24;
-                TextRenderer.DrawText(e.Graphics, "Stats", Md3Tokens.TitleSmall, new Rectangle(16, statsY, 200, 20), ThemeManager.Current.OnSurface, TextFormatFlags.Left);
-                TextRenderer.DrawText(e.Graphics, $"{HistoryStore.Load().Count} Presets Scanned", Md3Tokens.LabelLarge, new Rectangle(16, statsY + 24, 328, 20), ThemeManager.Current.TertiaryContainer, TextFormatFlags.HorizontalCenter);
+                int statsY = 44 + Math.Max(1, Math.Min(3, recents.Count)) * 22 + 24;
+                TextRenderer.DrawText(e.Graphics, "Stats", Md3Tokens.TitleSmall, new Rectangle(16, statsY, usable, 20), ThemeManager.Current.OnSurface, TextFormatFlags.Left);
+                TextRenderer.DrawText(e.Graphics, $"{recents.Count} Presets Scanned", Md3Tokens.LabelLarge, new Rectangle(16, statsY + 24, usable, 20), ThemeManager.Current.TertiaryContainer, TextFormatFlags.HorizontalCenter);
             };
             ThemeManager.ThemeChanged += () => { supportPane.BackColor = Color.FromArgb(217, ThemeManager.Current.Surface.R, ThemeManager.Current.Surface.G, ThemeManager.Current.Surface.B); supportPane.Invalidate(); };
 
@@ -112,11 +111,14 @@ namespace FfxTool.Gui
                 var files = (string[])e.Data.GetData(DataFormats.FileDrop);
                 if (files.Length == 0) return;
                 var path = files[0];
-                // Route to the visible tab that can handle it and record history (M3 Expressive real wiring)
+                // Route to the visible tab that can handle it. The tab
+                // loaders push to HistoryStore themselves (with the real
+                // effectCount) — pushing here too would dedupe-replace the
+                // entry and wipe that count.
                 if (_listerTab.Visible) _listerTab.LoadFile(path);
                 else if (_convertTab.Visible) _convertTab.LoadFileForConvert(path);
                 else { _listerTab.LoadFile(path); ShowTab(0); }
-                try { HistoryStore.Push(path); supportPane.Invalidate(); } catch { }
+                supportPane.Invalidate();
             };
 
             _navRail = new NavRail();
@@ -131,10 +133,12 @@ namespace FfxTool.Gui
                 {
                     if (dlg.ShowDialog() != DialogResult.OK) return;
                     var path = dlg.FileName;
+                    // Same as global drop: the tab loaders record history
+                    // themselves — no second push here.
                     if (_listerTab.Visible) _listerTab.LoadFile(path);
                     else if (_convertTab.Visible) _convertTab.LoadFileForConvert(path);
                     else { _listerTab.LoadFile(path); ShowTab(0); }
-                    try { HistoryStore.Push(path); } catch { }
+                    supportPane.Invalidate();
                 }
             };
 
@@ -164,17 +168,23 @@ namespace FfxTool.Gui
             _body.Controls.Add(supportPane, 2, 0);
             _navRail.Dock = DockStyle.Fill;
 
-            // expressive footer: h-12 glass with Profile + DB version (stitch footer) — Dock.Fill inside TableLayout cell, not Dock.Bottom
-            var footer = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(230, ThemeManager.Current.SurfaceContainerLow.R, ThemeManager.Current.SurfaceContainerLow.G, ThemeManager.Current.SurfaceContainerLow.B) };
+            // expressive footer: h-12 glass with Profile + DB stats — Dock.Fill inside TableLayout cell
+            // Real data (vendor count / plugin table size), not the mockup's
+            // placeholder strings — same honesty rule ListerTab's status bar follows.
+            int pluginDbCount = 0;
+            try { pluginDbCount = FfxTool.Core.PluginLookup.LoadTable().Count; } catch { }
+            var footer = new BufferedPanel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(230, ThemeManager.Current.SurfaceContainerLow.R, ThemeManager.Current.SurfaceContainerLow.G, ThemeManager.Current.SurfaceContainerLow.B) };
             footer.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                 using (var pen = new Pen(Color.FromArgb(77, ThemeManager.Current.OutlineVariant.R, ThemeManager.Current.OutlineVariant.G, ThemeManager.Current.OutlineVariant.B)))
                     e.Graphics.DrawLine(pen, 0, 0, footer.Width, 0);
                 // dot + Profile
-                e.Graphics.FillEllipse(new SolidBrush(Color.FromArgb(34, 197, 94)), 16, 19, 10, 10);
-                TextRenderer.DrawText(e.Graphics, "Profile: Default", Md3Tokens.LabelMedium, new Rectangle(32, 0, 200, 48), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
-                TextRenderer.DrawText(e.Graphics, "DB Version: v1.2.4", Md3Tokens.LabelMedium, new Rectangle(footer.Width - 180, 0, 160, 48), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.VerticalCenter | TextFormatFlags.Right);
+                using (var dotBrush = new SolidBrush(Color.FromArgb(34, 197, 94)))
+                    e.Graphics.FillEllipse(dotBrush, 16, 19, 10, 10);
+                TextRenderer.DrawText(e.Graphics, $"Profile: {_profile.OwnedVendors.Count} vendor(s)", Md3Tokens.LabelMedium, new Rectangle(32, 0, 200, 48), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
+                string dbText = pluginDbCount > 0 ? $"Plugin DB: {pluginDbCount} entries" : "Plugin DB: not found";
+                TextRenderer.DrawText(e.Graphics, dbText, Md3Tokens.LabelMedium, new Rectangle(footer.Width - 180, 0, 160, 48), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.VerticalCenter | TextFormatFlags.Right);
             };
             ThemeManager.ThemeChanged += () => { footer.BackColor = Color.FromArgb(230, ThemeManager.Current.SurfaceContainerLow.R, ThemeManager.Current.SurfaceContainerLow.G, ThemeManager.Current.SurfaceContainerLow.B); footer.Invalidate(); };
             footer.Resize += (s, e) => footer.Invalidate();
@@ -230,6 +240,14 @@ namespace FfxTool.Gui
             const int WM_NCHITTEST = 0x84;
             if (m.Msg == WM_NCHITTEST)
             {
+                // While manually "maximized", native windows don't offer
+                // edge-resize; allowing it here would silently desync the
+                // title bar's restore bounds, so pass through untouched.
+                if (_titleBar != null && _titleBar.IsMaximized)
+                {
+                    base.WndProc(ref m);
+                    return;
+                }
                 base.WndProc(ref m);
                 var screenPoint = new Point(m.LParam.ToInt32());
                 var clientPoint = PointToClient(screenPoint);

@@ -58,6 +58,12 @@ namespace FfxTool.Gui
 
         public static bool IsAvailable { get { EnsureLoaded(); return _available; } }
 
+        // Icon sizes repeat heavily (24px nav icons, 18/20/22px buttons...),
+        // but bounds vary slightly; cache one Font per rounded pixel size
+        // instead of allocating a new GDI+ Font on every icon draw.
+        static readonly System.Collections.Generic.Dictionary<int, Font> _fontCache =
+            new System.Collections.Generic.Dictionary<int, Font>();
+
         /// <summary>
         /// Draw a Material Symbols glyph by its real ligature name (e.g.
         /// "folder_open", "settings", "swap_horiz"). Returns false if the
@@ -69,11 +75,19 @@ namespace FfxTool.Gui
             EnsureLoaded();
             if (!_available) return false;
 
-            using (var font = new Font(_collection.Families[0], bounds.Height * 0.85f, FontStyle.Regular, GraphicsUnit.Pixel))
+            int px = Math.Max(6, (int)Math.Round(bounds.Height * 0.85f));
+            Font font;
+            lock (_fontCache)
             {
-                TextRenderer.DrawText(g, ligatureName, font, bounds, color,
-                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+                if (!_fontCache.TryGetValue(px, out font))
+                {
+                    font = new Font(_collection.Families[0], px, FontStyle.Regular, GraphicsUnit.Pixel);
+                    _fontCache[px] = font;
+                }
             }
+
+            TextRenderer.DrawText(g, ligatureName, font, bounds, color,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
             return true;
         }
     }

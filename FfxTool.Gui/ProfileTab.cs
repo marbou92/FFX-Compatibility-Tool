@@ -20,7 +20,7 @@ namespace FfxTool.Gui
             { "Boris FX", (Md3Icons.Icon.Diamond, "Sapphire, Continuum, Mocha") },
             { "Plugin Everything", (Md3Icons.Icon.Plugin, "Deep Glow, AutoFill") },
             { "RE:Vision Effects", (Md3Icons.Icon.Eye, "Twixtor, ReelSmart Motion Blur") },
-            { "Red Giant / Maxon", (Md3Icons.Icon.Convert, "Trapcode, Magic Bullet, VFX") },
+            { "Red Giant / Maxon", (Md3Icons.Icon.AutoAwesome, "Trapcode, Magic Bullet, VFX") },
             { "Video Copilot", (Md3Icons.Icon.Flare, "Optical Flares, Element 3D, Saber") },
         };
 
@@ -48,7 +48,7 @@ namespace FfxTool.Gui
             centered.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             Resize += (s,e) => centered.Width = Math.Min(Md3Tokens.ContentMaxWidth, ClientSize.Width - 32);
 
-            var heading = new Label { Text = "Plugin Profiles", Font = new Font(Md3Tokens.HeadlineMedium.FontFamily, 22f, FontStyle.Bold), ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(Md3Tokens.Space6, Md3Tokens.Space6, 0, Md3Tokens.Space1) };
+            var heading = new Label { Text = "Plugin Profiles", Font = Md3Tokens.HeadlineLarge, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(Md3Tokens.Space6, Md3Tokens.Space6, 0, Md3Tokens.Space1) };
             var intro = new Label
             {
                 Text = "Check off every plugin vendor you have installed in your target After Effects version. This ensures converted FFX files only reference available effects.",
@@ -73,7 +73,6 @@ namespace FfxTool.Gui
                 int avail = ClientSize.Width - 64; // margins
                 int cols = avail >= 900 ? 3 : avail >= 600 ? 2 : 1;
                 int gutter = Md3Tokens.Space4;
-                int baseW2 = 260; // compact expressive, not 280
                 int cardW = cols == 1 ? Math.Max(260, avail - gutter) : (avail - (cols-1)*gutter) / cols;
                 cardW = Math.Min(320, Math.Max(240, cardW));
                 foreach (Control c in grid.Controls) c.Width = cardW;
@@ -116,7 +115,7 @@ namespace FfxTool.Gui
         {
             var card = new Md3Card { Width = w, Height = h, Margin = new Padding(0,0,Md3Tokens.Space4,Md3Tokens.Space4), Variant = Md3CardVariant.Filled };
             var (icon, suites) = VendorMeta.TryGetValue(vendor, out var meta) ? meta : (Md3Icons.Icon.Plugin, "");
-            var iconBox = new Panel { Size = new Size(48,48), Location = new Point(Md3Tokens.Space4, Md3Tokens.Space4), BackColor = Color.Transparent };
+            var iconBox = new BufferedPanel { Size = new Size(48,48), Location = new Point(Md3Tokens.Space4, Md3Tokens.Space4), BackColor = Color.Transparent };
             iconBox.Paint += (s,e) =>
             {
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
@@ -130,7 +129,7 @@ namespace FfxTool.Gui
             var sw = new Md3Switch { Checked = _profile.OwnedVendors.Contains(vendor), Width = 52, Height = 32, Location = new Point(w - 56, Md3Tokens.Space4) };
             sw.CheckedChanged += (s,e) => { _profile.SetOwned(vendor, sw.Checked); _profile.Save(); _onChange(); };
             _switches[vendor]=sw;
-            var badge = new Panel { Size = new Size(w-32,28), Location = new Point(Md3Tokens.Space4, h-36), BackColor = Color.Transparent };
+            var badge = new BufferedPanel { Size = new Size(w-32,28), Location = new Point(Md3Tokens.Space4, h-36), BackColor = Color.Transparent };
             badge.Paint += (s,e) =>
             {
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
@@ -150,7 +149,7 @@ namespace FfxTool.Gui
 
         Control BuildAddCustomCard(int w, int h)
         {
-            var card = new Panel { Width = w, Height = h, Margin = new Padding(0,0,Md3Tokens.Space4,Md3Tokens.Space4), Enabled = false, BackColor = Color.Transparent };
+            var card = new BufferedPanel { Width = w, Height = h, Margin = new Padding(0,0,Md3Tokens.Space4,Md3Tokens.Space4), Enabled = false, BackColor = Color.Transparent };
             var tip = new ToolTip(); tip.SetToolTip(card, "Not yet implemented");
             card.Paint += (s,e) =>
             {
@@ -174,7 +173,7 @@ namespace FfxTool.Gui
             using(var dlg = new FolderBrowserDialog { Description = "Select your AE plugins folder" })
             {
                 if(dlg.ShowDialog()!=DialogResult.OK) return;
-                string[] f; try{ f=Directory.GetFiles(dlg.SelectedPath).Select(fn=>Path.GetFileName(fn).ToLowerInvariant()).ToArray(); } catch(IOException){ return; }
+                string[] f; try{ f=Directory.GetFiles(dlg.SelectedPath).Select(fn=>Path.GetFileName(fn).ToLowerInvariant()).ToArray(); } catch { /* unreadable folder (locked/no access) — scan is best-effort, bail quietly */ return; }
                 foreach(var kv in VendorFileHints)
                 {
                     if(!_switches.ContainsKey(kv.Key)) continue;

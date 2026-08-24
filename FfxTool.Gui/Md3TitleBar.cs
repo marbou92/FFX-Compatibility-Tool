@@ -37,15 +37,19 @@ namespace FfxTool.Gui
 
         readonly Label _title;
         readonly Form _owner;
+        readonly Button _maxBtn;
         Rectangle _restoreBounds;
         bool _isMaximized;
 
-        // M3 Expressive Bold: 64 compact, 80 expanded via WindowSizeClass — Win7 safe, no DWM
+        /// <summary>True while the window is in the manual "maximized" state (see ToggleMaximize).</summary>
+        public bool IsMaximized { get { return _isMaximized; } }
+
+        // M3 Expressive Bold: 64 compact fixed height — Win7 safe, no DWM
         public Md3TitleBar(Form owner, string title)
         {
             _owner = owner;
             Dock = DockStyle.Top;
-            Height = 64; // compact 64, grows to 80 at Expanded via MainForm Resize (if needed)
+            Height = 64;
             BackColor = ThemeManager.Current.Surface; // glass approximated via alpha + border
 
             _title = new Label
@@ -55,8 +59,12 @@ namespace FfxTool.Gui
             };
             Controls.Add(_title);
 
+            // Glyphs from the widely-supported Geometric Shapes block so
+            // they render on Win7's stock Segoe UI too ("▢" U+25A2 was a
+            // tofu risk). Maximize toggles to the filled variant when the
+            // window is in its manual-maximized state.
             var closeBtn = MakeChromeButton("✕", () => _owner.Close());
-            var maxBtn = MakeChromeButton("▢", ToggleMaximize);
+            _maxBtn = MakeChromeButton("□", ToggleMaximize);
             var minBtn = MakeChromeButton("—", () => _owner.WindowState = FormWindowState.Minimized);
 
             // right-to-left placement, standard Windows convention (close
@@ -65,7 +73,7 @@ namespace FfxTool.Gui
             void LayoutButtons()
             {
                 int x = Width - Md3Tokens.Space2;
-                foreach (var btn in new[] { closeBtn, maxBtn, minBtn })
+                foreach (var btn in new[] { closeBtn, _maxBtn, minBtn })
                 {
                     x -= btn.Width;
                     btn.Location = new Point(x, (Height - btn.Height) / 2);
@@ -75,7 +83,7 @@ namespace FfxTool.Gui
             Resize += (s, e) => LayoutButtons();
 
             Controls.Add(closeBtn);
-            Controls.Add(maxBtn);
+            Controls.Add(_maxBtn);
             Controls.Add(minBtn);
             LayoutButtons();
 
@@ -101,6 +109,11 @@ namespace FfxTool.Gui
         void OnDragHandle(object sender, MouseEventArgs e)
         {
             if (e.Button != MouseButtons.Left) return;
+            // While manually "maximized" the OS sees a normal oversized
+            // window — an HTCAPTION drag would haul the whole screen-sized
+            // form around. Ignore drags in that state (double-click still
+            // restores), matching native behavior closely enough.
+            if (_isMaximized) return;
             ReleaseCapture();
             SendMessage(_owner.Handle, WM_NCLBUTTONDOWN, HTCAPTION, 0);
         }
@@ -118,12 +131,14 @@ namespace FfxTool.Gui
             {
                 _owner.Bounds = _restoreBounds;
                 _isMaximized = false;
+                _maxBtn.Text = "□";
             }
             else
             {
                 _restoreBounds = _owner.Bounds;
                 _owner.Bounds = Screen.FromControl(_owner).WorkingArea;
                 _isMaximized = true;
+                _maxBtn.Text = "▣"; // filled = restore state, like native chrome
             }
         }
 

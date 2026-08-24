@@ -225,8 +225,17 @@ namespace FfxTool.Gui
         /// Md3Card, Md3Switch, etc.) already read ThemeManager.Current
         /// fresh inside their own OnPaint, so Invalidate(true) alone is
         /// enough for those — this walk exists for the *native* WinForms
-        /// controls (ListView, TextBox, Panel, Form) that hold a static
+        /// controls (ListView, CheckedListBox) that hold a static
         /// BackColor/ForeColor property rather than computing it per-paint.
+        ///
+        /// Deliberately NOT touched here:
+        ///  - Labels: every label in this app sets an explicit ForeColor at
+        ///    construction (OnSurface vs OnSurfaceVariant vs Outline) and its
+        ///    owning tab re-applies it in its own ThemeChanged handler.
+        ///    Overwriting them here flattened the whole text hierarchy to
+        ///    OnSurface after the first theme switch.
+        ///  - TextBox: the console box is themed by ConvertTab's own handler;
+        ///    assigning here overrode its surface tier with the wrong color.
         /// </summary>
         public static void ApplyToTree(System.Windows.Forms.Control root)
         {
@@ -235,7 +244,7 @@ namespace FfxTool.Gui
             // ThemeChanged individually — they only need an Invalidate, not a
             // BackColor assignment. Native WinForms controls hold static colors
             // and do need explicit reassignment here.
-            bool isCustomMd3 = root is Md3Button || root is Md3Card || root is Md3Switch || root is Md3Checkbox || root is Md3Dropdown || root is Md3StatusChip;
+            bool isCustomMd3 = root is Md3Button || root is Md3Card || root is Md3Switch || root is Md3Checkbox || root is Md3Dropdown;
 
             if (!isCustomMd3)
             {
@@ -253,19 +262,10 @@ namespace FfxTool.Gui
                     lv.BackColor = Current.Surface;
                     lv.ForeColor = Current.OnSurface;
                 }
-                else if (root is System.Windows.Forms.TextBox tb)
-                {
-                    tb.BackColor = Current.SurfaceContainer;
-                    tb.ForeColor = Current.OnSurface;
-                }
                 else if (root is System.Windows.Forms.CheckedListBox clb)
                 {
                     clb.BackColor = Current.Surface;
                     clb.ForeColor = Current.OnSurface;
-                }
-                else if (root is System.Windows.Forms.Label lbl)
-                {
-                    lbl.ForeColor = Current.OnSurface;
                 }
             }
 

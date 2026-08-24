@@ -61,6 +61,16 @@ namespace FfxTool.Gui
             _animTimer.Tick += (s, e) => TickAnimation();
         }
 
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && _animTimer != null)
+            {
+                _animTimer.Stop();
+                _animTimer.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
         public void AddItem(string text, Control content, Md3Icons.Icon icon, bool pinned = false)
         {
             _items.Add(new NavItem { Text = text, Content = content, Icon = icon, Pinned = pinned });
@@ -195,8 +205,9 @@ namespace FfxTool.Gui
                 Md3Icons.Draw(e.Graphics, item.Icon, iconBounds, itemColor, selected ? 2.0f : 1.6f);
 
                 var labelBounds = new Rectangle(0, iconBounds.Bottom + Md3Tokens.Space1, Width, 16);
-                var font = selected ? Md3Tokens.LabelSmall : Md3Tokens.LabelSmall; // spec: nav labels are Label Small (11px), not Medium — both states share the size, weight differs via the color/emphasis only
-                TextRenderer.DrawText(e.Graphics, item.Text, font, labelBounds, itemColor,
+                // spec: nav labels are Label Small (11px) in both states —
+                // selection is signaled by the pill + icon color, not size/weight
+                TextRenderer.DrawText(e.Graphics, item.Text, Md3Tokens.LabelSmall, labelBounds, itemColor,
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.Top);
             }
         }

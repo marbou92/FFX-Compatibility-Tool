@@ -30,20 +30,20 @@ namespace FfxTool.Gui
         readonly List<string> _items = new List<string>();
         int _selectedIndex = -1;
         Form _popup;
+        bool _popupOpen;
 
         public event Action SelectionChanged;
 
         public Md3Dropdown()
         {
-            SetStyle(ControlStyles.UserPaint | ControlStyles.SupportsTransparentBackColor, true);
+            SetStyle(ControlStyles.UserPaint | ControlStyles.SupportsTransparentBackColor |
+                     ControlStyles.ResizeRedraw | ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
             Font = Md3Tokens.BodyLarge;
             Height = 36;
             Cursor = Cursors.Hand;
             Click += (s, e) => TogglePopup();
-            ThemeManager.ThemeChanged += Invalidate_;
+            ThemeManager.ThemeChanged += () => { Invalidate(); if (_popupOpen) ClosePopup(); };
         }
-
-        void Invalidate_() => Invalidate();
 
         public void SetItems(IEnumerable<string> items, int selectedIndex = 0)
         {
@@ -58,7 +58,11 @@ namespace FfxTool.Gui
         public int SelectedIndex
         {
             get => _selectedIndex;
-            set { _selectedIndex = value; Invalidate(); }
+            set
+            {
+                _selectedIndex = _items.Count > 0 ? Math.Max(-1, Math.Min(value, _items.Count - 1)) : -1;
+                Invalidate();
+            }
         }
 
         void TogglePopup()
@@ -66,22 +70,29 @@ namespace FfxTool.Gui
             if (_popup != null) { ClosePopup(); return; }
             if (_items.Count == 0) return;
 
+            const int RowHeight = 32;
+            const int MaxVisibleRows = 8;
+            int visibleRows = Math.Min(_items.Count, MaxVisibleRows);
+
             _popup = new Form
             {
                 FormBorderStyle = FormBorderStyle.None,
                 StartPosition = FormStartPosition.Manual,
                 ShowInTaskbar = false,
-                Size = new Size(Width, Math.Min(_items.Count, 8) * 32 + 4),
+                Size = new Size(Width, visibleRows * RowHeight + 4),
                 BackColor = ThemeManager.Current.Surface,
             };
             var screenLoc = Parent?.PointToScreen(Location) ?? Location;
             _popup.Location = new Point(screenLoc.X, screenLoc.Y + Height + 2);
 
+            // Rows are positioned absolutely (not Dock) so the panel's
+            // AutoScroll actually engages when items exceed the visible
+            // row cap — docked children never trigger AutoScroll in WinForms.
             var list = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
             for (int i = 0; i < _items.Count; i++)
             {
                 int idx = i;
-                var row = new Panel { Height = 32, Dock = DockStyle.Top, Cursor = Cursors.Hand };
+                var row = new Panel { Width = Width, Height = RowHeight, Location = new Point(0, i * RowHeight), Cursor = Cursors.Hand };
                 bool selected() => idx == _selectedIndex;
                 row.Paint += (s, e) =>
                 {
@@ -102,30 +113,37 @@ namespace FfxTool.Gui
                 };
                 list.Controls.Add(row);
             }
-            // Panel.Controls.Add with Dock.Top stacks in reverse insertion
-            // order — reverse the visual order back to match _items order.
-            for (int i = list.Controls.Count - 1; i >= 0; i--)
-                list.Controls.SetChildIndex(list.Controls[i], list.Controls.Count - 1 - i);
+            // Keep row width synced to the scrollable viewport.
+            list.Resize += (s, e) =>
+            {
+                foreach (Control r in list.Controls) r.Width = Math.Max(Width, list.ClientSize.Width);
+            };
 
             _popup.Controls.Add(list);
             _popup.Deactivate += (s, e) => ClosePopup();
             _popup.Show(FindForm());
+            _popupOpen = true;
+            Invalidate(); // caret flips to "open" state
         }
 
         void ClosePopup()
         {
-            _popup?.Close();
-            _popup?.Dispose();
+            if (_popup == null) { _popupOpen = false; return; }
+            _popup.Close();
+            _popup.Dispose();
             _popup = null;
+            if (_popupOpen)
+            {
+                _popupOpen = false;
+                Invalidate();
+            }
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.Clear(Parent is Md3Card || Parent?.GetType().Name.Contains("Card") == true
-                ? ThemeManager.Current.SurfaceContainer
-                : ThemeManager.Current.Surface);
+            g.Clear(Md3Surface.BackingFor(Parent));
 
             var bounds = new Rectangle(0, 0, Width - 1, Height - 1);
             // MD3 spec: dropdown menu box = "small" (8px) corner.
@@ -147,8 +165,17 @@ namespace FfxTool.Gui
             var caretCenter = new Point(Width - 16, Height / 2);
             using (var pen = new Pen(ThemeManager.Current.OnSurfaceVariant, 1.5f) { StartCap = LineCap.Round, EndCap = LineCap.Round })
             {
-                g.DrawLine(pen, caretCenter.X - 4, caretCenter.Y - 2, caretCenter.X, caretCenter.Y + 2);
-                g.DrawLine(pen, caretCenter.X, caretCenter.Y + 2, caretCenter.X + 4, caretCenter.Y - 2);
+                if (_popupOpen)
+                {
+                    // open state: caret points up
+                    g.DrawLine(pen, caretCenter.X - 4, caretCenter.Y + 2, caretCenter.X, caretCenter.Y - 2);
+                    g.DrawLine(pen, caretCenter.X, caretCenter.Y - 2, caretCenter.X + 4, caretCenter.Y + 2);
+                }
+                else
+                {
+                    g.DrawLine(pen, caretCenter.X - 4, caretCenter.Y - 2, caretCenter.X, caretCenter.Y + 2);
+                    g.DrawLine(pen, caretCenter.X, caretCenter.Y + 2, caretCenter.X + 4, caretCenter.Y - 2);
+                }
             }
         }
 

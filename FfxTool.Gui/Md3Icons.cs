@@ -95,7 +95,7 @@ namespace FfxTool.Gui
                     case Icon.Eye: DrawEye(g, bounds, pen); break;
                     case Icon.Flare: DrawFlare(g, bounds, pen); break;
                     case Icon.Add: DrawAdd(g, bounds, pen); break;
-                    case Icon.AutoAwesome: DrawAutoAwesome(g, bounds, pen, brush); break;
+                    case Icon.AutoAwesome: DrawAutoAwesome(g, bounds, pen); break;
                     case Icon.Description: DrawDescription(g, bounds, pen); break;
                     case Icon.History: DrawHistory(g, bounds, pen); break;
                     case Icon.Analytics: DrawAnalytics(g, bounds, pen); break;
@@ -195,18 +195,17 @@ namespace FfxTool.Gui
 
         static void DrawMoon(Graphics g, Rectangle b, Brush brush)
         {
+            var outer = new RectangleF(P(b, 4, 3).X, P(b, 4, 3).Y, b.Width * 0.7f, b.Height * 0.7f);
+            var cut = new RectangleF(P(b, 8, 2).X, P(b, 2, 2).Y, b.Width * 0.7f, b.Height * 0.7f);
             using (var path = new GraphicsPath())
+            using (var cutPath = new GraphicsPath())
+            using (var region = new Region(path))
             {
-                var outer = new RectangleF(P(b, 4, 3).X, P(b, 4, 3).Y, b.Width * 0.7f, b.Height * 0.7f);
-                var cut = new RectangleF(P(b, 8, 2).X, P(b, 2, 2).Y, b.Width * 0.7f, b.Height * 0.7f);
                 path.AddEllipse(outer);
-                using (var cutPath = new GraphicsPath())
-                {
-                    cutPath.AddEllipse(cut);
-                    var region = new Region(path);
-                    region.Exclude(cutPath);
-                    g.FillRegion(brush, region);
-                }
+                region.Union(path);      // crescent = outer ellipse...
+                cutPath.AddEllipse(cut);
+                region.Exclude(cutPath); // ...minus the offset cutter
+                g.FillRegion(brush, region);
             }
         }
 
@@ -281,13 +280,11 @@ namespace FfxTool.Gui
             g.DrawLine(pen, P(b, 6, 12), P(b, 18, 12));
         }
 
-        static void DrawAutoAwesome(Graphics g, Rectangle b, Pen pen, Brush brush)
+        static void DrawAutoAwesome(Graphics g, Rectangle b, Pen pen)
         {
-            var c = P(b, 12, 12);
-            // four-point star
-            var pts = new[] { P(b, 12, 3), P(b, 14, 10), P(b, 21, 12), P(b, 14, 14), P(b, 12, 21), P(b, 10, 14), P(b, 3, 12), P(b, 10, 10) };
+            // four-point star — append the start point to close the outline
+            var pts = new[] { P(b, 12, 3), P(b, 14, 10), P(b, 21, 12), P(b, 14, 14), P(b, 12, 21), P(b, 10, 14), P(b, 3, 12), P(b, 10, 10), P(b, 12, 3) };
             g.DrawLines(pen, pts);
-            g.DrawLine(pen, pts[0], pts[0]); // close
         }
 
         static void DrawDescription(Graphics g, Rectangle b, Pen pen)

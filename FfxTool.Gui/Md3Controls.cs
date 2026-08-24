@@ -24,6 +24,58 @@ namespace FfxTool.Gui
     /// </summary>
     public enum Md3ButtonVariant { Filled, Tonal, Outlined, Text }
 
+    /// <summary>
+    /// Plain Panel with double buffering enabled — drop-in replacement for
+    /// "new Panel" wherever a custom Paint handler exists, so resize/theme
+    /// repaints stop flickering (WinForms Panel doesn't buffer by default).
+    /// </summary>
+    public class BufferedPanel : Panel
+    {
+        public BufferedPanel()
+        {
+            DoubleBuffered = true;
+            SetStyle(ControlStyles.ResizeRedraw | ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint, true);
+        }
+    }
+
+    /// <summary>
+    /// The color custom-painted controls must clear their background with so
+    /// their rounded corners blend invisibly into whatever surface they sit
+    /// on. WinForms has no real transparency for UserPaint controls — the
+    /// corners are painted with this color instead. Resolves the actual
+    /// painted fill of an Md3Card parent (its ambient BackColor property is
+    /// NOT kept in sync with what its OnPaint draws), or the app Surface for
+    /// anything sitting directly on a tab/form.
+    /// </summary>
+    public static class Md3Surface
+    {
+        public static Color BackingFor(Control parent)
+        {
+            var card = parent as Md3Card;
+            if (card != null)
+            {
+                switch (card.Variant)
+                {
+                    case Md3CardVariant.Elevated: return ThemeManager.Current.SurfaceContainerHigh;
+                    case Md3CardVariant.Outlined: return ThemeManager.Current.Surface;
+                    default: return ThemeManager.Current.SurfaceContainer; // Filled
+                }
+            }
+            return ThemeManager.Current.Surface;
+        }
+
+        /// <summary>Blend a color toward the current Surface — used for disabled-state muting.</summary>
+        public static Color Mute(Color c, float t)
+        {
+            var s = ThemeManager.Current.Surface;
+            return Color.FromArgb(
+                c.A,
+                (int)(c.R + (s.R - c.R) * t),
+                (int)(c.G + (s.G - c.G) * t),
+                (int)(c.B + (s.B - c.B) * t));
+        }
+    }
+
     public class Md3Button : Button
     {
         public Md3ButtonVariant Variant = Md3ButtonVariant.Filled;
@@ -34,7 +86,8 @@ namespace FfxTool.Gui
 
         public Md3Button()
         {
-            SetStyle(ControlStyles.UserPaint | ControlStyles.SupportsTransparentBackColor, true);
+            SetStyle(ControlStyles.UserPaint | ControlStyles.SupportsTransparentBackColor |
+                     ControlStyles.ResizeRedraw | ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
             FlatStyle = FlatStyle.Flat;
             FlatAppearance.BorderSize = 0;
             Font = Md3Tokens.LabelLarge;
@@ -49,6 +102,7 @@ namespace FfxTool.Gui
             // visually reads the same for a control this size.
             MouseDown += (s, e) => { _pressed = true; Invalidate(); };
             MouseUp += (s, e) => { _pressed = false; Invalidate(); };
+            EnabledChanged += (s, e) => Invalidate();
             ThemeManager.ThemeChanged += Invalidate_;
         }
 
@@ -56,6 +110,18 @@ namespace FfxTool.Gui
 
         (Color fill, Color content, bool outlined) Colors()
         {
+            // Disabled: MD3 mutes both fill and content toward the surface.
+            if (!Enabled)
+            {
+                switch (Variant)
+                {
+                    case Md3ButtonVariant.Tonal: return (Md3Surface.Mute(ThemeManager.Current.SurfaceContainerHigh, 0.5f), Md3Surface.Mute(ThemeManager.Current.OnSurfaceVariant, 0.5f), false);
+                    case Md3ButtonVariant.Outlined:
+                    case Md3ButtonVariant.Text: return (Color.Transparent, Md3Surface.Mute(ThemeManager.Current.OnSurfaceVariant, 0.4f), Variant == Md3ButtonVariant.Outlined);
+                    default: return (Md3Surface.Mute(ThemeManager.Current.PrimaryContainer, 0.35f), Md3Surface.Mute(ThemeManager.Current.OnPrimaryContainer, 0.45f), false);
+                }
+            }
+
             switch (Variant)
             {
                 case Md3ButtonVariant.Filled: return (ThemeManager.Current.Primary, ThemeManager.Current.OnPrimary, false);
@@ -74,8 +140,11 @@ namespace FfxTool.Gui
             // native button background underneath our custom pill, which
             // showed through as jagged black corner artifacts in a real
             // screenshot — clearing to the actual parent surface first
-            // fixes that properly.
-            g.Clear(Parent?.BackColor ?? ThemeManager.Current.Surface);
+            // fixes that properly. The parent's *painted* fill is resolved
+            // via Md3Surface.BackingFor (its ambient BackColor property
+            // doesn't match what an Md3Card draws), so corners blend into
+            // cards of any variant instead of leaving light squares.
+            g.Clear(Md3Surface.BackingFor(Parent));
 
             var (fill, content, outlined) = Colors();
             // ~5% inset on press, approximating the design's scale-95 press feedback
@@ -150,6 +219,7 @@ namespace FfxTool.Gui
 
         public Md3Card()
         {
+            SetStyle(ControlStyles.ResizeRedraw | ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint, true);
             Padding = new Padding(Md3Tokens.Space4);
             ThemeManager.ThemeChanged += Invalidate_;
             // Matches the design spec's card hover pattern: "border
@@ -200,76 +270,6 @@ namespace FfxTool.Gui
                         e.Graphics.DrawPath(pen, path);
                 }
             }
-        }
-
-        static GraphicsPath RoundedRect(Rectangle bounds, int radius)
-        {
-            var path = new GraphicsPath();
-            int d = radius * 2;
-            path.AddArc(bounds.X, bounds.Y, d, d, 180, 90);
-            path.AddArc(bounds.Right - d, bounds.Y, d, d, 270, 90);
-            path.AddArc(bounds.Right - d, bounds.Bottom - d, d, d, 0, 90);
-            path.AddArc(bounds.X, bounds.Bottom - d, d, d, 90, 90);
-            path.CloseFigure();
-            return path;
-        }
-    }
-
-    /// <summary>A small colored "chip" used for status labels (e.g. "You have this" / "NOT in your profile") — MD3's assist-chip color logic without a real chip control.</summary>
-    public class Md3StatusChip : Label
-    {
-        public enum Status { Ok, Warning, Error, Neutral }
-
-        public void SetStatus(string text, Status status)
-        {
-            Text = "  " + text + "  ";
-            Font = Md3Tokens.LabelLarge;
-            AutoSize = true;
-            TextAlign = ContentAlignment.MiddleCenter;
-            Padding = new Padding(Md3Tokens.Space2, Md3Tokens.Space1, Md3Tokens.Space2, Md3Tokens.Space1);
-
-            switch (status)
-            {
-                case Status.Ok:
-                    BackColor = ThemeManager.Current.PrimaryContainer;
-                    ForeColor = ThemeManager.Current.OnPrimaryContainer;
-                    break;
-                case Status.Warning:
-                    BackColor = ThemeManager.Current.TertiaryContainer;
-                    ForeColor = ThemeManager.Current.OnTertiaryContainer;
-                    break;
-                case Status.Error:
-                    BackColor = ThemeManager.Current.ErrorContainer;
-                    ForeColor = ThemeManager.Current.OnErrorContainer;
-                    break;
-                default:
-                    BackColor = ThemeManager.Current.SurfaceContainerHigh;
-                    ForeColor = ThemeManager.Current.OnSurfaceVariant;
-                    break;
-            }
-        }
-
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            var bounds = new Rectangle(0, 0, Width - 1, Height - 1);
-            // MD3 spec (component-shape mapping): "Chips: small" (8px
-            // corner), NOT a full pill — chips and buttons look similar
-            // but are spec'd differently. This was previously using a
-            // full/pill shape, which is the button shape, not the chip
-            // shape. BackColor/ForeColor here are still set once per
-            // SetStatus() call rather than read live from ThemeManager on
-            // every paint — acceptable for now since SetStatus() is meant
-            // to be called again on any state change (including a theme
-            // change, if the caller wires that up), but flagging the same
-            // staleness pattern found and fixed in Md3Button/Md3Card.
-            using (var path = RoundedRect(bounds, Md3Tokens.CornerSmall))
-            using (var brush = new SolidBrush(BackColor))
-            {
-                e.Graphics.FillPath(brush, path);
-            }
-            TextRenderer.DrawText(e.Graphics, Text, Font, ClientRectangle, ForeColor,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
         }
 
         static GraphicsPath RoundedRect(Rectangle bounds, int radius)

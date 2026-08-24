@@ -35,6 +35,13 @@ namespace FfxTool.Gui
         readonly Label _statusBarLeft;
         System.Collections.Generic.List<Pipeline.EffectInfo> _currentEffects = new System.Collections.Generic.List<Pipeline.EffectInfo>();
 
+        // Header icon-button states: filter cycles All → missing-only →
+        // compatible-only; sort toggles effect-name direction. Both were
+        // previously decorative buttons with hover cursors but no handlers.
+        int _filterMode; // 0 all, 1 missing only, 2 compatible only
+        bool _sortDesc;
+        Label _statusBarRight;
+
         // M3 Expressive Bold compact adaptive — whole section rebuilt 12-col
         public ListerTab(PluginProfile profile)
         {
@@ -63,7 +70,7 @@ namespace FfxTool.Gui
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             // --- expressive heading: stitch h1 36px bold ---
-            var heading = new Label { Text = "Effect Lister", Font = new Font(Md3Tokens.HeadlineMedium.FontFamily, 22f, FontStyle.Bold), ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
+            var heading = new Label { Text = "Effect Lister", Font = Md3Tokens.HeadlineLarge, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
             ThemeManager.ThemeChanged += () => heading.ForeColor = ThemeManager.Current.OnSurface;
 
             // --- header row: FlowLayout wrap (M3 adaptive) so pill/icons never clip at 960px ---
@@ -74,7 +81,7 @@ namespace FfxTool.Gui
 
             // real design: an "info" icon + text inside a bordered pill,
             // not plain text next to the button
-            var fileChip = new Panel { Height = 36, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
+            var fileChip = new BufferedPanel { Height = 36, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
             fileChip.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
@@ -94,11 +101,29 @@ namespace FfxTool.Gui
                 AutoSize = true, Location = new Point(38, 9),
             };
             fileChip.Controls.Add(_fileChipLabel);
-            fileChip.Width = 38 + TextRenderer.MeasureText("No file loaded", Md3Tokens.BodyMedium).Width + Md3Tokens.Space3;
+            // Same formula everywhere (initial + every reload) so the chip
+            // doesn't jump wider after a load.
+            void UpdateChipWidth()
+            {
+                fileChip.Width = 38 + TextRenderer.MeasureText(_fileChipLabel.Text, Md3Tokens.BodyMedium).Width + Md3Tokens.Space3;
+                fileChip.Invalidate();
+            }
+            UpdateChipWidth();
+            ThemeManager.ThemeChanged += UpdateChipWidth;
 
             var iconButtonsRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(Md3Tokens.Space4, 0, 0, Md3Tokens.Space2) };
-            iconButtonsRow.Controls.Add(MakeIconButton(Md3Icons.Icon.Palette, "Filter"));
-            iconButtonsRow.Controls.Add(MakeIconButton(Md3Icons.Icon.Convert, "Sort"));
+            // Active state is shown by tinting the icon Primary (and the
+            // status bar right label spells out the current mode).
+            iconButtonsRow.Controls.Add(MakeIconButton(Md3Icons.Icon.Palette, "Cycle filter: all / missing only / compatible only", () =>
+            {
+                _filterMode = (_filterMode + 1) % 3;
+                Refresh_();
+            }, () => _filterMode != 0));
+            iconButtonsRow.Controls.Add(MakeIconButton(Md3Icons.Icon.Convert, "Toggle sort direction (by effect name)", () =>
+            {
+                _sortDesc = !_sortDesc;
+                Refresh_();
+            }, () => _sortDesc));
 
             headerRow.Controls.Add(openBtn);
             headerRow.Controls.Add(fileChip);
@@ -135,7 +160,10 @@ namespace FfxTool.Gui
                     TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
             };
             _list.DrawItem += (s, e) => { };
-            ThemeManager.ThemeChanged += () => { _list.BackColor = ThemeManager.Current.Surface; _list.Invalidate(true); };
+            // Row colors are baked per-item at Refresh_ time, so a theme
+            // switch must REBUILD the rows (not just repaint) or they'd
+            // keep the old theme's container colors.
+            ThemeManager.ThemeChanged += () => Refresh_();
             // Effect Name / Plugin Vendor / Compatibility — matches the
             // real design's column set for this screen. No "Action" column:
             // that's specific to Convert's table (where rows can be
@@ -176,6 +204,7 @@ namespace FfxTool.Gui
                 Text = "Ready", Font = Md3Tokens.LabelSmall, ForeColor = ThemeManager.Current.Outline,
                 AutoSize = true, Anchor = AnchorStyles.Right, Dock = DockStyle.Right,
             };
+            _statusBarRight = statusBarRight;
 
             statusBar.Controls.Add(_statusBarLeft, 0, 0);
             statusBar.Controls.Add(statusBarRight, 1, 0);
@@ -187,15 +216,27 @@ namespace FfxTool.Gui
             Controls.Add(root);
         }
 
-        Control MakeIconButton(Md3Icons.Icon icon, string tooltip)
+        Control MakeIconButton(Md3Icons.Icon icon, string tooltip, Action onClick = null, Func<bool> isActive = null)
         {
-            var btn = new Panel { Width = 36, Height = 36, Margin = new Padding(Md3Tokens.Space1), Cursor = Cursors.Hand };
+            var btn = new BufferedPanel { Width = 36, Height = 36, Margin = new Padding(Md3Tokens.Space1), Cursor = onClick != null ? Cursors.Hand : Cursors.Default };
             var tip = new ToolTip();
             tip.SetToolTip(btn, tooltip);
+            if (onClick != null) btn.Click += (s, e) => onClick();
+            bool _hover = false;
+            btn.MouseEnter += (s, e) => { if (onClick != null) { _hover = true; btn.Invalidate(); } };
+            btn.MouseLeave += (s, e) => { _hover = false; btn.Invalidate(); };
             btn.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                Md3Icons.Draw(e.Graphics, icon, new Rectangle(8, 8, 20, 20), ThemeManager.Current.OnSurfaceVariant, 1.6f);
+                bool active = isActive != null && isActive();
+                if (_hover)
+                {
+                    using (var path = RoundedRect(new Rectangle(0, 0, 35, 35), Md3Tokens.CornerSmall))
+                    using (var brush = new SolidBrush(Color.FromArgb(Md3Tokens.HoverStateAlpha, ThemeManager.Current.OnSurfaceVariant)))
+                        e.Graphics.FillPath(brush, path);
+                }
+                var color = active ? ThemeManager.Current.Primary : ThemeManager.Current.OnSurfaceVariant;
+                Md3Icons.Draw(e.Graphics, icon, new Rectangle(8, 8, 20, 20), color, active ? 1.9f : 1.6f);
             };
             return btn;
         }
@@ -244,7 +285,7 @@ namespace FfxTool.Gui
             cardsRow.Controls.Add(MakeDisabledActionCard(Md3Icons.Icon.Check, "Auto-Analyze", "Verify compatibility on load", "Not yet implemented"));
             var recent = HistoryStore.Load().FirstOrDefault();
             bool hasRecent = recent != null;
-            var recentCard = new Panel { Width = 220, Height = 64, Margin = new Padding(Md3Tokens.Space2), Enabled = hasRecent, Cursor = hasRecent ? Cursors.Hand : Cursors.Default };
+            var recentCard = new BufferedPanel { Width = 220, Height = 64, Margin = new Padding(Md3Tokens.Space2), Enabled = hasRecent, Cursor = hasRecent ? Cursors.Hand : Cursors.Default };
             if (!hasRecent) new ToolTip().SetToolTip(recentCard, "No recent files yet");
             else new ToolTip().SetToolTip(recentCard, $"Open {recent.fileName}");
             recentCard.Paint += (s2, e2) =>
@@ -263,7 +304,7 @@ namespace FfxTool.Gui
                 string sub = hasRecent ? recent.fileName : "View last 5 analyzed presets";
                 TextRenderer.DrawText(e2.Graphics, sub, Md3Tokens.BodySmall, new Rectangle(50, 32, recentCard.Width - 60, 18), ThemeManager.Current.OutlineVariant, TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
             };
-            if (hasRecent) recentCard.Click += (s2, e2) => { try { LoadFile(recent.path); } catch { } };
+            if (hasRecent) recentCard.Click += (s2, e2) => LoadFile(recent.path); // LoadFile handles its own errors
             cardsRow.Controls.Add(recentCard);
             container.Controls.Add(cardsRow);
             container.Resize += (s, e) =>
@@ -277,7 +318,7 @@ namespace FfxTool.Gui
 
         Control MakeDisabledActionCard(Md3Icons.Icon icon, string title, string subtitle, string tooltip)
         {
-            var card = new Panel { Width = 180, Height = 56, Margin = new Padding(Md3Tokens.Space2), Enabled = false };
+            var card = new BufferedPanel { Width = 180, Height = 56, Margin = new Padding(Md3Tokens.Space2), Enabled = false };
             var tip = new ToolTip();
             tip.SetToolTip(card, tooltip);
             card.Paint += (s, e) =>
@@ -336,12 +377,7 @@ namespace FfxTool.Gui
             try
             {
                 _fileChipLabel.Text = Path.GetFileName(path);
-                var chip = _fileChipLabel.Parent as Panel;
-                if (chip != null)
-                {
-                    chip.Width = 38 + TextRenderer.MeasureText(_fileChipLabel.Text, Md3Tokens.BodyMedium).Width + Md3Tokens.Space6;
-                    chip.Invalidate();
-                }
+                SetChipWidth();
                 var data = File.ReadAllBytes(path);
                 _currentEffects = Pipeline.ListEffects(data);
                 HistoryStore.Push(path, _currentEffects.Count(e => !e.IsSentinel));
@@ -351,14 +387,20 @@ namespace FfxTool.Gui
             {
                 MessageBox.Show(this, $"Failed to read '{Path.GetFileName(path)}':\n{ex.Message}", "Load failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 _fileChipLabel.Text = "No file loaded";
-                var chip = _fileChipLabel.Parent as Panel;
-                if (chip != null)
-                {
-                    chip.Width = 38 + TextRenderer.MeasureText(_fileChipLabel.Text, Md3Tokens.BodyMedium).Width + Md3Tokens.Space6;
-                    chip.Invalidate();
-                }
+                SetChipWidth();
                 _currentEffects = new System.Collections.Generic.List<Pipeline.EffectInfo>();
                 Refresh_();
+            }
+        }
+
+        void SetChipWidth()
+        {
+            // Same formula as the initial layout — the chip previously used
+            // a different trailing gap after loads, so it visibly jumped.
+            if (_fileChipLabel.Parent is Panel chip)
+            {
+                chip.Width = 38 + TextRenderer.MeasureText(_fileChipLabel.Text, Md3Tokens.BodyMedium).Width + Md3Tokens.Space3;
+                chip.Invalidate();
             }
         }
 
@@ -367,8 +409,20 @@ namespace FfxTool.Gui
             var table = PluginLookup.LoadTable();
             var realEffects = _currentEffects.Where(e => !e.IsSentinel).ToList();
 
+            // Sort by effect name (direction toggled from the header button)
+            System.Collections.Generic.IEnumerable<Pipeline.EffectInfo> ordered = _sortDesc
+                ? realEffects.OrderByDescending(e => e.MatchName, StringComparer.OrdinalIgnoreCase)
+                : realEffects.OrderBy(e => e.MatchName, StringComparer.OrdinalIgnoreCase);
+
+            // Filter (cycled from the header button): 0 all, 1 missing
+            // plugins only, 2 compatible only (owned or native/unknown vendor).
+            if (_filterMode == 1)
+                ordered = ordered.Where(e => _profile.Owns(PluginLookup.Resolve(e.MatchName, table).Vendor) == false);
+            else if (_filterMode == 2)
+                ordered = ordered.Where(e => _profile.Owns(PluginLookup.Resolve(e.MatchName, table).Vendor) != false);
+
             _list.Items.Clear();
-            foreach (var eff in realEffects)
+            foreach (var eff in ordered)
             {
                 var match = PluginLookup.Resolve(eff.MatchName, table);
                 var owned = _profile.Owns(match.Vendor);
@@ -380,6 +434,10 @@ namespace FfxTool.Gui
                 else status = "Native";
 
                 var item = new ListViewItem(new[] { eff.MatchName, $"{match.Vendor ?? "?"} — {match.Suite ?? "?"}", status });
+                // Row colors are resolved FRESH here on every rebuild — the
+                // old code baked theme colors into items and only reset them
+                // on the next file load, leaving stale-theme rows after a
+                // theme switch.
                 if (owned == false) item.BackColor = ThemeManager.Current.ErrorContainer;
                 else if (match.Vendor == null) item.BackColor = ThemeManager.Current.TertiaryContainer;
                 _list.Items.Add(item);
@@ -388,6 +446,13 @@ namespace FfxTool.Gui
             bool hasContent = realEffects.Count > 0;
             _list.Visible = hasContent;
             _emptyState.Visible = !hasContent;
+
+            // Status bar right label reflects the active filter/sort mode so
+            // the header buttons' state is always readable at a glance.
+            string filterText = _filterMode == 0 ? "All" : _filterMode == 1 ? "Missing only" : "Compatible only";
+            string sortText = _sortDesc ? "Z→A" : "A→Z";
+            _statusBarRight.Text = hasContent ? $"{filterText} · {sortText}" : "Ready";
+
             RefreshStatusBar();
         }
     }

@@ -49,7 +49,7 @@ namespace FfxTool.Gui
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // list host — takes remaining, outer scroll handles overflow
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // target
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 180)); // console compact
-            var heading = new Label { Text = "Convert Preset", Font = new Font(Md3Tokens.HeadlineMedium.FontFamily, 22f, FontStyle.Bold), ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
+            var heading = new Label { Text = "Convert Preset", Font = Md3Tokens.HeadlineLarge, ForeColor = ThemeManager.Current.OnSurface, AutoSize = true, Margin = new Padding(0, 0, 0, Md3Tokens.Space6) };
             ThemeManager.ThemeChanged += () => heading.ForeColor = ThemeManager.Current.OnSurface;
 
             // --- status row: FlowLayout wrap so pill + desc never clip at 960px (M3 adaptive) ---
@@ -58,7 +58,7 @@ namespace FfxTool.Gui
             var openBtn = new Md3Button { Text = "Open .ffx file…", Icon = Md3Icons.Icon.FolderOpen, Width = 180, Margin = new Padding(0, 0, Md3Tokens.Space4, Md3Tokens.Space4) };
             openBtn.Click += (s, e) => OpenFile();
 
-            var statusChip = new Panel { AutoSize = true, Height = 36, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
+            var statusChip = new BufferedPanel { AutoSize = true, Height = 36, Margin = new Padding(0, 0, 0, Md3Tokens.Space4) };
             _fileChipLabel = new Label { Text = "Status: No file loaded", Font = Md3Tokens.BodyMedium, ForeColor = ThemeManager.Current.OnSurfaceVariant, AutoSize = true, Location = new Point(34, 9) };
             statusChip.Paint += (s, e) =>
             {
@@ -74,14 +74,16 @@ namespace FfxTool.Gui
                 Md3Icons.Draw(e.Graphics, Md3Icons.Icon.Info, new Rectangle(Md3Tokens.Space2, 8, 18, 18), ThemeManager.Current.OnSurfaceVariant, 1.4f);
             };
             statusChip.Controls.Add(_fileChipLabel);
-            System.Action updateChipWidth = null;
-            updateChipWidth = () =>
+            // Single width formula shared by initial layout, file loads and
+            // theme switches (previously duplicated in two places with a
+            // different trailing gap, which made the chip visibly jump).
+            void UpdateChipWidth()
             {
-                statusChip.Width = 34 + TextRenderer.MeasureText(_fileChipLabel.Text, Md3Tokens.BodyMedium).Width + Md3Tokens.Space6;
+                statusChip.Width = 34 + TextRenderer.MeasureText(_fileChipLabel.Text, Md3Tokens.BodyMedium).Width + Md3Tokens.Space4;
                 statusChip.Invalidate();
-            };
-            updateChipWidth();
-            ThemeManager.ThemeChanged += () => updateChipWidth();
+            }
+            UpdateChipWidth();
+            ThemeManager.ThemeChanged += UpdateChipWidth;
 
             var descLabel = new Label
             {
@@ -158,7 +160,7 @@ namespace FfxTool.Gui
             consoleHeader.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             consoleHeader.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-            var dotsPanel = new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent, MinimumSize = new Size(260, 32) };
+            var dotsPanel = new BufferedPanel { Dock = DockStyle.Fill, BackColor = Color.Transparent, MinimumSize = new Size(260, 32) };
             dotsPanel.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
@@ -196,14 +198,6 @@ namespace FfxTool.Gui
             clearLogsBtn.LinkClicked += (s, e) => { _consoleBox.Clear(); Log("[SYSTEM] Log cleared."); };
             consoleHeader.Controls.Add(dotsPanel, 0, 0);
             consoleHeader.Controls.Add(clearLogsBtn, 1, 0);
-
-            // rounded-[12px] clip for console panel
-            consolePanel.Padding = new Padding(0);
-            consolePanel.Paint += (s, e) =>
-            {
-                // subtle rounded border illusion via outer rect
-                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            };
 
             consolePanel.Controls.Add(_consoleBox);
             consolePanel.Controls.Add(consoleHeader);
@@ -249,7 +243,7 @@ namespace FfxTool.Gui
                 _inputData = File.ReadAllBytes(path);
                 _currentEffects = Pipeline.ListEffects(_inputData);
                 _fileChipLabel.Text = $"Status: {Path.GetFileName(path)}";
-                _fileChipLabel.Parent.Width = 34 + TextRenderer.MeasureText(_fileChipLabel.Text, Md3Tokens.BodyMedium).Width + Md3Tokens.Space6;
+                _fileChipLabel.Parent.Width = 34 + TextRenderer.MeasureText(_fileChipLabel.Text, Md3Tokens.BodyMedium).Width + Md3Tokens.Space4;
                 _fileChipLabel.Parent.Invalidate();
                 _convertBtn.Enabled = true;
                 HistoryStore.Push(path, _currentEffects.Count(e => !e.IsSentinel));
@@ -293,7 +287,7 @@ namespace FfxTool.Gui
                     new Rectangle(bounds.X + bounds.Width / 2 - 220, cy + 68, 440, 40), ThemeManager.Current.OnSurfaceVariant, TextFormatFlags.HorizontalCenter | TextFormatFlags.WordBreak);
             };
 
-            var browseBtn = new Md3Button { Text = "Browse Files", Icon = Md3Icons.Icon.Check, Variant = Md3ButtonVariant.Outlined, Width = 150, Height = 36 };
+            var browseBtn = new Md3Button { Text = "Browse Files", Icon = Md3Icons.Icon.FolderOpen, Variant = Md3ButtonVariant.Outlined, Width = 150, Height = 36 };
             browseBtn.Click += (s, e) => OpenFile();
             container.Controls.Add(browseBtn);
             container.Resize += (s, e) => browseBtn.Location = new Point((container.Width - browseBtn.Width) / 2, container.Height / 2 + 90);
@@ -382,7 +376,10 @@ namespace FfxTool.Gui
             Log($"[SUCCESS] Saved: {outPath}");
             if (result.RemovedEffects.Count > 0) Log($"[INFO] Removed: {string.Join(", ", result.RemovedEffects)}");
             foreach (var w in result.Warnings) Log($"[WARNING] {w}");
-            Log("[OK] Verification pass: 0 Utf8 tags remaining, indices contiguous, keyframe/parameter data unchanged.");
+            // Pipeline.Convert already ran its Verify() pass and throws on
+            // any failure, so reaching this line means the file is clean —
+            // worded loosely so it can't drift from the actual checks.
+            Log("[OK] Verification pass clean — structure, indices and keyframe data intact.");
         }
 
         static System.Drawing.Drawing2D.GraphicsPath RoundedRect(Rectangle bounds, int radius)
