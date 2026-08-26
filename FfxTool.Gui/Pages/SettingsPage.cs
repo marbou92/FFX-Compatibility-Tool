@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -8,10 +9,13 @@ namespace FfxTool.Gui
     /// <summary>
     /// Settings hub with sub-settings: Appearance, Plugin Profiles (the
     /// existing ProfilePage embedded verbatim — its logic is untouched) and
-    /// About. Theme changes apply instantly via ThemeService.
+    /// About (with real project links). Theme changes apply instantly via
+    /// ThemeService.
     /// </summary>
     public partial class SettingsPage : UserControl
     {
+        private const string RepoUrl = "https://github.com/marbou92/FFX-Compatibility-Tool";
+
         private static readonly (Md3Palette palette, Color swatch)[] Palettes =
         {
             (Md3Palette.Teal,   Color.FromRgb(0x00, 0x6B, 0x5F)),
@@ -46,6 +50,22 @@ namespace FfxTool.Gui
             AppearanceView.Visibility = SubNav.SelectedIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
             ProfileHost.Visibility = SubNav.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
             AboutView.Visibility = SubNav.SelectedIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        // ---------- project links ----------
+        private void RepoLink_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) =>
+            OpenUrl(RepoUrl);
+
+        private void IssueLink_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) =>
+            OpenUrl(RepoUrl + "/issues/new");
+
+        private static void OpenUrl(string url)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
+            }
+            catch { /* browser launch refused — nothing sensible to do */ }
         }
 
         private void SyncFromTheme()

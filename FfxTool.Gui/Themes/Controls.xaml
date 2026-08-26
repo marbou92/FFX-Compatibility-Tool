@@ -30,6 +30,22 @@
         <Setter Property="Margin" Value="0,0,0,6"/>
     </Style>
 
+    <!-- Keyboard focus ring — drawn whenever a control receives keyboard
+         focus (tab / arrow navigation). Replaces the old blanket
+         FocusVisualStyle={x:Null}, which left keyboard users with no
+         indication of what was focused. -->
+    <Style x:Key="M3FocusVisual" TargetType="{x:Type Control}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate>
+                    <Rectangle Margin="-3" RadiusX="12" RadiusY="12"
+                               Stroke="{DynamicResource B.Primary}" StrokeThickness="2"
+                               SnapsToDevicePixels="True"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Cards -->
     <Style x:Key="Card" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource B.SC}"/>
@@ -60,14 +76,14 @@
         <Setter Property="Height" Value="40"/>
         <Setter Property="Padding" Value="20,0"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource M3FocusVisual}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Grid>
                         <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="20"/>
                         <Border x:Name="StateLayer" Background="{DynamicResource B.OnPrimary}" CornerRadius="20" Opacity="0"/>
-                        <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        <ContentPresenter x:Name="ContentHost" Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                           RecognizesAccessKey="True"/>
                     </Grid>
                     <ControlTemplate.Triggers>
@@ -78,8 +94,10 @@
                             <Setter TargetName="StateLayer" Property="Opacity" Value="0.18"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="Bg" Property="Opacity" Value="0.38"/>
+                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource B.SCHighest}"/>
+                            <Setter TargetName="StateLayer" Property="Opacity" Value="0"/>
                             <Setter Property="Foreground" Value="{DynamicResource B.OnSurface}"/>
+                            <Setter TargetName="ContentHost" Property="Opacity" Value="0.38"/>
                             <Setter Property="Cursor" Value="Arrow"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -98,7 +116,7 @@
                     <Grid>
                         <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="20"/>
                         <Border x:Name="StateLayer" Background="{DynamicResource B.OnPrimaryContainer}" CornerRadius="20" Opacity="0"/>
-                        <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <ContentPresenter x:Name="ContentHost" Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -108,8 +126,10 @@
                             <Setter TargetName="StateLayer" Property="Opacity" Value="0.18"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="Bg" Property="Opacity" Value="0.38"/>
+                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource B.SCHighest}"/>
+                            <Setter TargetName="StateLayer" Property="Opacity" Value="0"/>
                             <Setter Property="Foreground" Value="{DynamicResource B.OnSurface}"/>
+                            <Setter TargetName="ContentHost" Property="Opacity" Value="0.38"/>
                             <Setter Property="Cursor" Value="Arrow"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -129,7 +149,7 @@
                         <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="20"
                                 BorderBrush="{DynamicResource B.Outline}" BorderThickness="1"/>
                         <Border x:Name="StateLayer" Background="{DynamicResource B.Primary}" CornerRadius="20" Opacity="0"/>
-                        <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <ContentPresenter x:Name="ContentHost" Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -140,7 +160,9 @@
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Foreground" Value="{DynamicResource B.OnSurface}"/>
-                            <Setter TargetName="Bg" Property="Opacity" Value="0.38"/>
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource B.OutlineVariant}"/>
+                            <Setter TargetName="StateLayer" Property="Opacity" Value="0"/>
+                            <Setter TargetName="ContentHost" Property="Opacity" Value="0.38"/>
                             <Setter Property="Cursor" Value="Arrow"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -180,7 +202,7 @@
         <Setter Property="Width" Value="52"/>
         <Setter Property="Height" Value="32"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource M3FocusVisual}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
@@ -243,7 +265,7 @@
         <Setter Property="Foreground" Value="{DynamicResource B.OnSurface}"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource M3FocusVisual}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="CheckBox">
@@ -436,6 +458,7 @@
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
     </Style>
     <Style TargetType="ListBoxItem">
+        <Setter Property="FocusVisualStyle" Value="{StaticResource M3FocusVisual}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">

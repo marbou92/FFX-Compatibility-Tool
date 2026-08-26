@@ -2,7 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:FfxTool.Gui"
-             AllowDrop="True" DragEnter="Page_DragEnter" Drop="Page_Drop">
+             AllowDrop="True" DragEnter="Page_DragEnter" DragLeave="Page_DragLeave" Drop="Page_Drop">
     <Grid Margin="32,24,32,24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -25,27 +25,45 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- hero drop zone (swaps to the effect checklist) -->
-                <Grid Grid.Row="0" Margin="0,0,0,16" AllowDrop="True" DragEnter="Page_DragEnter" Drop="Page_Drop">
-                    <Border x:Name="Hero" CornerRadius="24" Background="{DynamicResource B.SCLow}">
+                <!-- hero drop zone — the whole tile is clickable and swaps
+                     to the effect checklist once a preset is loaded -->
+                <Grid Grid.Row="0" Margin="0,0,0,16">
+                    <Border x:Name="Hero" CornerRadius="24" Cursor="Hand" MouseLeftButtonUp="Hero_Click"
+                            ToolTip="Click to browse — or drop an .ffx file anywhere on this page">
+                        <!-- bg lives ONLY here so the IsMouseOver trigger can swap it
+                             (a local attribute would outrank any trigger) -->
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{DynamicResource B.SCLow}"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource B.SCHigh}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <controls:IconGlyph IconName="FolderOpen" Width="46" Height="46"
-                                                Foreground="{DynamicResource B.OnSurfaceVariant}"
-                                                HorizontalAlignment="Center" Margin="0,0,0,14"/>
-                            <TextBlock Text="No preset loaded" Style="{StaticResource SectionTitle}"
-                                       FontSize="16" HorizontalAlignment="Center" Margin="0,0,0,6"/>
-                            <TextBlock Text="Select an Adobe After Effects .ffx file to begin the analysis and conversion process."
+                            <Border Width="92" Height="92" CornerRadius="46" Background="{DynamicResource B.SC}"
+                                    HorizontalAlignment="Center" Margin="0,0,0,16">
+                                <controls:IconGlyph IconName="FolderOpen" Width="44" Height="44"
+                                                    Foreground="{DynamicResource B.Primary}"/>
+                            </Border>
+                            <TextBlock Text="Drop a preset to begin" Style="{StaticResource SectionTitle}"
+                                       FontSize="17" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                            <TextBlock Text="Drag an After Effects .ffx file anywhere onto this window, or click to browse."
                                        Style="{StaticResource BodySecondary}" TextAlignment="Center"
-                                       MaxWidth="380" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,0,0,18"/>
-                            <Button Content="Browse Files" Style="{StaticResource OutlinedButton}"
-                                    Width="160" Click="Open_Click" HorizontalAlignment="Center"/>
+                                       MaxWidth="400" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                            <TextBlock Text="Ctrl+O works from anywhere too" Style="{StaticResource Caption}"
+                                       HorizontalAlignment="Center" Opacity="0.75"/>
                         </StackPanel>
                     </Border>
-                    <Rectangle x:Name="HeroDash" RadiusX="24" RadiusY="24" Fill="Transparent"
+                    <Rectangle RadiusX="24" RadiusY="24" Fill="Transparent"
                                Stroke="{DynamicResource B.OutlineVariant}" StrokeThickness="1.5"
                                StrokeDashArray="4 3" IsHitTestVisible="False"/>
+                    <!-- effect checklist (replaces the empty state) -->
                     <ListBox x:Name="EffectList" Visibility="Collapsed" Margin="4"
                              ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <ListBox.ItemTemplate>
@@ -62,38 +80,73 @@
                     </ListBox>
                 </Grid>
 
-                <!-- file row -->
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,16">
-                    <Button Content="Open .ffx file…" Click="Open_Click" Width="170" Margin="0,0,12,0"/>
+                <!-- file status row -->
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,14">
                     <Border Style="{StaticResource Chip}" x:Name="StatusChip">
                         <StackPanel Orientation="Horizontal">
                             <controls:IconGlyph IconName="Info" Width="16" Height="16"
                                                 Foreground="{DynamicResource B.OnSurfaceVariant}" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="StatusText" Text="Status: No file loaded" Style="{StaticResource BodySecondary}"
+                            <TextBlock x:Name="StatusText" Text="No file loaded" Style="{StaticResource BodySecondary}"
                                        Margin="8,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
 
-                <!-- options -->
-                <Grid Grid.Row="2" Margin="0,0,0,16">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                        <TextBlock Text="Target version" Style="{StaticResource FieldLabel}"/>
-                        <ComboBox x:Name="TargetCombo" Width="210" HorizontalAlignment="Left"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1">
-                        <TextBlock Text="Options" Style="{StaticResource FieldLabel}"/>
-                        <CheckBox x:Name="OverwriteCheck" Style="{StaticResource Md3CheckBox}" Content="Overwrite File"/>
-                    </StackPanel>
-                </Grid>
+                <!-- options card -->
+                <Border Grid.Row="2" Style="{StaticResource Card}" Padding="18,14,18,14" Margin="0,0,0,16">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,28,0">
+                            <TextBlock Text="Target version" Style="{StaticResource FieldLabel}"/>
+                            <ComboBox x:Name="TargetCombo" Width="210" HorizontalAlignment="Left"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="Output" Style="{StaticResource FieldLabel}"/>
+                            <CheckBox x:Name="OverwriteCheck" Style="{StaticResource Md3CheckBox}" Content="Overwrite original file"/>
+                            <TextBlock Text="Unchecked: saves a copy next to the original with an automatic version suffix."
+                                       Style="{StaticResource Caption}" TextWrapping="Wrap" MaxWidth="300"
+                                       Margin="30,5,0,0" Opacity="0.85"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
 
-                <!-- full-width expressive CTA -->
-                <Button x:Name="ConvertBtn" Grid.Row="3" Content="Convert…" Height="48"
+                <!-- full-width expressive CTA — content doubles as a summary of the pending job -->
+                <Button x:Name="ConvertBtn" Grid.Row="3" Content="Load a preset to start conversion" Height="48"
                         IsEnabled="False" Click="Convert_Click"/>
+
+                <!-- success banner: what happened + one-click handoff to Explorer -->
+                <Border x:Name="SaveBanner" Grid.Row="4" Visibility="Collapsed" CornerRadius="14"
+                        Background="{DynamicResource B.PrimaryContainer}" Padding="16,12" Margin="0,14,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <controls:IconGlyph Grid.Column="0" IconName="Verified" Width="22" Height="22"
+                                            Foreground="{DynamicResource B.OnPrimaryContainer}"
+                                            VerticalAlignment="Center" Margin="0,0,12,0"/>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Conversion saved" FontSize="13" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource B.OnPrimaryContainer}"/>
+                            <TextBlock x:Name="SavedToText" Style="{StaticResource Caption}" Foreground="{DynamicResource B.OnPrimaryContainer}"
+                                       Opacity="0.8" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Text="Open folder" Cursor="Hand" VerticalAlignment="Center"
+                                   FontWeight="Medium" FontSize="12.5"
+                                   Foreground="{DynamicResource B.OnPrimaryContainer}"
+                                   MouseLeftButtonUp="OpenFolder_Click">
+                            <TextBlock.TextDecorations>
+                                <TextDecorationCollection>
+                                    <TextDecoration Location="Underline"/>
+                                </TextDecorationCollection>
+                            </TextBlock.TextDecorations>
+                        </TextBlock>
+                    </Grid>
+                </Border>
             </Grid>
 
             <!-- splitter -->
@@ -118,6 +171,25 @@
                 </Border>
                 <controls:M3Console x:Name="Console"/>
             </DockPanel>
+
+            <!-- drag feedback overlay (visual only — drop is handled by the page root) -->
+            <Border x:Name="DragOverlay" Visibility="Collapsed" IsHitTestVisible="False" CornerRadius="26"
+                    Background="{DynamicResource B.PrimaryContainer}" Opacity="0.95">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="28" ShadowDepth="6" Opacity="0.22"/>
+                </Border.Effect>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <controls:IconGlyph IconName="Upload" Width="54" Height="54"
+                                        Foreground="{DynamicResource B.OnPrimaryContainer}" HorizontalAlignment="Center"
+                                        Margin="0,0,0,14"/>
+                    <TextBlock Text="Release to load the preset" FontSize="19" FontWeight="SemiBold"
+                               Foreground="{DynamicResource B.OnPrimaryContainer}" HorizontalAlignment="Center"
+                               Margin="0,0,0,6"/>
+                    <TextBlock Text=".ffx · analyzed against your plugin profile on arrival"
+                               FontSize="12" Foreground="{DynamicResource B.OnPrimaryContainer}"
+                               Opacity="0.8" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
         </Grid>
     </Grid>
 </UserControl>

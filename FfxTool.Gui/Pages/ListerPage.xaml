@@ -2,7 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:FfxTool.Gui"
-             AllowDrop="True" DragEnter="Page_DragEnter" Drop="Page_Drop">
+             AllowDrop="True" DragEnter="Page_DragEnter" DragLeave="Page_DragLeave" Drop="Page_Drop">
     <Grid Margin="32,24,32,24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -24,7 +24,7 @@
                         <Border Width="84" Height="84" CornerRadius="42" Background="{DynamicResource B.SCHigh}"
                                 HorizontalAlignment="Center" Margin="0,0,0,16">
                             <controls:IconGlyph IconName="FolderOpen" Width="42" Height="42"
-                                                Foreground="{DynamicResource B.OnSurfaceVariant}"/>
+                                                Foreground="{DynamicResource B.Primary}"/>
                         </Border>
                         <TextBlock Text="No preset loaded" FontSize="20" FontWeight="SemiBold"
                                    Foreground="{DynamicResource B.OnSurface}" HorizontalAlignment="Center" Margin="0,0,0,8"/>
@@ -51,45 +51,67 @@
             </Border>
 
             <!-- list -->
-            <Grid x:Name="ListHost" Visibility="Collapsed" Margin="8,0,8,0">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-                <!-- column header -->
-                <Grid Grid.Row="0" Margin="14,0,14,6">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2*"/>
-                        <ColumnDefinition Width="2*"/>
-                        <ColumnDefinition Width="1.2*"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="EFFECT NAME" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
-                    <TextBlock Grid.Column="1" Text="PLUGIN VENDOR" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
-                    <TextBlock Grid.Column="2" Text="COMPATIBILITY" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+            <Border x:Name="ListHost" Visibility="Collapsed" Margin="8,8,8,0" CornerRadius="22"
+                    Background="{DynamicResource B.SC}">
+                <Grid Margin="14,10,14,10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <!-- column header -->
+                    <Grid Grid.Row="0" Margin="6,2,6,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="1.2*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="EFFECT NAME" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Column="1" Text="PLUGIN VENDOR" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Column="2" Text="COMPATIBILITY" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                    </Grid>
+                    <ListBox x:Name="EffectList" Grid.Row="1" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             VirtualizingPanel.ScrollUnit="Pixel" Focusable="False">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{Binding RowBrush}" CornerRadius="10" Padding="14,9" Margin="0,1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="2*"/>
+                                            <ColumnDefinition Width="2*"/>
+                                            <ColumnDefinition Width="1.2*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="Medium"
+                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding VendorLabel}" Style="{StaticResource BodySecondary}"
+                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding Status}" Style="{StaticResource Body}"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
                 </Grid>
-                <ListBox x:Name="EffectList" Grid.Row="1" ScrollViewer.VerticalScrollBarVisibility="Auto"
-                         VirtualizingPanel.ScrollUnit="Pixel" Focusable="False">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <Border Background="{Binding RowBrush}" CornerRadius="10" Padding="14,9" Margin="0,1">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="2*"/>
-                                        <ColumnDefinition Width="2*"/>
-                                        <ColumnDefinition Width="1.2*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="Medium"
-                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding VendorLabel}" Style="{StaticResource BodySecondary}"
-                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="2" Text="{Binding Status}" Style="{StaticResource Body}"
-                                               VerticalAlignment="Center"/>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Grid>
+            </Border>
+
+            <!-- drag feedback overlay (visual only — drop is handled by the page root) -->
+            <Border x:Name="DragOverlay" Visibility="Collapsed" IsHitTestVisible="False" CornerRadius="26"
+                    Background="{DynamicResource B.PrimaryContainer}" Opacity="0.95">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="28" ShadowDepth="6" Opacity="0.22"/>
+                </Border.Effect>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <controls:IconGlyph IconName="Upload" Width="54" Height="54"
+                                        Foreground="{DynamicResource B.OnPrimaryContainer}" HorizontalAlignment="Center"
+                                        Margin="0,0,0,14"/>
+                    <TextBlock Text="Release to analyze the preset" FontSize="19" FontWeight="SemiBold"
+                               Foreground="{DynamicResource B.OnPrimaryContainer}" HorizontalAlignment="Center"
+                               Margin="0,0,0,6"/>
+                    <TextBlock Text=".ffx · every effect checked against your plugin profile"
+                               FontSize="12" Foreground="{DynamicResource B.OnPrimaryContainer}"
+                               Opacity="0.8" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
         </Grid>
 
         <!-- ============ header + status bar ============ -->
