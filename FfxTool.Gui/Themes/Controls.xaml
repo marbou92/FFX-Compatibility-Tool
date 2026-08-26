@@ -459,10 +459,18 @@
     </Style>
     <Style TargetType="ListBoxItem">
         <Setter Property="FocusVisualStyle" Value="{StaticResource M3FocusVisual}"/>
+        <!-- Foreground flows into unpinned content (nav labels) and flips to
+             OnPrimaryContainer on selection, per the M3 active-container spec. -->
+        <Setter Property="Foreground" Value="{DynamicResource B.OnSurface}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
-                    <Border x:Name="Bg" Background="Transparent" CornerRadius="10">
+                    <!-- Padding MUST reach the template: the Settings sub-nav
+                         declares Padding="12,10" per item, and a template that
+                         ignores it collapses every row to bare content height
+                         (19px) so icons collide with neighbouring rows. -->
+                    <Border x:Name="Bg" Background="Transparent" CornerRadius="10"
+                            Padding="{TemplateBinding Padding}">
                         <ContentPresenter/>
                     </Border>
                     <ControlTemplate.Triggers>
@@ -471,6 +479,7 @@
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
                             <Setter TargetName="Bg" Property="Background" Value="{DynamicResource B.PrimaryContainer}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource B.OnPrimaryContainer}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

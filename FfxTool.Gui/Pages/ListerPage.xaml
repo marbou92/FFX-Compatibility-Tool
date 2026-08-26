@@ -133,7 +133,13 @@
                                 <DataTemplate>
                                     <!-- dead entries dim themselves + stop hit-testing
                                          purely from bindings — no container timing races -->
+                                    <!-- explicit columns: Grid.Column=1 with no
+                                         definitions leaves the layout to chance -->
                                     <Grid Margin="6,5">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
                                         <Grid.Style>
                                             <Style TargetType="Grid">
                                                 <Setter Property="Opacity" Value="1"/>

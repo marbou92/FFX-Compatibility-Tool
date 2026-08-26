@@ -25,27 +25,31 @@
             <!-- sub-nav -->
             <ListBox x:Name="SubNav" Grid.Column="0" VerticalAlignment="Top" Margin="0,0,16,0"
                      SelectionChanged="SubNav_SelectionChanged">
-                <ListBoxItem x:Name="NavAppearance" IsSelected="True" Padding="12,10">
+                <!-- 4px bottom margin: with the template now honouring Padding,
+                     items would otherwise stack pill-against-pill with no seam. -->
+                <ListBoxItem x:Name="NavAppearance" IsSelected="True" Padding="12,10" Margin="0,0,0,4">
                     <StackPanel Orientation="Horizontal">
                         <!-- contrast glyph: the detailed palette art turned to
                              mush at 19px — this one stays crisp -->
                         <controls:IconGlyph IconName="Contrast" Width="19" Height="19"
                                             Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
-                        <TextBlock Text="Appearance" Style="{StaticResource Body}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                        <!-- no pinned Foreground: inherits OnSurface, flips to
+                             OnPrimaryContainer inside the selected pill -->
+                        <TextBlock Text="Appearance" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
                 </ListBoxItem>
-                <ListBoxItem x:Name="NavProfile" Padding="12,10">
+                <ListBoxItem x:Name="NavProfile" Padding="12,10" Margin="0,0,0,4">
                     <StackPanel Orientation="Horizontal">
                         <controls:IconGlyph IconName="Plugin" Width="19" Height="19"
                                             Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
-                        <TextBlock Text="Plugin Profiles" Style="{StaticResource Body}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Plugin Profiles" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
                 </ListBoxItem>
-                <ListBoxItem x:Name="NavAbout" Padding="12,10">
+                <ListBoxItem x:Name="NavAbout" Padding="12,10" Margin="0,0,0,4">
                     <StackPanel Orientation="Horizontal">
                         <controls:IconGlyph IconName="Info" Width="19" Height="19"
                                             Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
-                        <TextBlock Text="About" Style="{StaticResource Body}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="About" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
                 </ListBoxItem>
             </ListBox>
@@ -55,7 +59,10 @@
                 <!-- ===== Appearance ===== -->
                 <Grid x:Name="AppearanceView">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <Border Style="{StaticResource Card}" MaxWidth="760">
+                        <!-- Top-aligned: without it the card stretches to the
+                         viewport and leaves a slab of dead space below the
+                         content when the window is taller than the page. -->
+                        <Border Style="{StaticResource Card}" MaxWidth="760" VerticalAlignment="Top">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
                                     <Border Width="40" Height="40" CornerRadius="12" Background="{DynamicResource B.SCHigh}"
@@ -99,7 +106,7 @@
                 <!-- ===== About ===== -->
                 <Grid x:Name="AboutView" Visibility="Collapsed">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <Border Style="{StaticResource CardElevated}" MaxWidth="760">
+                        <Border Style="{StaticResource CardElevated}" MaxWidth="760" VerticalAlignment="Top">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
                                     <Border Width="40" Height="40" CornerRadius="12" Background="{DynamicResource B.SCHigh}"

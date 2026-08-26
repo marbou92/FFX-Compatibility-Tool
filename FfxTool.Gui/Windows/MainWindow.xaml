@@ -6,6 +6,7 @@
         Title="FFX Compatibility Tool" Width="1180" Height="740"
         MinWidth="960" MinHeight="620" WindowStartupLocation="CenterScreen"
         Background="{DynamicResource B.Surface}"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display"
         WindowStyle="None" AllowsTransparency="False" ResizeMode="CanResize">
 
     <shell:WindowChrome.WindowChrome>

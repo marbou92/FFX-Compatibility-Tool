@@ -96,25 +96,39 @@ namespace FfxTool.Gui
             foreach (var (palette, swatch) in Palettes)
             {
                 var p = palette; // capture
+                // Swatch = circle + selection ring layered on a shared 54px hit
+                // Grid. NEVER nest the circle inside a rounded Border: WPF
+                // Border clips its child to the rounded interior, and
+                // 54 − 2×2.5 border − 2×4 padding = 41px of interior vs a 44px
+                // circle sheared the bottom arc clean off — the lop-sided
+                // "blob" swatches from the round-2 screenshot review.
                 var circle = new Border
                 {
                     Width = 44,
                     Height = 44,
                     CornerRadius = new CornerRadius(22),
                     Background = new SolidColorBrush(swatch),
-                    Margin = new Thickness(0, 2, 0, 2)
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
                 };
-                var ring = new Border
+                var ring = new System.Windows.Shapes.Ellipse
                 {
                     Width = 54,
                     Height = 54,
-                    CornerRadius = new CornerRadius(27),
-                    BorderThickness = new Thickness(2.5),
-                    BorderBrush = Brushes.Transparent,
-                    Padding = new Thickness(4),
-                    Child = circle,
+                    StrokeThickness = 2.5,
+                    Stroke = Brushes.Transparent,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                var hit = new Grid
+                {
+                    Width = 54,
+                    Height = 54,
+                    Background = Brushes.Transparent, // full-surface click target
                     Cursor = System.Windows.Input.Cursors.Hand
                 };
+                hit.Children.Add(circle);
+                hit.Children.Add(ring);
                 var name = new TextBlock
                 {
                     Text = p.ToString(),
@@ -123,11 +137,11 @@ namespace FfxTool.Gui
                     Margin = new Thickness(0, 6, 0, 0)
                 };
                 var stack = new StackPanel { Margin = new Thickness(0, 0, 22, 0) };
-                stack.Children.Add(ring);
+                stack.Children.Add(hit);
                 stack.Children.Add(name);
                 var tag = new StackPanel { Tag = (ring, name, p) };
                 tag.Children.Add(stack);
-                ring.MouseLeftButtonUp += (s, e) =>
+                hit.MouseLeftButtonUp += (s, e) =>
                 {
                     if (_syncing) return;
                     _syncing = true;
@@ -144,9 +158,9 @@ namespace FfxTool.Gui
         {
             foreach (StackPanel tag in PaletteRow.Children)
             {
-                var (ring, name, p) = ((Border, TextBlock, Md3Palette))tag.Tag;
+                var (ring, name, p) = ((System.Windows.Shapes.Ellipse, TextBlock, Md3Palette))tag.Tag;
                 bool selected = ThemeService.Palette == p;
-                ring.BorderBrush = selected ? (Brush)FindResource("B.Primary") : Brushes.Transparent;
+                ring.Stroke = selected ? (Brush)FindResource("B.Primary") : Brushes.Transparent;
                 name.Foreground = selected ? (Brush)FindResource("B.Primary") : (Brush)FindResource("B.OnSurfaceVariant");
             }
         }

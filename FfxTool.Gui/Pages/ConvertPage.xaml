@@ -158,9 +158,14 @@
                     <StackPanel>
                         <Rectangle Height="4" RadiusX="2" RadiusY="2" Margin="0,0,0,14" HorizontalAlignment="Stretch">
                             <Rectangle.Fill>
+                                <!-- Primary → PrimaryContainer: a tonal same-hue
+                                     fade that stays on-palette in every one of
+                                     the 4 palettes. The old TertiaryContainer
+                                     stop resolved to a foreign blue and read
+                                     as an indeterminate progress bar. -->
                                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
                                     <GradientStop Color="{DynamicResource P.Primary}" Offset="0"/>
-                                    <GradientStop Color="{DynamicResource P.TertiaryContainer}" Offset="1"/>
+                                    <GradientStop Color="{DynamicResource P.PrimaryContainer}" Offset="1"/>
                                 </LinearGradientBrush>
                             </Rectangle.Fill>
                         </Rectangle>
