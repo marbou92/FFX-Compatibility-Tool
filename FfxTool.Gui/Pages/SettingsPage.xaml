@@ -27,7 +27,9 @@
                      SelectionChanged="SubNav_SelectionChanged">
                 <ListBoxItem x:Name="NavAppearance" IsSelected="True" Padding="12,10">
                     <StackPanel Orientation="Horizontal">
-                        <controls:IconGlyph IconName="Palette" Width="19" Height="19"
+                        <!-- contrast glyph: the detailed palette art turned to
+                             mush at 19px — this one stays crisp -->
+                        <controls:IconGlyph IconName="Contrast" Width="19" Height="19"
                                             Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
                         <TextBlock Text="Appearance" Style="{StaticResource Body}" Margin="12,0,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
@@ -53,12 +55,12 @@
                 <!-- ===== Appearance ===== -->
                 <Grid x:Name="AppearanceView">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <Border Style="{StaticResource Card}" MaxWidth="760" HorizontalAlignment="Left">
+                        <Border Style="{StaticResource Card}" MaxWidth="760">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
                                     <Border Width="40" Height="40" CornerRadius="12" Background="{DynamicResource B.SCHigh}"
                                             VerticalAlignment="Center">
-                                        <controls:IconGlyph IconName="Palette" Width="22" Height="22"
+                                        <controls:IconGlyph IconName="Contrast" Width="22" Height="22"
                                                             Foreground="{DynamicResource B.Primary}"/>
                                     </Border>
                                     <TextBlock Text="Appearance" Style="{StaticResource SectionTitle}" FontSize="17"
@@ -97,7 +99,7 @@
                 <!-- ===== About ===== -->
                 <Grid x:Name="AboutView" Visibility="Collapsed">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <Border Style="{StaticResource CardElevated}" MaxWidth="760" HorizontalAlignment="Left">
+                        <Border Style="{StaticResource CardElevated}" MaxWidth="760">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
                                     <Border Width="40" Height="40" CornerRadius="12" Background="{DynamicResource B.SCHigh}"

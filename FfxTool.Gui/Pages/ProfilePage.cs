@@ -13,6 +13,10 @@ namespace FfxTool.Gui
     /// <summary>
     /// Plugin Profiles: bento grid of vendor cards with expressive switches,
     /// dynamic linked/not-linked badges, and the plugin-folder discovery card.
+    /// All colors are attached via SetResourceReference (NOT captured brush
+    /// instances) so the cards re-theme live when the palette or dark mode
+    /// changes — the old FindResource captures froze with the theme that was
+    /// active at startup and turned unreadable after switching.
     /// </summary>
     public partial class ProfilePage : UserControl
     {
@@ -71,46 +75,42 @@ namespace FfxTool.Gui
         {
             var meta = VendorMeta.TryGetValue(vendor, out var m) ? m : (icon: "Plugin", suites: "");
 
+            var iconGlyph = new IconGlyph { IconName = meta.icon, Width = 24, Height = 24 };
+            // B.Primary — tracks palette swaps live
+            iconGlyph.SetResourceReference(IconGlyph.ForegroundProperty, "B.Primary");
+
             var iconChip = new Border
             {
                 Width = 44,
                 Height = 44,
                 CornerRadius = new CornerRadius(12),
-                Background = (Brush)FindResource("B.SCHigh"),
-                Child = new IconGlyph
-                {
-                    IconName = meta.icon,
-                    Width = 24,
-                    Height = 24,
-                    // B.Primary (teal) — the old B.TertiaryContainer was pale
-                    // blue on a pale gray tile, ~1.5:1 contrast, nearly invisible
-                    Foreground = (Brush)FindResource("B.Primary")
-                }
+                Child = iconGlyph
             };
+            iconChip.SetResourceReference(Border.BackgroundProperty, "B.SCHigh");
 
             var title = new TextBlock
             {
                 Text = vendor,
                 FontSize = 13.5,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = (Brush)FindResource("B.OnSurface"),
                 VerticalAlignment = VerticalAlignment.Center
             };
+            title.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurface");
+
             var subtitle = new TextBlock
             {
                 Text = meta.suites,
                 FontSize = 11,
                 TextWrapping = TextWrapping.Wrap,
-                Foreground = (Brush)FindResource("B.OnSurfaceVariant"),
                 Margin = new Thickness(0, 2, 0, 0)
             };
+            subtitle.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
 
             var header = new Grid { Margin = new Thickness(0, 0, 0, 10) };
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             Grid.SetColumn(iconChip, 0);
-            Grid.SetColumn(title, 1);
             var titleStack = new StackPanel { Margin = new Thickness(12, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
             titleStack.Children.Add(title);
             titleStack.Children.Add(subtitle);
@@ -131,30 +131,30 @@ namespace FfxTool.Gui
             {
                 IconName = sw.IsChecked == true ? "Check" : "Info",
                 Width = 14,
-                Height = 14,
-                Foreground = sw.IsChecked == true
-                    ? (Brush)FindResource("B.Primary")
-                    : (Brush)FindResource("B.OnSurfaceVariant")
+                Height = 14
             };
             var badgeText = new TextBlock
             {
                 Text = sw.IsChecked == true ? "Profile linked" : "Not in profile",
                 FontSize = 11,
-                Foreground = (Brush)FindResource("B.OnSurfaceVariant"),
                 Margin = new Thickness(7, 0, 0, 0),
                 VerticalAlignment = VerticalAlignment.Center
             };
+            badgeText.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
+
+            var badgeStack = new StackPanel { Orientation = Orientation.Horizontal };
+            badgeStack.Children.Add(badgeIcon);
+            badgeStack.Children.Add(badgeText);
+
             var badge = new Border
             {
-                Background = new SolidColorBrush(((Color)FindResource("P.SCHighest"))),
                 Opacity = sw.IsChecked == true ? 1 : 0.6,
                 CornerRadius = new CornerRadius(9),
                 Padding = new Thickness(10, 5, 10, 5),
                 HorizontalAlignment = HorizontalAlignment.Left,
-                Child = new StackPanel { Orientation = Orientation.Horizontal }
+                Child = badgeStack
             };
-            ((StackPanel)badge.Child).Children.Add(badgeIcon);
-            ((StackPanel)badge.Child).Children.Add(badgeText);
+            badge.SetResourceReference(Border.BackgroundProperty, "B.SCHighest");
 
             var card = new Border
             {
@@ -187,9 +187,10 @@ namespace FfxTool.Gui
             pair.BadgeText.Text = owned ? "Profile linked" : "Not in profile";
             pair.Badge.Opacity = owned ? 1 : 0.6;
             pair.BadgeIcon.IconName = owned ? "Check" : "Info";
-            pair.BadgeIcon.Foreground = owned
-                ? (Brush)FindResource("B.Primary")
-                : (Brush)FindResource("B.OnSurfaceVariant");
+            // re-point the resource KEY (not a frozen brush) so the tint both
+            // switches instantly and keeps tracking palette/dark-mode swaps
+            pair.BadgeIcon.SetResourceReference(IconGlyph.ForegroundProperty,
+                owned ? "B.Primary" : "B.OnSurfaceVariant");
         }
 
         private void SaveVendor(string vendor, bool owned)
@@ -201,37 +202,41 @@ namespace FfxTool.Gui
 
         private Border BuildAddCustomCard()
         {
+            var icon = new IconGlyph
+            {
+                IconName = "Add",
+                Width = 22,
+                Height = 22,
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+            icon.SetResourceReference(IconGlyph.ForegroundProperty, "B.OnSurfaceVariant");
+
+            var label = new TextBlock
+            {
+                Text = "Add custom vendor",
+                FontSize = 12.5,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 8, 0, 0)
+            };
+            label.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
+
+            var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            stack.Children.Add(icon);
+            stack.Children.Add(label);
+
             var card = new Border
             {
                 Width = CardW,
                 Height = 128,
                 Margin = new Thickness(0, 0, 16, 16),
                 CornerRadius = new CornerRadius(20),
-                Background = (Brush)FindResource("B.SCLow"),
-                BorderBrush = (Brush)FindResource("B.OutlineVariant"),
                 BorderThickness = new Thickness(1),
                 Opacity = 0.55,
                 ToolTip = "Not yet implemented",
-                Child = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }
+                Child = stack
             };
-            var icon = new IconGlyph
-            {
-                IconName = "Add",
-                Width = 22,
-                Height = 22,
-                Foreground = (Brush)FindResource("B.OnSurfaceVariant"),
-                HorizontalAlignment = HorizontalAlignment.Center
-            };
-            var label = new TextBlock
-            {
-                Text = "Add custom vendor",
-                FontSize = 12.5,
-                Foreground = (Brush)FindResource("B.OnSurfaceVariant"),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Margin = new Thickness(0, 8, 0, 0)
-            };
-            ((StackPanel)card.Child).Children.Add(icon);
-            ((StackPanel)card.Child).Children.Add(label);
+            card.SetResourceReference(Border.BackgroundProperty, "B.SCLow");
+            card.SetResourceReference(Border.BorderBrushProperty, "B.OutlineVariant");
             return card;
         }
 
@@ -241,18 +246,20 @@ namespace FfxTool.Gui
             {
                 Text = "Automatic Plugin Discovery",
                 FontSize = 14,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = (Brush)FindResource("B.OnSurface")
+                FontWeight = FontWeights.SemiBold
             };
+            title.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurface");
+
             var desc = new TextBlock
             {
                 Text = "Select your After Effects 'Plug-ins' directory and we'll automatically check matching vendors.",
                 FontSize = 12,
                 TextWrapping = TextWrapping.Wrap,
                 MaxWidth = 420,
-                Foreground = (Brush)FindResource("B.OnSurfaceVariant"),
                 Margin = new Thickness(0, 4, 0, 0)
             };
+            desc.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
+
             var textStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             textStack.Children.Add(title);
             textStack.Children.Add(desc);

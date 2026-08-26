@@ -31,4 +31,5 @@
     <Geometry x:Key="Icon.Logo">M12,2L3,7v10l9,5 9,-5V7L12,2zM12,4.31L19,8.16v7.69l-7,3.85 -7,-3.85V8.16L12,4.31zM11,8v8h2V8H11z</Geometry>
     <Geometry x:Key="Icon.OpenInNew">M19,19L5,19L5,5h7V3L5,3c-1.11,0 -2,0.9 -2,2v14c0,1.1 0.89,2 2,2h14c1.1,0 2,-0.9 2,-2v-7h-2v7zM14,3v2h3.59l-9.83,9.83 1.41,1.41L19,6.41V10h2V3h-7z</Geometry>
     <Geometry x:Key="Icon.Upload">M19,9h-4V3H9v6H5l7,7 7,-7zM5,18v2h14v-2H5z</Geometry>
+    <Geometry x:Key="Icon.Contrast">M2,12 A10,10 0 1,1 22,12 A10,10 0 1,1 2,12 Z M4,12 A8,8 0 1,0 20,12 A8,8 0 1,0 4,12 Z M12,4 A8,8 0 0,0 12,20 Z</Geometry>
 </ResourceDictionary>

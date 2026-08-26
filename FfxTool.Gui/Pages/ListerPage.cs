@@ -53,6 +53,9 @@ namespace FfxTool.Gui
             EffectList.ItemsSource = _rows;
             StatusBarVersion.Text = $"FFX Compatibility Tool {AppInfo.DisplayVersion}";
             UpdateRecentCard();
+            // row container brushes are captured per Refresh — re-run when the
+            // theme changes so status tints match the new palette/mode
+            ThemeService.Changed += () => Refresh();
         }
 
         public void OnShown() => UpdateRecentCard();
@@ -192,17 +195,17 @@ namespace FfxTool.Gui
         private void Filter_Click(object sender, RoutedEventArgs e)
         {
             _filterMode = (_filterMode + 1) % 3;
-            // active filter gets the primary tint
-            var primary = (Brush)FindResource("B.Primary");
-            FilterIcon.Foreground = _filterMode != 0 ? primary : (Brush)FindResource("B.OnSurfaceVariant");
+            // active filter gets the primary tint — resource KEY, tracks theme swaps
+            FilterIcon.SetResourceReference(IconGlyph.ForegroundProperty,
+                _filterMode != 0 ? "B.Primary" : "B.OnSurfaceVariant");
             Refresh();
         }
 
         private void Sort_Click(object sender, RoutedEventArgs e)
         {
             _sortDesc = !_sortDesc;
-            var primary = (Brush)FindResource("B.Primary");
-            SortIcon.Foreground = _sortDesc ? primary : (Brush)FindResource("B.OnSurfaceVariant");
+            SortIcon.SetResourceReference(IconGlyph.ForegroundProperty,
+                _sortDesc ? "B.Primary" : "B.OnSurfaceVariant");
             Refresh();
         }
 

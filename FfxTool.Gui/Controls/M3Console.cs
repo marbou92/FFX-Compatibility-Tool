@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -10,13 +11,15 @@ namespace FfxTool.Gui
 {
     /// <summary>
     /// Themed console: colored log levels, copy-to-clipboard, clear,
-    /// auto-scroll. Log colors adapt to light/dark mode.
+    /// auto-scroll. Entries remember their level so a palette/dark-mode
+    /// swap can re-tint every stored line, not just future ones.
     /// </summary>
     public partial class M3Console : UserControl
     {
         public class LogEntry
         {
             public string Text { get; set; }
+            public string Level { get; set; }
             public Brush Brush { get; set; }
         }
 
@@ -26,6 +29,8 @@ namespace FfxTool.Gui
         {
             InitializeComponent();
             LogList.ItemsSource = _entries;
+            // re-map stored line colors when the theme changes
+            ThemeService.Changed += RethemeEntries;
         }
 
         private Brush BrushFor(string level)
@@ -46,9 +51,22 @@ namespace FfxTool.Gui
             string level = line.StartsWith("[") && line.IndexOf(']', 1) > 0
                 ? line.Substring(1, line.IndexOf(']', 1) - 1)
                 : "INFO";
-            _entries.Add(new LogEntry { Text = line, Brush = BrushFor(level) });
+            _entries.Add(new LogEntry { Text = line, Level = level, Brush = BrushFor(level) });
             LogList.ScrollIntoView(LogList.Items[LogList.Items.Count - 1]);
             LogService.Append(line); // persisted for the About → Logs button
+        }
+
+        private void RethemeEntries()
+        {
+            if (_entries.Count == 0) return;
+            var snapshot = _entries.ToList();
+            _entries.Clear();
+            foreach (var entry in snapshot)
+            {
+                entry.Brush = BrushFor(entry.Level);
+                _entries.Add(entry);
+            }
+            LogList.ScrollIntoView(LogList.Items[LogList.Items.Count - 1]);
         }
 
         public void Clear()

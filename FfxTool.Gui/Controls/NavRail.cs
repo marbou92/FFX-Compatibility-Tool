@@ -115,15 +115,16 @@ namespace FfxTool.Gui
             {
                 bool selected = i == index;
                 if (_buttons[i].Tag is IconGlyph glyph)
-                    glyph.Foreground = selected
-                        ? (Brush)FindResource("B.Primary")
-                        : (Brush)FindResource("B.OnSurfaceVariant");
+                    // resource KEY, not a captured brush — WPF re-resolves these
+                    // on every palette/dark-mode dictionary swap, so the rail
+                    // can no longer go stale after a theme change
+                    glyph.SetResourceReference(IconGlyph.ForegroundProperty,
+                        selected ? "B.Primary" : "B.OnSurfaceVariant");
                 if (_buttons[i].Content is StackPanel sp && sp.Children.Count > 1 && sp.Children[1] is TextBlock tb)
                 {
                     tb.FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal;
-                    tb.Foreground = selected
-                        ? (Brush)FindResource("B.Primary")
-                        : (Brush)FindResource("B.OnSurfaceVariant");
+                    tb.SetResourceReference(TextBlock.ForegroundProperty,
+                        selected ? "B.Primary" : "B.OnSurfaceVariant");
                 }
             }
         }
