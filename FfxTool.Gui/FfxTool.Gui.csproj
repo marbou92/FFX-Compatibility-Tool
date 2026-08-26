@@ -13,7 +13,13 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>FfxTool.Gui</AssemblyName>
     <RootNamespace>FfxTool.Gui</RootNamespace>
+    <Version>1.0.0</Version>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\FfxTool.Core\FfxTool.Core.csproj" />

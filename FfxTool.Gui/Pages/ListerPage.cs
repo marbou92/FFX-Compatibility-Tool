@@ -13,7 +13,7 @@ using Microsoft.Win32;
 namespace FfxTool.Gui
 {
     /// <summary>
-    /// Effect Lister: read-only compatibility view of a preset's effects â€”
+    /// Effect Lister: read-only compatibility view of a preset's effects —
     /// filter/sort toolbar, status-colored rows, friendly empty state.
     /// </summary>
     public partial class ListerPage : UserControl, ISection
@@ -37,12 +37,9 @@ namespace FfxTool.Gui
             InitializeComponent();
             _profile = profile;
             EffectList.ItemsSource = _rows;
-            StatusBarVersion.Text = $"FFX Compatibility Tool v{Version}";
+            StatusBarVersion.Text = $"FFX Compatibility Tool {AppInfo.DisplayVersion}";
             UpdateRecentCard();
         }
-
-        private static string Version =>
-            System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
         public void OnShown() => UpdateRecentCard();
 
@@ -178,7 +175,7 @@ namespace FfxTool.Gui
                 _rows.Add(new EffectRowVm
                 {
                     Name = eff.MatchName,
-                    VendorLabel = $"{match.Vendor ?? "?"} â€” {match.Suite ?? "?"}",
+                    VendorLabel = $"{match.Vendor ?? "?"} — {match.Suite ?? "?"}",
                     Status = status,
                     RowBrush = row
                 });
@@ -189,8 +186,13 @@ namespace FfxTool.Gui
             ListHost.Visibility = hasContent ? Visibility.Visible : Visibility.Collapsed;
 
             string filterText = _filterMode == 0 ? "All" : _filterMode == 1 ? "Missing only" : "Compatible only";
-            string sortText = _sortDesc ? "Zâ†’A" : "Aâ†’Z";
-            StatusBarMode.Text = hasContent ? $"{filterText} Â· {sortText}" : "Ready";
+            string sortText = _sortDesc ? "Z→A" : "A→Z";
+            StatusBarMode.Text = hasContent ? $"{filterText} · {sortText}" : "Ready";
+
+            // the left status slot is only populated by future features — keep
+            // its separator hidden while empty so no orphan "·" ever shows
+            StatusSep.Visibility = string.IsNullOrEmpty(StatusBarLeft.Text)
+                ? Visibility.Collapsed : Visibility.Visible;
         }
     }
 }

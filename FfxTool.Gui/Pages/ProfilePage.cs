@@ -82,7 +82,9 @@ namespace FfxTool.Gui
                     IconName = meta.icon,
                     Width = 24,
                     Height = 24,
-                    Foreground = (Brush)FindResource("B.TertiaryContainer")
+                    // B.Primary (teal) — the old B.TertiaryContainer was pale
+                    // blue on a pale gray tile, ~1.5:1 contrast, nearly invisible
+                    Foreground = (Brush)FindResource("B.Primary")
                 }
             };
 
@@ -109,7 +111,6 @@ namespace FfxTool.Gui
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             Grid.SetColumn(iconChip, 0);
             Grid.SetColumn(title, 1);
-            Grid.SetColumn(iconChip, 0);
             var titleStack = new StackPanel { Margin = new Thickness(12, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
             titleStack.Children.Add(title);
             titleStack.Children.Add(subtitle);

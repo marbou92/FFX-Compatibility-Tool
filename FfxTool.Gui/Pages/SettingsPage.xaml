@@ -24,7 +24,7 @@
 
             <!-- sub-nav -->
             <ListBox x:Name="SubNav" Grid.Column="0" VerticalAlignment="Top" Margin="0,0,16,0"
-                     SelectionChanged="SubNav_SelectionChanged" Focusable="False">
+                     SelectionChanged="SubNav_SelectionChanged">
                 <ListBoxItem x:Name="NavAppearance" IsSelected="True" Padding="12,10">
                     <StackPanel Orientation="Horizontal">
                         <controls:IconGlyph IconName="Palette" Width="19" Height="19"

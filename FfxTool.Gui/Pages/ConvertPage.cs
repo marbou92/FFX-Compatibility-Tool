@@ -11,7 +11,7 @@ using Microsoft.Win32;
 namespace FfxTool.Gui
 {
     /// <summary>
-    /// Convert: two-pane workspace â€” hero drop zone / effect checklist,
+    /// Convert: two-pane workspace — hero drop zone / effect checklist,
     /// target + encoding options and a full-width CTA on the left;
     /// insight callout + themed console on the right.
     /// </summary>
@@ -46,7 +46,7 @@ namespace FfxTool.Gui
 
             EffectList.ItemsSource = _rows;
             Console.Log("[SYSTEM] Engine initialized.");
-            Console.Log("[INFO] Waiting for file inputâ€¦");
+            Console.Log("[INFO] Waiting for file input…");
         }
 
         private static string DisplayNameFor(string key) =>
@@ -136,7 +136,7 @@ namespace FfxTool.Gui
                 _rows.Where(r => r.IsChecked).Select(r => r.MatchName));
 
             string target = InternalKeyFor(TargetCombo.SelectedItem as string ?? "After Effects CS5.5");
-            Console.Log($"[SYSTEM] Converting to target '{target}'â€¦");
+            Console.Log($"[SYSTEM] Converting to target '{target}'…");
 
             Pipeline.ConversionResult result;
             try
@@ -171,7 +171,7 @@ namespace FfxTool.Gui
             foreach (var w in result.Warnings) Console.Log($"[WARNING] {w}");
             // Pipeline.Convert runs Verify() internally and throws on failure,
             // so reaching this line means the output is clean.
-            Console.Log("[OK] Verification pass clean â€” structure, indices and keyframe data intact.");
+            Console.Log("[OK] Verification pass clean — structure, indices and keyframe data intact.");
         }
 
         private Window FindWindow() => Window.GetWindow(this);

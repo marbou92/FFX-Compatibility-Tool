@@ -25,8 +25,7 @@ namespace FfxTool.Gui
         public SettingsPage(ProfilePage profilePage)
         {
             InitializeComponent();
-            VersionText.Text = "Version " +
-                System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+            VersionText.Text = "Version " + AppInfo.Version;
 
             ProfileHost.Content = profilePage ?? throw new ArgumentNullException(nameof(profilePage));
 

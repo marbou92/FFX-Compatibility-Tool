@@ -33,17 +33,6 @@
                                    TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,0,0,18"/>
                         <Button Content="Open .ffx file" Width="170" Click="Open_Click" HorizontalAlignment="Center" Margin="0,0,0,22"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                            <Border Style="{StaticResource Card}" Width="196" Padding="16" Opacity="0.55" Margin="0,0,12,0"
-                                    ToolTip="Not yet implemented">
-                                <StackPanel Orientation="Horizontal">
-                                    <controls:IconGlyph IconName="AutoAwesome" Width="22" Height="22"
-                                                        Foreground="{DynamicResource B.OnSurfaceVariant}" VerticalAlignment="Center"/>
-                                    <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="Auto-Analyze" Style="{StaticResource Body}" FontWeight="Medium" FontSize="12.5"/>
-                                        <TextBlock Text="Verify compatibility on load" Style="{StaticResource Caption}"/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
                             <Border x:Name="RecentCard" Style="{StaticResource Card}" Width="220" Padding="16"
                                     MouseLeftButtonUp="Recent_Click" Cursor="Hand">
                                 <StackPanel Orientation="Horizontal">
@@ -104,8 +93,6 @@
         </Grid>
 
         <!-- ============ header + status bar ============ -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Height="0"/>
-
         <Grid Grid.Row="2" Margin="0,14,0,0">
             <StackPanel Orientation="Horizontal">
                 <Button x:Name="OpenBtn" Content="Open .ffx file…" Width="170" Click="Open_Click"/>
@@ -119,16 +106,16 @@
                 </Border>
                 <Button x:Name="FilterBtn" Width="40" Height="40" Margin="12,0,0,0" Click="Filter_Click"
                         Style="{StaticResource OutlinedButton}" Padding="0" ToolTip="Cycle filter: all / missing only / compatible only">
-                    <controls:IconGlyph x:Name="FilterIcon" IconName="Palette" Width="20" Height="20"/>
+                    <controls:IconGlyph x:Name="FilterIcon" IconName="FilterList" Width="20" Height="20"/>
                 </Button>
                 <Button x:Name="SortBtn" Width="40" Height="40" Margin="8,0,0,0" Click="Sort_Click"
                         Style="{StaticResource OutlinedButton}" Padding="0" ToolTip="Toggle sort direction (by effect name)">
-                    <controls:IconGlyph x:Name="SortIcon" IconName="SwapHoriz" Width="20" Height="20"/>
+                    <controls:IconGlyph x:Name="SortIcon" IconName="SortArrows" Width="20" Height="20"/>
                 </Button>
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
                 <TextBlock x:Name="StatusBarLeft" Text="" Style="{StaticResource Caption}"/>
-                <TextBlock Text="    ·    " Style="{StaticResource Caption}"/>
+                <TextBlock x:Name="StatusSep" Text="    ·    " Style="{StaticResource Caption}" Visibility="Collapsed"/>
                 <TextBlock x:Name="StatusBarVersion" Style="{StaticResource Caption}"/>
                 <TextBlock x:Name="StatusBarMode" Text="Ready" Style="{StaticResource Caption}" Margin="24,0,0,0"
                            Foreground="{DynamicResource B.Outline}"/>

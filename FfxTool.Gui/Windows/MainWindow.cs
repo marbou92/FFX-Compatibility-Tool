@@ -5,6 +5,7 @@ using System.Runtime.Serialization.Json;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media.Imaging;
 using System.Windows.Shell;
 using FfxTool.Core;
 
@@ -29,6 +30,14 @@ namespace FfxTool.Gui
         {
             InitializeComponent();
             LoadWindowBounds();
+
+            // taskbar / Alt-Tab icon (title bar is custom chrome, so this is
+            // where the brand actually shows). Cosmetic — never block startup.
+            try
+            {
+                Icon = BitmapFrame.Create(new Uri("pack://application:,,,/Assets/app.ico"));
+            }
+            catch { /* missing asset falls back to the exe icon */ }
 
             _profile = PluginProfile.Load();
 

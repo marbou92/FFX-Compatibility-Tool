@@ -86,10 +86,7 @@
                         <ComboBox x:Name="TargetCombo" Width="210" HorizontalAlignment="Left"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1">
-                        <TextBlock Text="Encoding Options" Style="{StaticResource FieldLabel}"/>
-                        <CheckBox x:Name="CleanMetadataCheck" Style="{StaticResource Md3CheckBox}" Content="Clean Metadata"
-                                  IsChecked="True" IsEnabled="False" Margin="0,0,0,8"
-                                  ToolTip="Not yet implemented — the pipeline doesn't have a separate metadata-cleaning step"/>
+                        <TextBlock Text="Options" Style="{StaticResource FieldLabel}"/>
                         <CheckBox x:Name="OverwriteCheck" Style="{StaticResource Md3CheckBox}" Content="Overwrite File"/>
                     </StackPanel>
                 </Grid>
