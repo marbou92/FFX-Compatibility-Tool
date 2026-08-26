@@ -15,7 +15,8 @@ namespace FfxTool.Gui
     /// <summary>
     /// Effect Lister: read-only compatibility view of a preset's effects —
     /// filter/sort toolbar, status-colored rows in a unified list card,
-    /// friendly empty state and the same drag-overlay language as Convert.
+    /// friendly empty state, drag-overlay language shared with Convert,
+    /// and a recent-files flyout over the full 5-entry history.
     /// </summary>
     public partial class ListerPage : UserControl, ISection
     {
@@ -25,6 +26,14 @@ namespace FfxTool.Gui
             public string VendorLabel { get; set; }
             public string Status { get; set; }
             public Brush RowBrush { get; set; }
+        }
+
+        public class RecentRow
+        {
+            public string FileName { get; set; }
+            public string Meta { get; set; }
+            public string Path { get; set; }
+            public bool Exists { get; set; }
         }
 
         private readonly PluginProfile _profile;
@@ -58,14 +67,60 @@ namespace FfxTool.Gui
                 RecentText.Text = recent.FileName;
                 RecentCard.Opacity = 1;
                 RecentCard.Cursor = Cursors.Hand;
-                RecentCard.ToolTip = $"Open {recent.FileName}";
+                RecentCard.ToolTip = "Open the recent-files picker";
             }
             else
             {
                 RecentText.Text = "View last 5 analyzed presets";
                 RecentCard.Opacity = 0.55;
-                RecentCard.Cursor = Cursors.Arrow;
+                RecentCard.Cursor = Cursors.Hand;
                 RecentCard.ToolTip = "No recent files yet";
+            }
+        }
+
+        // ---------- recent-files flyout ----------
+        private void Recent_Click(object sender, MouseButtonEventArgs e)
+        {
+            var entries = HistoryStore.Load();
+            var rows = new List<RecentRow>();
+            foreach (var entry in entries.Take(5))
+            {
+                bool exists = File.Exists(entry.Path);
+                rows.Add(new RecentRow
+                {
+                    FileName = entry.FileName,
+                    // HistoryStore.TimeAgo finally gets its call site: "12 mins ago"
+                    Meta = exists
+                        ? $"{entry.EffectCount} effect{(entry.EffectCount == 1 ? "" : "s")} · {HistoryStore.TimeAgo(entry.Timestamp)}"
+                        : "File moved or deleted",
+                    Path = entry.Path,
+                    Exists = exists
+                });
+            }
+
+            if (rows.Count > 0)
+            {
+                RecentList.ItemsSource = rows;
+                RecentEmptyHint.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                RecentList.ItemsSource = null;
+                RecentEmptyHint.Visibility = Visibility.Visible;
+            }
+
+            // a previously picked item stays selected in its list box; reset so
+            // re-opening shows no stale highlight and re-picking still fires
+            RecentList.SelectedIndex = -1;
+            RecentFlyout.IsOpen = true;
+        }
+
+        private void RecentList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (RecentList.SelectedItem is RecentRow row && row.Exists && File.Exists(row.Path))
+            {
+                RecentFlyout.IsOpen = false;
+                LoadFile(row.Path);
             }
         }
 
@@ -77,12 +132,6 @@ namespace FfxTool.Gui
         }
 
         private void Open_Click(object sender, RoutedEventArgs e) => OpenFile();
-
-        private void Recent_Click(object sender, MouseButtonEventArgs e)
-        {
-            var recent = HistoryStore.Load().FirstOrDefault();
-            if (recent != null) LoadFile(recent.Path);
-        }
 
         // ---------- drag feedback ----------
         private void Page_DragEnter(object sender, DragEventArgs e)

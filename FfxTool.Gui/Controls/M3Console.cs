@@ -48,6 +48,7 @@ namespace FfxTool.Gui
                 : "INFO";
             _entries.Add(new LogEntry { Text = line, Brush = BrushFor(level) });
             LogList.ScrollIntoView(LogList.Items[LogList.Items.Count - 1]);
+            LogService.Append(line); // persisted for the About → Logs button
         }
 
         public void Clear()

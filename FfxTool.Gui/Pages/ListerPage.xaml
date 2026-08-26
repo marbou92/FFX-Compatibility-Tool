@@ -112,6 +112,59 @@
                                Opacity="0.8" HorizontalAlignment="Center"/>
                 </StackPanel>
             </Border>
+
+            <!-- recent-files flyout: the RecentCard becomes a picker over the
+                 full 5-entry history instead of only re-opening the newest -->
+            <Popup x:Name="RecentFlyout" PlacementTarget="{Binding ElementName=RecentCard}"
+                   Placement="Top" VerticalOffset="-8" StaysOpen="False" AllowsTransparency="True"
+                   PopupAnimation="Fade">
+                <Border Background="{DynamicResource B.SCLowest}" CornerRadius="14"
+                        BorderBrush="{DynamicResource B.OutlineVariant}" BorderThickness="1"
+                        Width="330" MaxHeight="320" Margin="4,4,12,12" Padding="6">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.25"/>
+                    </Border.Effect>
+                    <StackPanel>
+                        <TextBlock Text="RECENT FILES" Style="{StaticResource Caption}" FontWeight="SemiBold"
+                                   Margin="10,6,10,4"/>
+                        <ListBox x:Name="RecentList" Focusable="False" Margin="2,0,2,2"
+                                 SelectionChanged="RecentList_SelectionChanged">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <!-- dead entries dim themselves + stop hit-testing
+                                         purely from bindings — no container timing races -->
+                                    <Grid Margin="6,5">
+                                        <Grid.Style>
+                                            <Style TargetType="Grid">
+                                                <Setter Property="Opacity" Value="1"/>
+                                                <Setter Property="IsHitTestVisible" Value="True"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Exists}" Value="False">
+                                                        <Setter Property="Opacity" Value="0.45"/>
+                                                        <Setter Property="IsHitTestVisible" Value="False"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Grid.Style>
+                                        <controls:IconGlyph IconName="Description" Width="20" Height="20"
+                                                            Foreground="{DynamicResource B.Primary}"
+                                                            VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" Margin="11,0,0,0" VerticalAlignment="Center"
+                                                    ToolTip="{Binding Path}">
+                                            <TextBlock Text="{Binding FileName}" Style="{StaticResource Body}" FontWeight="Medium"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Meta}" Style="{StaticResource Caption}" Margin="0,1,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <TextBlock x:Name="RecentEmptyHint" Text="No recent files yet — open a preset to start building history."
+                                   Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="10,4,10,8"
+                                   Visibility="Collapsed"/>
+                    </StackPanel>
+                </Border>
+            </Popup>
         </Grid>
 
         <!-- ============ header + status bar ============ -->

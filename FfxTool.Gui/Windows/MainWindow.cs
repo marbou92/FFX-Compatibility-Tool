@@ -5,6 +5,8 @@ using System.Runtime.Serialization.Json;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Shell;
 using FfxTool.Core;
@@ -85,7 +87,28 @@ namespace FfxTool.Gui
                 case 1: PageHost.Content = _lister; break;
                 case 2: PageHost.Content = _settings; break;
             }
+            AnimateSectionIn();
             (PageHost.Content as ISection)?.OnShown();
+        }
+
+        /// <summary>
+        /// Quiet fade + 12px rise on every section switch. Deliberately
+        /// subtle (~1/5 s, decelerating) so it reads as material settling,
+        /// not as an animation showcase.
+        /// </summary>
+        private void AnimateSectionIn()
+        {
+            if (PageHost.Content is UIElement page)
+            {
+                var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+                var slide = new TranslateTransform(0, 12);
+                page.RenderTransform = slide;
+                var dur = TimeSpan.FromMilliseconds(220);
+                page.BeginAnimation(UIElement.OpacityProperty,
+                    new DoubleAnimation(0, 1, dur) { EasingFunction = ease });
+                slide.BeginAnimation(TranslateTransform.YProperty,
+                    new DoubleAnimation(12, 0, dur) { EasingFunction = ease });
+            }
         }
 
         private void OnProfileChanged()

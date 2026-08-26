@@ -59,6 +59,9 @@ namespace FfxTool.Gui
         private void IssueLink_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) =>
             OpenUrl(RepoUrl + "/issues/new");
 
+        private void Logs_Click(object sender, RoutedEventArgs e) =>
+            LogService.RevealLatest();
+
         private static void OpenUrl(string url)
         {
             try
