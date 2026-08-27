@@ -23,10 +23,11 @@ namespace FfxTool.Gui
     /// and a recent-files flyout over the full 5-entry history.
     ///
     /// The right-hand inspector adds a deep dive into the selected effect:
-    /// its decoded parameters, the raw keyframe stream of any animated
-    /// parameter, and a value-vs-time graph drawn from the same data
-    /// (PresetsInspector reads, never writes — the pipeline's keyframes are
-    /// untouched).
+    /// its decoded parameters, the timed keyframe stream of any animated
+    /// parameter (seconds + 30 fps frame numbers, converted by
+    /// PresetCurve), and an AE-style graph editor with Value and Speed
+    /// modes, a frame-based time grid and a hover probe (PresetInspector
+    /// reads, never writes — the pipeline's keyframes are untouched).
     /// </summary>
     public partial class ListerPage : UserControl, ISection
     {
@@ -56,29 +57,45 @@ namespace FfxTool.Gui
             public string Detail { get; set; }
             public string Chip { get; set; }
             public Visibility ChipVisible { get; set; }
+            public Visibility AccentVisible { get; set; }
             public string MatchName { get; set; }
 
             public ParamRowVm(PresetParameter p)
             {
                 Name = p.Name;
                 MatchName = p.MatchName ?? p.Name;
-                string range = p.Min.HasValue && p.Max.HasValue
-                    ? $" · range {Fmt(p.Min)} … {Fmt(p.Max)}" : "";
-                Detail = (p.IsAnimated ? "animated" : "static") + range;
+
                 if (p.IsAnimated)
                 {
+                    // stream summary: keys · value travel · time span
+                    double vMin = p.Keyframes.Min(k => k.Value);
+                    double vMax = p.Keyframes.Max(k => k.Value);
+                    double span = PresetCurve.Seconds(
+                        p.Keyframes[p.Keyframes.Count - 1].Time - p.Keyframes[0].Time);
+                    string travel = Math.Abs(vMax - vMin) < 1e-9
+                        ? $"flat at {Fmt(vMin)}"
+                        : $"{Fmt(vMin)} → {Fmt(vMax)}";
+                    Detail = $"animated · {travel} · {span.ToString("0.##")} s span";
                     Chip = $"{p.Keyframes.Count} key{(p.Keyframes.Count == 1 ? "" : "s")}";
                     ChipVisible = Visibility.Visible;
-                }
-                else if (p.StaticValue.HasValue)
-                {
-                    Chip = Fmt(p.StaticValue);
-                    ChipVisible = Visibility.Visible;
+                    AccentVisible = Visibility.Visible;
                 }
                 else
                 {
-                    Chip = "";
-                    ChipVisible = Visibility.Collapsed;
+                    string range = p.Min.HasValue && p.Max.HasValue
+                        ? $" · range {Fmt(p.Min)} … {Fmt(p.Max)}" : "";
+                    Detail = "static value" + range;
+                    AccentVisible = Visibility.Collapsed;
+                    if (p.StaticValue.HasValue)
+                    {
+                        Chip = Fmt(p.StaticValue);
+                        ChipVisible = Visibility.Visible;
+                    }
+                    else
+                    {
+                        Chip = "";
+                        ChipVisible = Visibility.Collapsed;
+                    }
                 }
             }
 
@@ -88,18 +105,27 @@ namespace FfxTool.Gui
         public class KfRowVm
         {
             public string Index { get; set; }
-            public string Time { get; set; }
+            public string TimeSec { get; set; }
+            public string Sub { get; set; }
             public string Value { get; set; }
             public string Interp { get; set; }
+            public string Tip { get; set; }
 
-            public KfRowVm(int index, PresetKeyframe kf)
+            public KfRowVm(int index, PresetKeyframe kf, PresetKeyframe prev)
             {
                 Index = index.ToString();
-                // raw preset ticks — AE keeps these in the comp's own
-                // timebase, so they are shown as-is, never faked as seconds
-                Time = kf.Time.ToString();
+                // ticks → seconds via PresetCurve's empirically derived
+                // timebase (1 tick = 1/1024 s); raw ticks stay in the tooltip
+                double sec = PresetCurve.Seconds(kf.Time);
+                TimeSec = sec.ToString("0.##") + " s";
+                int frame = (int)Math.Round(sec * Fps);
+                Sub = prev == null
+                    ? $"frame {frame}"
+                    : $"frame {frame} · +{(sec - PresetCurve.Seconds(prev.Time)).ToString("0.##")} s";
                 Value = kf.Value.ToString("0.###");
                 Interp = kf.InterpLabel;
+                Tip = $"raw time {kf.Time} ticks · in influence {kf.InInfluence.ToString("0.##")}" +
+                      $" · out influence {kf.OutInfluence.ToString("0.##")}";
             }
         }
 
@@ -111,10 +137,12 @@ namespace FfxTool.Gui
         private bool _sortDesc;
 
         // inspector state: selected effect (by stable effect index), selected
-        // animated parameter (for the keyframes/graph tabs), active tab
+        // animated parameter (for the keyframes/graph tabs), active tab,
+        // graph mode (0 = value like AE's value graph, 1 = speed graph)
         private int _inspEffectIndex = -1;
         private int _animParamIndex = -1;
         private int _tab;
+        private int _graphMode;
         private bool _syncingCombo;
 
         // DragEnter/DragLeave fire on every child boundary crossing; a depth
@@ -502,6 +530,17 @@ namespace FfxTool.Gui
             else SetTab(2);
         }
 
+        private void GraphMode_Click(object sender, RoutedEventArgs e)
+        {
+            _graphMode = sender == GraphSpeedBtn ? 1 : 0;
+            GraphValueBtn.IsChecked = _graphMode == 0;
+            GraphSpeedBtn.IsChecked = _graphMode == 1;
+            GraphLegend.Text = _graphMode == 0
+                ? "value over time · 30 fps grid"
+                : "speed = |Δvalue / Δt| · 30 fps grid";
+            DrawGraph();
+        }
+
         private void SetTab(int tab)
         {
             _tab = tab;
@@ -526,22 +565,49 @@ namespace FfxTool.Gui
                 return;
             }
             KfEmpty.Visibility = Visibility.Collapsed;
-            KfList.ItemsSource = p.Keyframes.Select((k, i) => new KfRowVm(i + 1, k)).ToList();
+            var kfs = p.Keyframes;
+            KfList.ItemsSource = kfs.Select((k, i) =>
+                new KfRowVm(i + 1, k, i > 0 ? kfs[i - 1] : null)).ToList();
         }
 
+        // ---------- AE-style graph ----------
+        private const double Fps = 30.0; // frame numbers + grid assume 30 fps
+
+        private sealed class PlotState
+        {
+            public List<PresetCurve.Segment> Segs;
+            public double T0, T1;      // seconds span
+            public double W, H;        // canvas size
+            public double L, R, T, Bot; // margins
+            public int Mode;           // 0 value, 1 speed
+            public double VMin, VMax;  // value mode y-range
+            public double SpeedMax;    // speed mode y-range
+        }
+
+        private PlotState _plot;
+        private Line _cursorLine;
+        private Ellipse _cursorDot;
+
         /// <summary>
-        /// Value-vs-time curve for the selected animated parameter, drawn
-        /// straight from the decoded keyframe stream: one dot per keyframe,
-        /// straight lines for linear segments, a step for Hold, and cubic
-        /// segments whose handles sit at each side's influence fraction for
-        /// Bezier easing (the fixture's Easy-Ease streams render as the
-        /// familiar S-curve). X axis = preset ticks (AE comp timebase, shown
-        /// as-is), Y axis = value. Pure WPF shapes — Win7-safe, no effects.
+        /// AE-style graph editor for the selected animated parameter.
+        /// Value mode: the value curve (linear segments straight, Hold steps,
+        /// Bezier segments with AE tangent handles from PresetCurve) with
+        /// interpolation-shaped keyframe markers — square = linear, diamond
+        /// = bezier, left triangle = hold. Speed mode: |Δvalue/Δt| sampled
+        /// from the same curve, drawn as AE's filled speed area.
+        /// Both modes share a frame-based time grid (30 fps) with second
+        /// labels and a hover probe (dashed cursor + floating readout).
+        /// Pure WPF shapes — Win7-safe, no bitmap effects.
         /// </summary>
         private void DrawGraph()
         {
             if (GraphCanvas == null) return;
             GraphCanvas.Children.Clear();
+            _cursorLine = null;
+            _cursorDot = null;
+            if (GraphReadout != null) GraphReadout.Visibility = Visibility.Collapsed;
+            _plot = null;
+
             var p = CurrentAnimParam();
             if (p == null || p.Keyframes.Count == 0)
             {
@@ -553,29 +619,92 @@ namespace FfxTool.Gui
             double w = GraphCanvas.ActualWidth, h = GraphCanvas.ActualHeight;
             if (w < 60 || h < 60) return; // not laid out yet — SizeChanged redraws
 
-            var kfs = p.Keyframes;
-            const double L = 48, R = 14, T = 14, B = 28;
-            double tMin = kfs[0].Time, tMax = kfs[kfs.Count - 1].Time;
-            if (tMax <= tMin) tMax = tMin + 1;
-            double vMin = kfs.Min(k => k.Value), vMax = kfs.Max(k => k.Value);
-            if (vMax - vMin < 1e-9) { vMin -= 1; vMax += 1; }
-            else { double pad = (vMax - vMin) * 0.12; vMin -= pad; vMax += pad; }
-
-            Func<double, double> xOf = t => L + (t - tMin) / (tMax - tMin) * (w - L - R);
-            Func<double, double> yOf = v => T + (vMax - v) / (vMax - vMin) * (h - T - B);
+            var segs = PresetCurve.BuildSegments(p.Keyframes);
+            if (segs.Count == 0)
+            {
+                GraphHint.Visibility = Visibility.Visible;
+                return;
+            }
 
             var gridBrush = (Brush)FindResource("B.OutlineVariant");
             var labelBrush = (Brush)FindResource("B.OnSurfaceVariant");
-            var primary = (Brush)FindResource("B.Primary");
+            var accent = (Brush)FindResource("B.Primary");
             var surface = (Brush)FindResource("B.Surface");
+            var outline = (Brush)FindResource("B.Outline");
 
-            for (int i = 0; i <= 3; i++)
+            const double L = 46, R = 12, T = 14, Bot = 24;
+            double t0 = segs[0].T0, t1 = segs[segs.Count - 1].T1;
+            if (t1 - t0 < 1e-6) t1 = t0 + 0.5; // single-instant stream still gets an axis
+            Func<double, double> xOf = t => L + (t - t0) / (t1 - t0) * (w - L - R);
+
+            DrawTimeGrid(t0, t1, xOf, w, h, T, Bot, L, R, gridBrush, labelBrush);
+
+            var plot = new PlotState
             {
-                double v = vMin + (vMax - vMin) * i / 3.0;
+                Segs = segs, T0 = t0, T1 = t1,
+                W = w, H = h, L = L, R = R, T = T, Bot = Bot, Mode = _graphMode
+            };
+
+            if (_graphMode == 0) DrawValueCurve(plot, accent, surface);
+            else DrawSpeedCurve(plot, accent, surface);
+
+            _plot = plot;
+        }
+
+        /// <summary>Vertical grid at whole-frame multiples of 30 fps.</summary>
+        private void DrawTimeGrid(double t0, double t1, Func<double, double> xOf,
+            double w, double h, double top, double bot, double L, double R,
+            Brush gridBrush, Brush labelBrush)
+        {
+            // pick the coarsest whole-frame step that keeps labels ~78px apart
+            double targetLines = Math.Max(2.0, (w - L - R) / 78.0);
+            double frameSpan = (t1 - t0) * Fps;
+            double needStep = frameSpan / targetLines;
+            double[] steps = { 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200 };
+            double step = steps.FirstOrDefault(s => s >= needStep);
+            if (step == 0) step = steps[steps.Length - 1];
+
+            double stepSec = step / Fps;
+            int first = (int)Math.Ceiling(t0 * Fps / step - 1e-9);
+            for (int f = first; ; f += (int)step)
+            {
+                double t = f / Fps;
+                if (t > t1 + 1e-9) break;
+                double x = Math.Round(xOf(t)) + 0.5;
+                GraphCanvas.Children.Add(new Line
+                {
+                    X1 = x, X2 = x, Y1 = top, Y2 = h - bot,
+                    Stroke = gridBrush, StrokeThickness = 1
+                });
+                AddTimeLabel(x + 4, h - bot + 6, t.ToString("0.##") + "s", labelBrush);
+            }
+        }
+
+        private void DrawValueCurve(PlotState plot, Brush accent, Brush surface)
+        {
+            var segs = plot.Segs;
+            var gridBrush = (Brush)FindResource("B.OutlineVariant");
+            var labelBrush = (Brush)FindResource("B.OnSurfaceVariant");
+
+            double vMin = segs.Min(s => Math.Min(s.V0, s.V1));
+            double vMax = segs.Max(s => Math.Max(s.V0, s.V1));
+            // include handle extremes so bezier overshoot stays inside the plot
+            vMin = Math.Min(vMin, segs.Min(s => Math.Min(s.C1V, s.C2V)));
+            vMax = Math.Max(vMax, segs.Max(s => Math.Max(s.C1V, s.C2V)));
+            if (vMax - vMin < 1e-9) { vMin -= 1; vMax += 1; }
+            else { double pad = (vMax - vMin) * 0.12; vMin -= pad; vMax += pad; }
+            plot.VMin = vMin; plot.VMax = vMax;
+
+            Func<double, double> yOf = v => plot.T + (vMax - v) / (vMax - vMin) * (plot.H - plot.T - plot.Bot);
+
+            // horizontal value grid at round steps
+            double vStep = NiceStep((vMax - vMin) / 3.2);
+            for (double v = Math.Ceiling(vMin / vStep) * vStep; v <= vMax + 1e-9; v += vStep)
+            {
                 double y = Math.Round(yOf(v)) + 0.5;
                 GraphCanvas.Children.Add(new Line
                 {
-                    X1 = L, X2 = w - R, Y1 = y, Y2 = y,
+                    X1 = plot.L, X2 = plot.W - plot.R, Y1 = y, Y2 = y,
                     Stroke = gridBrush, StrokeThickness = 1
                 });
                 var lbl = new TextBlock { Text = v.ToString("0.##"), FontSize = 10, Foreground = labelBrush };
@@ -584,35 +713,27 @@ namespace FfxTool.Gui
                 GraphCanvas.Children.Add(lbl);
             }
 
-            AddTimeLabel(xOf(tMin), h - B + 8, tMin.ToString());
-            AddTimeLabel((xOf(tMin) + xOf(tMax)) / 2 - 12, h - B + 8, ((tMin + tMax) / 2).ToString());
-            AddTimeLabel(xOf(tMax) - 24, h - B + 8, tMax.ToString());
-
+            // the curve itself
             var geo = new StreamGeometry();
             using (var ctx = geo.Open())
             {
-                ctx.BeginFigure(new Point(Math.Round(xOf(kfs[0].Time)), Math.Round(yOf(kfs[0].Value))), false, false);
-                for (int i = 0; i + 1 < kfs.Count; i++)
+                ctx.BeginFigure(new Point(Math.Round(XOf(plot, segs[0].T0)), Math.Round(yOf(segs[0].V0))), false, false);
+                foreach (var s in segs)
                 {
-                    var a = kfs[i];
-                    var b = kfs[i + 1];
-                    double dt = Math.Max(1, b.Time - a.Time);
-                    var end = new Point(Math.Round(xOf(b.Time)), Math.Round(yOf(b.Value)));
-                    if (a.InterpOut == 3) // hold: value steps at the next keyframe
+                    var end = new Point(Math.Round(XOf(plot, s.T1)), Math.Round(yOf(s.V1)));
+                    if (s.Mode == PresetCurve.InterpHold)
                     {
-                        ctx.LineTo(new Point(end.X, Math.Round(yOf(a.Value))), true, false);
+                        ctx.LineTo(new Point(end.X, Math.Round(yOf(s.V0))), true, false);
                         ctx.LineTo(end, true, false);
                     }
-                    else if (a.InterpOut == 1) // linear
+                    else if (s.Mode == PresetCurve.InterpLinear)
                     {
                         ctx.LineTo(end, true, false);
                     }
-                    else // bezier: handles at influence fractions of the segment
+                    else
                     {
-                        double oi = Math.Max(0, Math.Min(1, a.OutInfluence));
-                        double ii = Math.Max(0, Math.Min(1, b.InInfluence));
-                        var c1 = new Point(Math.Round(xOf(a.Time + oi * dt)), Math.Round(yOf(a.Value)));
-                        var c2 = new Point(Math.Round(xOf(b.Time - ii * dt)), Math.Round(yOf(b.Value)));
+                        var c1 = new Point(Math.Round(XOf(plot, s.C1T)), Math.Round(yOf(s.C1V)));
+                        var c2 = new Point(Math.Round(XOf(plot, s.C2T)), Math.Round(yOf(s.C2V)));
                         ctx.BezierTo(c1, c2, end, true, false);
                     }
                 }
@@ -621,32 +742,272 @@ namespace FfxTool.Gui
             GraphCanvas.Children.Add(new Path
             {
                 Data = geo,
-                Stroke = primary,
+                Stroke = accent,
                 StrokeThickness = 2,
                 StrokeLineJoin = PenLineJoin.Round
             });
 
-            for (int i = 0; i < kfs.Count; i++)
+            // keyframe markers, shaped by interpolation like AE's icons
+            var stream = CurrentAnimParam();
+            if (stream == null) return;
+            for (int i = 0; i < stream.Keyframes.Count; i++)
             {
-                var k = kfs[i];
-                GraphCanvas.Children.Add(new Ellipse
-                {
-                    Width = 8,
-                    Height = 8,
-                    Fill = primary,
-                    Stroke = surface,
-                    StrokeThickness = 1.5,
-                    ToolTip = $"#{i + 1}    t = {k.Time}    value = {k.Value.ToString("0.###")}"
-                });
-                var dot = (Ellipse)GraphCanvas.Children[GraphCanvas.Children.Count - 1];
-                Canvas.SetLeft(dot, xOf(k.Time) - 4);
-                Canvas.SetTop(dot, yOf(k.Value) - 4);
+                var k = stream.Keyframes[i];
+                int shape = i + 1 < stream.Keyframes.Count ? k.InterpOut : k.InterpIn;
+                double x = XOf(plot, PresetCurve.Seconds(k.Time));
+                double y = yOf(k.Value);
+                string tip = $"#{i + 1}  t {PresetCurve.Seconds(k.Time).ToString("0.##")} s" +
+                             $"  ·  value {k.Value.ToString("0.###")}  ·  {k.InterpLabel}";
+                var marker = MakeMarker(shape, x, y, accent, surface, tip);
+                GraphCanvas.Children.Add(marker);
             }
         }
 
-        private void AddTimeLabel(double x, double y, string text)
+        private void DrawSpeedCurve(PlotState plot, Brush accent, Brush surface)
         {
-            var lbl = new TextBlock { Text = text, FontSize = 10, Foreground = (Brush)FindResource("B.OnSurfaceVariant") };
+            var segs = plot.Segs;
+            var gridBrush = (Brush)FindResource("B.OutlineVariant");
+            var labelBrush = (Brush)FindResource("B.OnSurfaceVariant");
+
+            // sample the value curve, difference it into speed
+            const int N = 260;
+            double[] ts, vs;
+            PresetCurve.SampleValues(segs, N, out ts, out vs);
+            var sp = new double[N];
+            for (int i = 1; i < N; i++)
+                sp[i] = Math.Abs(vs[i] - vs[i - 1]) / Math.Max(ts[i] - ts[i - 1], 1e-9);
+            sp[0] = sp[1];
+
+            double spMax = sp.Max();
+            if (spMax < 1e-9) spMax = 1.0;
+            spMax *= 1.1; // headroom so the peak never kisses the top edge
+            plot.SpeedMax = spMax;
+
+            Func<double, double> yOf = v => plot.T + (spMax - v) / spMax * (plot.H - plot.T - plot.Bot);
+            double baseY = Math.Round(plot.H - plot.Bot) + 0.5;
+
+            // horizontal speed grid
+            double vStep = NiceStep(spMax / 3.0);
+            for (double v = vStep; v <= spMax + 1e-9; v += vStep)
+            {
+                double y = Math.Round(yOf(v)) + 0.5;
+                GraphCanvas.Children.Add(new Line
+                {
+                    X1 = plot.L, X2 = plot.W - plot.R, Y1 = y, Y2 = y,
+                    Stroke = gridBrush, StrokeThickness = 1
+                });
+                var lbl = new TextBlock { Text = v.ToString("0.##") + "/s", FontSize = 10, Foreground = labelBrush };
+                Canvas.SetLeft(lbl, 2);
+                Canvas.SetTop(lbl, y - 6);
+                GraphCanvas.Children.Add(lbl);
+            }
+
+            // AE-style: the speed graph reads as a filled area over the axis
+            var area = new StreamGeometry();
+            using (var ctx = area.Open())
+            {
+                ctx.BeginFigure(new Point(Math.Round(XOf(plot, ts[0])), baseY), true, false);
+                for (int i = 0; i < N; i++)
+                    ctx.LineTo(new Point(Math.Round(XOf(plot, ts[i])), Math.Round(yOf(sp[i]))), true, false);
+                ctx.LineTo(new Point(Math.Round(XOf(plot, ts[N - 1])), baseY), true, false);
+            }
+            area.Freeze();
+            GraphCanvas.Children.Add(new Path
+            {
+                Data = area,
+                Fill = accent,
+                Opacity = 0.30,
+                StrokeThickness = 0
+            });
+
+            var line = new StreamGeometry();
+            using (var ctx = line.Open())
+            {
+                ctx.BeginFigure(new Point(Math.Round(XOf(plot, ts[0])), Math.Round(yOf(sp[0]))), false, false);
+                for (int i = 1; i < N; i++)
+                    ctx.LineTo(new Point(Math.Round(XOf(plot, ts[i])), Math.Round(yOf(sp[i]))), true, false);
+            }
+            line.Freeze();
+            GraphCanvas.Children.Add(new Path
+            {
+                Data = line,
+                Stroke = accent,
+                StrokeThickness = 1.6,
+                StrokeLineJoin = PenLineJoin.Round
+            });
+
+            // keyframe markers on the speed curve: numeric slope around each kf
+            var stream = CurrentAnimParam();
+            if (stream == null) return;
+            double eps = Math.Max((plot.T1 - plot.T0) / 2000.0, 1e-6);
+            foreach (var k in stream.Keyframes)
+            {
+                double t = PresetCurve.Seconds(k.Time);
+                double before = PresetCurve.ValueAt(segs, t - eps);
+                double after = PresetCurve.ValueAt(segs, t + eps);
+                if (double.IsNaN(before) || double.IsNaN(after)) continue;
+                double s = Math.Abs(after - before) / (2 * eps);
+                if (s > spMax) s = spMax;
+                string tip = $"t {t.ToString("0.##")} s  ·  speed {s.ToString("0.###")} /s";
+                GraphCanvas.Children.Add(MakeMarker(PresetCurve.InterpBezier,
+                    XOf(plot, t), yOf(s), accent, surface, tip));
+            }
+        }
+
+        /// <summary>Linear keyframes → square, bezier → diamond, hold → left triangle.</summary>
+        private UIElement MakeMarker(int interp, double x, double y, Brush fill, Brush stroke, string tip)
+        {
+            UIElement el;
+            if (interp == PresetCurve.InterpLinear)
+            {
+                el = new Rectangle
+                {
+                    Width = 7.5,
+                    Height = 7.5,
+                    RadiusX = 1.5,
+                    RadiusY = 1.5,
+                    Fill = fill,
+                    Stroke = stroke,
+                    StrokeThickness = 1.2,
+                    ToolTip = tip
+                };
+                Canvas.SetLeft(el, x - 3.75);
+                Canvas.SetTop(el, y - 3.75);
+            }
+            else if (interp == PresetCurve.InterpHold)
+            {
+                el = new Polygon
+                {
+                    Points = new PointCollection { new Point(11, 0), new Point(11, 10), new Point(1, 5) },
+                    Fill = fill,
+                    Stroke = stroke,
+                    StrokeThickness = 1.2,
+                    StrokeLineJoin = PenLineJoin.Round,
+                    ToolTip = tip
+                };
+                Canvas.SetLeft(el, x - 6);
+                Canvas.SetTop(el, y - 5);
+            }
+            else
+            {
+                el = new Polygon
+                {
+                    Points = new PointCollection { new Point(5.5, 0), new Point(11, 5.5), new Point(5.5, 11), new Point(0, 5.5) },
+                    Fill = fill,
+                    Stroke = stroke,
+                    StrokeThickness = 1.2,
+                    StrokeLineJoin = PenLineJoin.Round,
+                    ToolTip = tip
+                };
+                Canvas.SetLeft(el, x - 5.5);
+                Canvas.SetTop(el, y - 5.5);
+            }
+            return el;
+        }
+
+        /// <summary>
+        /// Hover probe: dashed vertical cursor + floating readout with the
+        /// exact time and the interpolated value (value mode) or numeric
+        /// speed (speed mode) under the mouse.
+        /// </summary>
+        private void GraphCanvas_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_plot == null || GraphCanvas == null) return;
+            var pt = e.GetPosition(GraphCanvas);
+            double innerW = _plot.W - _plot.L - _plot.R;
+            if (pt.X < _plot.L || pt.X > _plot.W - _plot.R || pt.Y > _plot.H - _plot.Bot)
+            {
+                ClearCursor();
+                return;
+            }
+            double t = _plot.T0 + (pt.X - _plot.L) / innerW * (_plot.T1 - _plot.T0);
+
+            EnsureCursor();
+            double x = Math.Round(pt.X) + 0.5;
+            _cursorLine.Visibility = Visibility.Visible; // re-shown after ClearCursor
+            _cursorLine.X1 = x;
+            _cursorLine.X2 = x;
+            _cursorLine.Y1 = _plot.T;
+            _cursorLine.Y2 = _plot.H - _plot.Bot;
+
+            string readout;
+            double plotH = _plot.H - _plot.T - _plot.Bot;
+            if (_plot.Mode == 0)
+            {
+                double v = PresetCurve.ValueAt(_plot.Segs, t);
+                double y = _plot.T + (_plot.VMax - v) / Math.Max(_plot.VMax - _plot.VMin, 1e-9) * plotH;
+                Canvas.SetLeft(_cursorDot, x - 3.5);
+                Canvas.SetTop(_cursorDot, Math.Round(y) - 3.5);
+                _cursorDot.Visibility = Visibility.Visible;
+                readout = $"{t.ToString("0.##")} s · value {v.ToString("0.###")}";
+            }
+            else
+            {
+                double eps = Math.Max((_plot.T1 - _plot.T0) / 2000.0, 1e-6);
+                double s = Math.Abs(PresetCurve.ValueAt(_plot.Segs, t + eps) -
+                                    PresetCurve.ValueAt(_plot.Segs, t - eps)) / (2 * eps);
+                double y = _plot.T + (1 - Math.Min(s / Math.Max(_plot.SpeedMax, 1e-9), 1)) * plotH;
+                Canvas.SetLeft(_cursorDot, x - 3.5);
+                Canvas.SetTop(_cursorDot, Math.Round(y) - 3.5);
+                _cursorDot.Visibility = Visibility.Visible;
+                readout = $"{t.ToString("0.##")} s · speed {s.ToString("0.###")} /s";
+            }
+
+            GraphReadoutText.Text = readout;
+            GraphReadout.Visibility = Visibility.Visible;
+        }
+
+        private void GraphCanvas_MouseLeave(object sender, MouseEventArgs e) => ClearCursor();
+
+        private void EnsureCursor()
+        {
+            if (_cursorLine != null) return;
+            var outline = (Brush)FindResource("B.Outline");
+            var accent = (Brush)FindResource("B.Primary");
+            var surface = (Brush)FindResource("B.Surface");
+            _cursorLine = new Line
+            {
+                Stroke = outline,
+                StrokeThickness = 1,
+                StrokeDashArray = new DoubleCollection { 2, 2 },
+                IsHitTestVisible = false
+            };
+            _cursorDot = new Ellipse
+            {
+                Width = 7,
+                Height = 7,
+                Fill = accent,
+                Stroke = surface,
+                StrokeThickness = 1.2,
+                IsHitTestVisible = false
+            };
+            GraphCanvas.Children.Add(_cursorLine);
+            GraphCanvas.Children.Add(_cursorDot);
+        }
+
+        private void ClearCursor()
+        {
+            if (_cursorLine != null) _cursorLine.Visibility = Visibility.Collapsed;
+            if (_cursorDot != null) _cursorDot.Visibility = Visibility.Collapsed;
+            if (GraphReadout != null) GraphReadout.Visibility = Visibility.Collapsed;
+        }
+
+        private double XOf(PlotState plot, double t) =>
+            plot.L + (t - plot.T0) / Math.Max(plot.T1 - plot.T0, 1e-9) * (plot.W - plot.L - plot.R);
+
+        /// <summary>Round axis step from a raw division: 1/2/2.5/5 × 10^n.</summary>
+        private static double NiceStep(double raw)
+        {
+            if (raw <= 0 || double.IsNaN(raw) || double.IsInfinity(raw)) return 1;
+            double mag = Math.Pow(10, Math.Floor(Math.Log10(raw)));
+            double norm = raw / mag;
+            double step = norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10;
+            return step * mag;
+        }
+
+        private void AddTimeLabel(double x, double y, string text, Brush labelBrush)
+        {
+            var lbl = new TextBlock { Text = text, FontSize = 10, Foreground = labelBrush };
             Canvas.SetLeft(lbl, x);
             Canvas.SetTop(lbl, y);
             GraphCanvas.Children.Add(lbl);

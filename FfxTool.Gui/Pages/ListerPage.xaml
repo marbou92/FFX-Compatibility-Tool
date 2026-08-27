@@ -35,22 +35,58 @@
             </Setter>
         </Style>
 
-        <!-- parameter row: name + range/match detail, chip on the right -->
+        <!-- graph mode toggle: same segmented language, one size smaller -->
+        <Style x:Key="GraphModeTab" TargetType="ToggleButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="12,5"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource M3FocusVisual}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="7"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource B.PrimaryContainer}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource B.OnPrimaryContainer}"/>
+                                <Setter TargetName="Bg" Property="Opacity" Value="1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- parameter row: accent bar marks animated params, second line
+             carries the stream summary (keys · range · span) -->
         <DataTemplate x:Key="ParamRow">
-            <Border Padding="12,9" CornerRadius="10" Margin="0,1" Background="Transparent"
+            <Border Padding="12,8" CornerRadius="10" Margin="0,1" Background="Transparent"
                     ToolTip="{Binding MatchName}">
                 <Grid>
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center">
+                    <Border Width="3" CornerRadius="1.5" Margin="0,3,10,3"
+                            Background="{DynamicResource B.Primary}"
+                            Visibility="{Binding AccentVisible}"/>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="Medium"
                                    TextTrimming="CharacterEllipsis"/>
                         <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}"
                                    Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
-                    <Border Grid.Column="1" Style="{StaticResource Chip}" VerticalAlignment="Center" Margin="10,0,0,0"
+                    <Border Grid.Column="2" Style="{StaticResource Chip}" VerticalAlignment="Center" Margin="10,0,0,0"
                             Visibility="{Binding ChipVisible}">
                         <TextBlock Text="{Binding Chip}" Style="{StaticResource Caption}"/>
                     </Border>
@@ -58,19 +94,23 @@
             </Border>
         </DataTemplate>
 
-        <!-- keyframe row: # · time · value · easing -->
+        <!-- keyframe row: # · time (seconds + frame/delta sub-line) ·
+             value · easing chip -->
         <DataTemplate x:Key="KfRow">
-            <Border Padding="12,8" CornerRadius="10" Margin="0,1" Background="Transparent">
+            <Border Padding="12,7" CornerRadius="10" Margin="0,1" Background="Transparent"
+                    ToolTip="{Binding Tip}">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="30"/>
+                        <ColumnDefinition Width="24"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="{Binding Index}" Style="{StaticResource Caption}" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="1" Text="{Binding Time}" Style="{StaticResource Caption}"
-                               VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding TimeSec}" Style="{StaticResource Body}" FontWeight="Medium"/>
+                        <TextBlock Text="{Binding Sub}" Style="{StaticResource Caption}" Margin="0,1,0,0"/>
+                    </StackPanel>
                     <TextBlock Grid.Column="2" Text="{Binding Value}" Style="{StaticResource Body}" FontWeight="Medium"
                                TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                     <Border Grid.Column="3" Style="{StaticResource Chip}" VerticalAlignment="Center" Margin="8,0,0,0">
@@ -216,7 +256,7 @@
 
                         <Grid Grid.Row="2">
                             <!-- prompts (nothing selected / undecodable) -->
-                            <TextBlock x:Name="InspEmpty" Text="Select an effect on the left to inspect its parameters, keyframes and value graph."
+                            <TextBlock x:Name="InspEmpty" Text="Select an effect on the left to inspect its parameters, keyframe timing and value/speed graphs."
                                        Style="{StaticResource BodySecondary}" TextWrapping="Wrap"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
                                        MaxWidth="240"/>
@@ -240,11 +280,26 @@
                             <Grid x:Name="KfPane" Visibility="Collapsed">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
                                 <ComboBox x:Name="KfParamSelect" Grid.Row="0" Margin="0,0,0,8"
                                           SelectionChanged="AnimParam_SelectionChanged"/>
-                                <ScrollViewer Grid.Row="1" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                <!-- column header mirrors the KfRow grid -->
+                                <Grid Grid.Row="1" Margin="12,0,12,5">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="24"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="#" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Column="1" Text="TIME" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Column="2" Text="VALUE" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Column="3" Text="EASING" Style="{StaticResource Caption}" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                                </Grid>
+                                <ScrollViewer Grid.Row="2" ScrollViewer.VerticalScrollBarVisibility="Auto">
                                     <StackPanel>
                                         <ItemsControl x:Name="KfList" ItemTemplate="{StaticResource KfRow}"/>
                                         <TextBlock x:Name="KfEmpty" Text="This effect has no animated parameters — its values are static. Static values are listed under Parameters."
@@ -252,20 +307,50 @@
                                                    Visibility="Collapsed"/>
                                     </StackPanel>
                                 </ScrollViewer>
+                                <TextBlock Grid.Row="3" Text="1 tick = 1/1024 s (derived from the preset data) · frames assume 30 fps"
+                                           Style="{StaticResource Caption}" Opacity="0.75" Margin="12,6,12,0"
+                                           TextTrimming="CharacterEllipsis"/>
                             </Grid>
 
-                            <!-- tab 3: value graph -->
+                            <!-- tab 3: AE-style graphs (value + speed) -->
                             <Grid x:Name="GraphPane" Visibility="Collapsed">
                                 <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="*"/>
                                 </Grid.RowDefinitions>
                                 <ComboBox x:Name="GraphParamSelect" Grid.Row="0" Margin="0,0,0,8"
                                           SelectionChanged="AnimParam_SelectionChanged"/>
-                                <Border Grid.Row="1" Background="{DynamicResource B.SCLowest}" CornerRadius="14" Padding="6">
+                                <Grid Grid.Row="1" Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Background="{DynamicResource B.SCLowest}" CornerRadius="9" Padding="2">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ToggleButton x:Name="GraphValueBtn" Content="Value" Style="{StaticResource GraphModeTab}"
+                                                          IsChecked="True" Click="GraphMode_Click"/>
+                                            <ToggleButton x:Name="GraphSpeedBtn" Content="Speed" Style="{StaticResource GraphModeTab}"
+                                                          Click="GraphMode_Click"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <TextBlock x:Name="GraphLegend" Grid.Column="1" Text="value over time"
+                                               Style="{StaticResource Caption}" Opacity="0.85" Margin="10,0,0,0"
+                                               VerticalAlignment="Center" HorizontalAlignment="Right"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </Grid>
+                                <Border Grid.Row="2" Background="{DynamicResource B.SCLowest}" CornerRadius="14" Padding="6">
                                     <Grid>
-                                        <Canvas x:Name="GraphCanvas" Background="Transparent" ClipToBounds="True"/>
-                                        <TextBlock x:Name="GraphHint" Text="Pick an animated parameter to plot its value curve."
+                                        <Canvas x:Name="GraphCanvas" Background="Transparent" ClipToBounds="True"
+                                                MouseMove="GraphCanvas_MouseMove" MouseLeave="GraphCanvas_MouseLeave"/>
+                                        <!-- hover readout floats over the plot, top-right -->
+                                        <Border x:Name="GraphReadout" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                IsHitTestVisible="False" Margin="0,8,8,0" Background="{DynamicResource B.SC}" CornerRadius="8"
+                                                Padding="8,4" Visibility="Collapsed"
+                                                BorderBrush="{DynamicResource B.OutlineVariant}" BorderThickness="1">
+                                            <TextBlock x:Name="GraphReadoutText" Style="{StaticResource Caption}"/>
+                                        </Border>
+                                        <TextBlock x:Name="GraphHint" Text="Pick an animated parameter to plot its value and speed curves."
                                                    Style="{StaticResource Caption}" TextWrapping="Wrap"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
                                                    TextAlignment="Center" MaxWidth="220"/>

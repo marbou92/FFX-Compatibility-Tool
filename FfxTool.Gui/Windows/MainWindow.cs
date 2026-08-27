@@ -40,6 +40,50 @@ namespace FfxTool.Gui
         [DllImport("user32.dll")]
         private static extern IntPtr SetWindowRgn(IntPtr hWnd, IntPtr hRgn, bool redraw);
 
+        // GetWindowLong/SetWindowLong need the *Ptr variants on x64; every
+        // 64-bit Windows still exports the old names, so fall back to them.
+        [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr")]
+        private static extern IntPtr GetWindowLongPtr64(IntPtr hWnd, int nIndex);
+        [DllImport("user32.dll", EntryPoint = "GetWindowLong")]
+        private static extern IntPtr GetWindowLong32(IntPtr hWnd, int nIndex);
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr")]
+        private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+        [DllImport("user32.dll", EntryPoint = "SetWindowLong")]
+        private static extern IntPtr SetWindowLong32(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+        private static IntPtr GetWindowExStyle(IntPtr hwnd)
+        {
+            const int GWL_EXSTYLE = -20;
+            return IntPtr.Size == 8 ? GetWindowLongPtr64(hwnd, GWL_EXSTYLE)
+                                    : GetWindowLong32(hwnd, GWL_EXSTYLE);
+        }
+
+        private static IntPtr SetWindowExStyle(IntPtr hwnd, IntPtr style)
+        {
+            const int GWL_EXSTYLE = -20;
+            return IntPtr.Size == 8 ? SetWindowLongPtr64(hwnd, GWL_EXSTYLE, style)
+                                    : SetWindowLong32(hwnd, GWL_EXSTYLE, style);
+        }
+
+        private const int WM_ERASEBKGND = 0x0014;
+        private const int WM_WINDOWPOSCHANGED = 0x0047;
+        private const uint SWP_NOSIZE = 0x0001;
+        private const int WS_EX_COMPOSITED = 0x02000000;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct WINDOWPOS
+        {
+            public IntPtr hwnd;
+            public IntPtr hwndInsertAfter;
+            public int x, y, cx, cy;
+            public uint flags;
+        }
+
+        private HwndSource _source;
+        // last size the rounded region was applied for — SetWindowRgn costs
+        // a full-window invalidate, so skip redundant re-cuts
+        private int _lastRgnW = -1, _lastRgnH = -1;
+
         private IntPtr _hwnd;
         private readonly PluginProfile _profile;
         private readonly ConvertPage _convert;
@@ -89,7 +133,13 @@ namespace FfxTool.Gui
             // re-apply once the first render has settled — the chrome worker
             // and the DWM both touch window geometry during startup, so the
             // last writer (us) has to come after them
-            SourceInitialized += (s, e) => _hwnd = new WindowInteropHelper(this).Handle;
+            SourceInitialized += (s, e) =>
+            {
+                _hwnd = new WindowInteropHelper(this).Handle;
+                _source = HwndSource.FromHwnd(_hwnd);
+                _source?.AddHook(WndProc);
+                EnableComposited();
+            };
             ContentRendered += (s, e) => UpdateWindowClip();
             // inactive windows dim their title, like a native caption does
             Activated += (s, e) => TitleBrand.Opacity = 1;
@@ -228,6 +278,7 @@ namespace FfxTool.Gui
                 if (maximized)
                 {
                     SetWindowRgn(hwnd, IntPtr.Zero, true); // square again
+                    _lastRgnW = -1; // force a fresh cut on the next restore
                     return;
                 }
 
@@ -236,6 +287,31 @@ namespace FfxTool.Gui
                 var dpi = source?.CompositionTarget?.TransformToDevice ?? Matrix.Identity;
                 int w = (int)Math.Ceiling(ActualWidth * dpi.M11);
                 int h = (int)Math.Ceiling(ActualHeight * dpi.M22);
+                ApplyWindowRegionSize(w, h);
+            }
+            catch
+            {
+                // cosmetic — worst case the corners stay square
+            }
+        }
+
+        /// <summary>
+        /// Cuts the rounded region to an explicit DEVICE-pixel size. Called
+        /// from both the WPF layout path (above) and the WndProc resize path
+        /// (below); the size dedupe keeps whichever path runs first from
+        /// paying for SetWindowRgn twice.
+        /// </summary>
+        private void ApplyWindowRegionSize(int w, int h)
+        {
+            try
+            {
+                IntPtr hwnd = _hwnd != IntPtr.Zero ? _hwnd : new WindowInteropHelper(this).Handle;
+                if (hwnd == IntPtr.Zero) return;
+                if (w == _lastRgnW && h == _lastRgnH) return; // already cut to this size
+                _lastRgnW = w; _lastRgnH = h;
+
+                var source = PresentationSource.FromVisual(this);
+                var dpi = source?.CompositionTarget?.TransformToDevice ?? Matrix.Identity;
                 int diameter = Math.Max(2, (int)Math.Round(8 * dpi.M11) * 2); // ellipse size, not radius
                 IntPtr rgn = CreateRoundRectRgn(0, 0, w + 1, h + 1, diameter, diameter);
                 // ownership: after a successful SetWindowRgn the system owns
@@ -246,6 +322,72 @@ namespace FfxTool.Gui
             {
                 // cosmetic — worst case the corners stay square
             }
+        }
+
+        /// <summary>
+        /// Kills the "window goes black while resizing" artifact on Win7.
+        /// Three stacked measures, all era-correct:
+        ///
+        /// 1. WM_WINDOWPOSCHANGED — re-cut the rounded region to the NEW
+        ///    size the instant the OS applies it. Waiting for WPF's
+        ///    SizeChanged left a 1-2 frame gap where the window was bigger
+        ///    than its region, and pixels outside a window region render
+        ///    black — that gap WAS the flash. WINDOWPOS.cx/cy arrive in
+        ///    device pixels, so this path needs no DPI conversion.
+        /// 2. WM_ERASEBKGND — answer "erased" without touching anything.
+        ///    The old pixels stay on screen until WPF paints the new frame
+        ///    instead of flashing an empty background between frames.
+        /// 3. WS_EX_COMPOSITED — bottom-up double-buffered painting of the
+        ///    whole window subtree; silences child-repaint flicker on
+        ///    DWM-off (Win7 Basic) machines where there is no compositor
+        ///    to hide intermediate frames.
+        /// </summary>
+        private void EnableComposited()
+        {
+            try
+            {
+                if (_hwnd == IntPtr.Zero) return;
+                IntPtr ex = GetWindowExStyle(_hwnd);
+                if (((long)ex & WS_EX_COMPOSITED) == 0)
+                    SetWindowExStyle(_hwnd, (IntPtr)((long)ex | WS_EX_COMPOSITED));
+            }
+            catch { /* cosmetic */ }
+        }
+
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (msg == WM_ERASEBKGND)
+            {
+                handled = true;
+                return new IntPtr(1); // "already erased" — keeps old pixels
+            }
+
+            if (msg == WM_WINDOWPOSCHANGED)
+            {
+                // fire-and-forget safety: never fight the genie animation
+                if (WindowState != WindowState.Minimized)
+                {
+                    var wp = (WINDOWPOS)Marshal.PtrToStructure(lParam, typeof(WINDOWPOS));
+                    if ((wp.flags & SWP_NOSIZE) == 0 && wp.cx > 0 && wp.cy > 0)
+                    {
+                        bool max = WindowState == WindowState.Maximized;
+                        if (max)
+                        {
+                            if (_lastRgnW != -1)
+                            {
+                                try { SetWindowRgn(hwnd, IntPtr.Zero, true); } catch { }
+                                _lastRgnW = -1;
+                            }
+                        }
+                        else
+                        {
+                            ApplyWindowRegionSize(wp.cx, wp.cy);
+                        }
+                    }
+                }
+            }
+
+            return IntPtr.Zero;
         }
 
         // ---------- window bounds persistence (window.json) ----------
