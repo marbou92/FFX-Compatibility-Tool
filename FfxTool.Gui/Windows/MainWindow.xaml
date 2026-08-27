@@ -5,53 +5,62 @@
         xmlns:controls="clr-namespace:FfxTool.Gui"
         Title="FFX Compatibility Tool" Width="1180" Height="740"
         MinWidth="960" MinHeight="620" WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource B.Surface}"
+        Background="{DynamicResource B.OutlineVariant}"
         UseLayoutRounding="True" TextOptions.TextFormattingMode="Display"
         WindowStyle="None" AllowsTransparency="False" ResizeMode="CanResize">
 
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="64" ResizeBorderThickness="6"
+        <shell:WindowChrome CaptionHeight="64" ResizeBorderThickness="8"
                             GlassFrameThickness="0" CornerRadius="0"
                             UseAeroCaptionButtons="False"/>
     </shell:WindowChrome.WindowChrome>
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="64"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+    <!-- Custom window overlay (fully replaces the native Win7 frame).
+         The window itself paints the rim colour; WindowRoot insets 1px and
+         rounds the top corners on top of it — an M3 silhouette with no
+         AllowsTransparency, which stays fast and flicker-free on Windows 7.
+         Maximized: MainWindow.ApplyChromeState squares the corners, drops
+         the rim and pads the content back inside the visible work area. -->
+    <Border x:Name="WindowRoot" Margin="1" CornerRadius="8,8,0,0"
+            Background="{DynamicResource B.Surface}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="64"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-        <!-- ============ custom title bar (native drag/snap via WindowChrome) ============ -->
-        <Grid Grid.Row="0" Background="{DynamicResource B.Surface}">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="24,0,0,0">
-                <controls:IconGlyph IconName="Logo" Width="24" Height="24"
-                                    Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
-                <TextBlock Text="FFX Compatibility Tool" FontSize="16" FontWeight="SemiBold"
-                           Foreground="{DynamicResource B.OnSurface}" Margin="12,0,0,0" VerticalAlignment="Center"/>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"
-                        WindowChrome.IsHitTestVisibleInChrome="True">
-                <Button x:Name="MinBtn" Style="{StaticResource ChromeButton}" ToolTip="Minimize">
-                    <controls:IconGlyph IconName="Minimize" Width="16" Height="16"/>
-                </Button>
-                <Button x:Name="MaxBtn" Style="{StaticResource ChromeButton}" ToolTip="Maximize">
-                    <controls:IconGlyph x:Name="MaxIcon" IconName="Maximize" Width="15" Height="15"/>
-                </Button>
-                <Button x:Name="CloseBtn" Style="{StaticResource ChromeButton}" ToolTip="Close">
-                    <controls:IconGlyph IconName="Close" Width="16" Height="16"/>
-                </Button>
-            </StackPanel>
-            <Border VerticalAlignment="Bottom" Height="1" Background="{DynamicResource B.OutlineVariant}" Opacity="0.6"/>
-        </Grid>
+            <!-- ============ custom title bar (native drag/snap via WindowChrome) ============ -->
+            <Grid Grid.Row="0">
+                <StackPanel x:Name="TitleBrand" Orientation="Horizontal" VerticalAlignment="Center" Margin="24,0,0,0">
+                    <controls:IconGlyph IconName="Logo" Width="24" Height="24"
+                                        Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
+                    <TextBlock Text="FFX Compatibility Tool" FontSize="16" FontWeight="SemiBold"
+                               Foreground="{DynamicResource B.OnSurface}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"
+                            WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button x:Name="MinBtn" Style="{StaticResource ChromeButton}" ToolTip="Minimize">
+                        <controls:IconGlyph IconName="Minimize" Width="18" Height="18"/>
+                    </Button>
+                    <Button x:Name="MaxBtn" Style="{StaticResource ChromeButton}" ToolTip="Maximize">
+                        <controls:IconGlyph x:Name="MaxIcon" IconName="Maximize" Width="18" Height="18"/>
+                    </Button>
+                    <Button x:Name="CloseBtn" Style="{StaticResource ChromeCloseButton}" ToolTip="Close">
+                        <controls:IconGlyph IconName="Close" Width="18" Height="18"/>
+                    </Button>
+                </StackPanel>
+                <Border VerticalAlignment="Bottom" Height="1" Background="{DynamicResource B.OutlineVariant}" Opacity="0.6"/>
+            </Grid>
 
-        <!-- ============ body: rail + page host ============ -->
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="88"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-            <controls:NavRail x:Name="Rail" Grid.Column="0"/>
-            <ContentControl x:Name="PageHost" Grid.Column="1"/>
+            <!-- ============ body: rail + page host ============ -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="88"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <controls:NavRail x:Name="Rail" Grid.Column="0"/>
+                <ContentControl x:Name="PageHost" Grid.Column="1"/>
+            </Grid>
         </Grid>
-    </Grid>
+    </Border>
 </Window>

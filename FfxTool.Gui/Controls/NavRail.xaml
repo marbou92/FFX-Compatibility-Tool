@@ -4,11 +4,13 @@
              xmlns:controls="clr-namespace:FfxTool.Gui"
              Width="88">
     <!-- M3 Expressive nav rail: brand mark, expressive FAB, icon-over-label
-         items with a spring-animated active-indicator pill (built in code). -->
+         items with a spring-animated active-indicator pill (built in code).
+         The 50px pill backs the 50px icon wrap one-to-one — constants are
+         mirrored in NavRail.cs (IconWrap/PillSize/ItemHeight). -->
     <Border Background="{DynamicResource B.SCLow}" BorderBrush="{DynamicResource B.OutlineVariant}" BorderThickness="0,0,1,0">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="136"/>
+                <RowDefinition Height="140"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
@@ -18,20 +20,31 @@
                     <controls:IconGlyph IconName="Logo" Width="28" Height="28"
                                         Foreground="{DynamicResource B.Primary}"/>
                 </Border>
+                <!-- M3E FAB: rounded-square silhouette + soft elevation, so it
+                     never reads as a second selected item beside the round
+                     active pill. Hover/pressed are state layers, not opacity
+                     fades of the whole button. -->
                 <Button x:Name="Fab" Width="56" Height="56" HorizontalAlignment="Center" Margin="0,12,0,0"
                         Background="{DynamicResource B.PrimaryContainer}" Focusable="False"
                         Cursor="Hand" ToolTip="Open a .ffx file">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
-                            <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="18">
+                            <Grid>
+                                <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="16">
+                                    <Border.Effect>
+                                        <DropShadowEffect ShadowDepth="3" BlurRadius="12" Direction="270" Opacity="0.3"/>
+                                    </Border.Effect>
+                                </Border>
+                                <Border x:Name="StateLayer" Background="{DynamicResource B.OnPrimaryContainer}"
+                                        CornerRadius="16" Opacity="0"/>
                                 <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
+                            </Grid>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Bg" Property="Opacity" Value="0.88"/>
+                                    <Setter TargetName="StateLayer" Property="Opacity" Value="0.1"/>
                                 </Trigger>
                                 <Trigger Property="IsPressed" Value="True">
-                                    <Setter TargetName="Bg" Property="Opacity" Value="0.75"/>
+                                    <Setter TargetName="StateLayer" Property="Opacity" Value="0.16"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -51,7 +64,7 @@
                     <Border x:Name="Pill" Width="50" Height="50" CornerRadius="25"
                             Background="{DynamicResource B.PrimaryContainer}" Canvas.Left="19">
                         <Border.RenderTransform>
-                            <TranslateTransform x:Name="PillMove" Y="8"/>
+                            <TranslateTransform x:Name="PillMove" Y="3"/>
                         </Border.RenderTransform>
                     </Border>
                 </Canvas>

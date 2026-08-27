@@ -11,13 +11,26 @@ namespace FfxTool.Gui
     /// M3 Expressive navigation rail: brand mark, expressive FAB, items with
     /// icon-over-label and a spring-animated active-indicator pill.
     /// Items are built in code so the pill geometry stays in sync.
+    ///
+    /// Item anatomy (constants below must stay consistent):
+    ///   [ 50px icon wrap  <- the active pill circle backs exactly this ]
+    ///   [  4px gap                                      ]
+    ///   [ 16px label                                    ]
+    /// = 70px content, centred in a 76px item -> 3px top inset, so the icon
+    /// centre and the pill centre share the same Y. (The old layout stacked
+    /// icon+label and centred the pair, leaving the icon floating ~6px
+    /// above the pill's middle.)
     /// </summary>
     public partial class NavRail : UserControl
     {
         public event Action<int> SelectionChanged;
         public event Action FabClicked;
 
-        private const int ItemHeight = 68;
+        private const int ItemHeight = 76;
+        private const int IconWrap = 50;
+        private const int LabelHeight = 16;
+        private const int LabelGap = 4;
+        private const int ContentHeight = IconWrap + LabelGap + LabelHeight; // 70
         private const int PillSize = 50;
         private readonly System.Collections.Generic.List<Button> _buttons = new System.Collections.Generic.List<Button>();
         private int _selectedIndex;
@@ -33,26 +46,36 @@ namespace FfxTool.Gui
             Fab.MouseLeave += (s, e) => AnimateFabRotation(0);
         }
 
-        public void AddItem(string text, string icon)
+        public void AddItem(string text, string icon, string toolTip = null)
         {
             int index = _buttons.Count;
 
-            var content = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+            var content = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            var iconWrap = new Grid
+            {
+                Width = IconWrap,
+                Height = IconWrap,
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
             var iconEl = new IconGlyph
             {
                 IconName = icon,
                 Width = 24,
                 Height = 24,
                 HorizontalAlignment = HorizontalAlignment.Center,
-                Margin = new Thickness(0, 6, 0, 4)
+                VerticalAlignment = VerticalAlignment.Center
             };
+            iconWrap.Children.Add(iconEl);
             var label = new TextBlock
             {
                 Text = text,
-                FontSize = 11,
+                FontSize = 11.5,
+                Height = LabelHeight,
+                TextAlignment = TextAlignment.Center,
+                Margin = new Thickness(0, LabelGap, 0, 0),
                 HorizontalAlignment = HorizontalAlignment.Center
             };
-            content.Children.Add(iconEl);
+            content.Children.Add(iconWrap);
             content.Children.Add(label);
 
             var btn = new Button
@@ -63,7 +86,7 @@ namespace FfxTool.Gui
                 Focusable = false,
                 Cursor = Cursors.Hand,
                 Background = Brushes.Transparent,
-                ToolTip = text,
+                ToolTip = toolTip ?? text,
                 Tag = iconEl
             };
             btn.Template = MakeItemTemplate();
@@ -96,7 +119,9 @@ namespace FfxTool.Gui
 
         private void ApplySelectionVisuals(int index, bool animate)
         {
-            double targetY = index * ItemHeight + (ItemHeight - PillSize) / 2.0;
+            // icon wrap top inside the item = (ItemHeight - ContentHeight)/2;
+            // the pill backs the wrap one-to-one, so it uses the same offset.
+            double targetY = index * ItemHeight + (ItemHeight - ContentHeight) / 2.0;
             if (animate)
             {
                 var anim = new DoubleAnimation(targetY, TimeSpan.FromMilliseconds(220))
@@ -143,19 +168,24 @@ namespace FfxTool.Gui
 
         private ControlTemplate MakeItemTemplate()
         {
+            // Hover/pressed are M3 state layers (semi-transparent OnSurface),
+            // NOT an opaque fill — the old SCHigh fill painted straight over
+            // the pill layer and hid the active indicator under the mouse.
             const string x =
                 "<ControlTemplate xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" " +
                 "                 xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\" " +
                 "                 TargetType=\"Button\">" +
-                "  <Border x:Name=\"Bg\" Background=\"Transparent\" CornerRadius=\"14\">" +
+                "  <Grid>" +
+                "    <Border x:Name=\"Bg\" Background=\"Transparent\" CornerRadius=\"14\"/>" +
+                "    <Border x:Name=\"StateLayer\" Background=\"{DynamicResource B.OnSurface}\" CornerRadius=\"14\" Opacity=\"0\"/>" +
                 "    <ContentPresenter HorizontalAlignment=\"Center\" VerticalAlignment=\"Center\"/>" +
-                "  </Border>" +
+                "  </Grid>" +
                 "  <ControlTemplate.Triggers>" +
                 "    <Trigger Property=\"IsMouseOver\" Value=\"True\">" +
-                "      <Setter TargetName=\"Bg\" Property=\"Background\" Value=\"{DynamicResource B.SCHigh}\"/>" +
+                "      <Setter TargetName=\"StateLayer\" Property=\"Opacity\" Value=\"0.08\"/>" +
                 "    </Trigger>" +
                 "    <Trigger Property=\"IsPressed\" Value=\"True\">" +
-                "      <Setter TargetName=\"Bg\" Property=\"Background\" Value=\"{DynamicResource B.SC}\"/>" +
+                "      <Setter TargetName=\"StateLayer\" Property=\"Opacity\" Value=\"0.14\"/>" +
                 "    </Trigger>" +
                 "  </ControlTemplate.Triggers>" +
                 "</ControlTemplate>";

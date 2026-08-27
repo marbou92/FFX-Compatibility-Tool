@@ -49,9 +49,9 @@ namespace FfxTool.Gui
             _settings = new SettingsPage(_profilePage);
 
             // Convert-first: it's the main thing this tool does.
-            Rail.AddItem("Convert", "SwapHoriz");
-            Rail.AddItem("Effect Lister", "List");
-            Rail.AddItem("Settings", "Settings");
+            Rail.AddItem("Convert", "SwapHoriz", "Convert Preset · Ctrl+1");
+            Rail.AddItem("Effect Lister", "List", "Effect Lister · Ctrl+2");
+            Rail.AddItem("Settings", "Settings", "Settings · Ctrl+3");
             Rail.SelectionChanged += i => ShowSection(i);
             // the + is the upload button: jump to Convert and pick a file
             Rail.FabClicked += () =>
@@ -63,10 +63,13 @@ namespace FfxTool.Gui
             MinBtn.Click += (s, e) => WindowState = WindowState.Minimized;
             MaxBtn.Click += (s, e) => ToggleMaximize();
             CloseBtn.Click += (s, e) => Close();
-            StateChanged += (s, e) => MaxIcon.IconName =
-                WindowState == WindowState.Maximized ? "Restore" : "Maximize";
+            StateChanged += (s, e) => ApplyChromeState();
+            // inactive windows dim their title, like a native caption does
+            Activated += (s, e) => TitleBrand.Opacity = 1;
+            Deactivated += (s, e) => TitleBrand.Opacity = 0.55;
 
             ShowSection(0);
+            ApplyChromeState(); // first paint: rim + rounded top corners
         }
 
         private ISection ActiveSection()
@@ -138,7 +141,26 @@ namespace FfxTool.Gui
         {
             WindowState = WindowState == WindowState.Maximized
                 ? WindowState.Normal
-                : WindowState.Maximized; // WindowChrome handles the working-area bounds correctly
+                : WindowState.Maximized; // bounds handled by ApplyChromeState
+        }
+
+        /// <summary>
+        /// Keeps the custom window overlay correct in every state. Windows
+        /// maximizes a borderless-chrome window a few pixels BEYOND the work
+        /// area on each side (the invisible resize border hangs off-screen),
+        /// so while maximized we square the corners, drop the rim and pad
+        /// the content back into the visible area — otherwise the outer 8px
+        /// of the app silently disappear at the screen edges. Windowed: 1px
+        /// themed rim + rounded top corners, zero transparency (Win7-safe).
+        /// </summary>
+        private void ApplyChromeState()
+        {
+            bool max = WindowState == WindowState.Maximized;
+            WindowRoot.Margin = max ? new Thickness(0) : new Thickness(1);
+            WindowRoot.CornerRadius = max ? new CornerRadius(0) : new CornerRadius(8, 8, 0, 0);
+            WindowRoot.Padding = max ? new Thickness(8) : new Thickness(0);
+            MaxIcon.IconName = max ? "Restore" : "Maximize";
+            MaxBtn.ToolTip = max ? "Restore" : "Maximize";
         }
 
         // ---------- window bounds persistence (window.json) ----------
