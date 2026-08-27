@@ -23,18 +23,19 @@
          strips it — that is exactly why minimizing used to snap shut with
          no animation. WindowChrome still keeps the client area covering the
          whole window via WM_NCCALCSIZE, so the native frame is never drawn.
-         Edge anatomy: the HWND itself is a hard-edged rectangle (zero
-         transparency, Win7-safe), so a contrasting square rim can never
-         follow the rounded silhouette — it used to leave a small square
-         notch of rim colour poking past every rounded corner. The window
-         background is therefore B.SURFACE (corner pixels blend into the
-         content instead of drawing a notch), WindowRoot rounds its own
-         background and is clipped to the same 8px silhouette, a topmost
-         WindowRim overlay strokes an ANTI-ALIASED 1px Outline line that
-         traces the rounded edge over every child, and MainWindow's
-         ApplyWindowRegion cuts the HWND itself to the rounded rectangle
-         with SetWindowRgn — the OS simply never paints those corner
-         pixels, on any desktop, on any wallpaper.
+         Edge anatomy (v2): the HWND is cut to the rounded silhouette with
+         SetWindowRgn (MainWindow.ApplyWindowRegion) — the OS simply never
+         paints the corner pixels, on any desktop, any wallpaper. But a GDI
+         region is a 1-bit mask: the edge it cuts is aliased, and a rim
+         stroke CENTERED on the boundary loses its outer half to the cut,
+         which read as a broken half-strength hairline. So the rim is now
+         INSET: a 0.5px margin + 7.5px corner radius put the full 1px
+         anti-aliased Outline line just INSIDE the region, where nothing
+         clips it — the hard (aliased) OS cut lands exactly on the dark
+         line, and the eye sees one crisp full-strength edge. WindowRoot
+         still rounds + clips the content subtree to the same silhouette,
+         and the window background is B.SURFACE so any corner pixel blends
+         into the content instead of drawing a notch.
          Maximized: MainWindow.ApplyChromeState squares the corners, drops
          the rim and pads the content back inside the visible work area. -->
     <Border x:Name="WindowRoot" CornerRadius="8"
@@ -82,10 +83,13 @@
                 <ContentControl x:Name="PageHost" Grid.Column="1"/>
             </Grid>
 
-            <!-- anti-aliased rounded edge, drawn over every child so the
-                 window silhouette reads as one crisp line (see comment above) -->
+            <!-- anti-aliased rounded edge, drawn over every child. The
+                 0.5px inset keeps the whole stroke inside the OS window
+                 region (see the anatomy comment above): a boundary-centered
+                 stroke used to lose its outer half to the 1-bit region cut
+                 and read as a broken half-strength hairline -->
             <Border x:Name="WindowRim" Grid.Row="0" Grid.RowSpan="2" Panel.ZIndex="16"
-                    CornerRadius="8" BorderThickness="1"
+                    Margin="0.5" CornerRadius="7.5" BorderThickness="1"
                     BorderBrush="{DynamicResource B.Outline}"
                     IsHitTestVisible="False"/>
         </Grid>

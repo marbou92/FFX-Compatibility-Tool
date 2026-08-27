@@ -66,39 +66,132 @@
             </Setter>
         </Style>
 
-        <!-- parameter row: accent bar marks animated params, second line
-             carries the stream summary (keys · range · span) -->
+        <!-- AE keyframe-navigator button: 24px ghost square behind a glyph -->
+        <Style x:Key="KfNavBtn" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
+            <Setter Property="Width" Value="24"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource M3FocusVisual}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="7">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource B.SCHigh}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource B.OnSurface}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource B.SCLow}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- parameter row: AE anatomy — accent bar for animated streams, a
+             stopwatch toggle mark (lit = time-varying), name + stream
+             summary, the property value in the accent color, and (animated
+             rows only) the keyframe navigator ◀ ◆ ▶ -->
         <DataTemplate x:Key="ParamRow">
-            <Border Padding="12,8" CornerRadius="10" Margin="0,1" Background="Transparent"
-                    ToolTip="{Binding MatchName}">
+            <!-- background defaults live in the STYLE, not as a local
+                 attribute — a local value would outrank the trigger and
+                 the animated tint would never show -->
+            <Border Padding="10,7" CornerRadius="10" Margin="0,1"
+                    ToolTip="{Binding MatchName}" Cursor="{Binding RowCursor}"
+                    MouseLeftButtonUp="ParamRow_Click">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsAnimated}" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource B.SCLowest}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Border Width="3" CornerRadius="1.5" Margin="0,3,10,3"
+                    <Border Width="3" CornerRadius="1.5" Margin="0,3,8,3"
                             Background="{DynamicResource B.Primary}"
                             Visibility="{Binding AccentVisible}"/>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <!-- stopwatch: lit accent for animated, dim for static.
+                         Foreground keyed through a trigger so the theme swap
+                         keeps working (no captured brushes) -->
+                    <controls:IconGlyph Grid.Column="1" IconName="Stopwatch" Width="15" Height="15"
+                                        VerticalAlignment="Center" Margin="0,0,9,0"
+                                        Opacity="{Binding StopwatchOpacity}"
+                                        ToolTip="{Binding StopwatchTip}">
+                        <controls:IconGlyph.Style>
+                            <Style TargetType="controls:IconGlyph">
+                                <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsAnimated}" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource B.Primary}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </controls:IconGlyph.Style>
+                    </controls:IconGlyph>
+                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
                         <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="Medium"
                                    TextTrimming="CharacterEllipsis"/>
                         <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}"
                                    Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
-                    <Border Grid.Column="2" Style="{StaticResource Chip}" VerticalAlignment="Center" Margin="10,0,0,0"
-                            Visibility="{Binding ChipVisible}">
-                        <TextBlock Text="{Binding Chip}" Style="{StaticResource Caption}"/>
-                    </Border>
+                    <TextBlock Grid.Column="3" Text="{Binding ValueText}" FontWeight="SemiBold" FontSize="12.5"
+                               Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"
+                               Margin="10,0,0,0" Visibility="{Binding ValueVisible}"
+                               ToolTip="{Binding ValueTip}"/>
+                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center"
+                                Margin="6,0,0,0" Visibility="{Binding NavVisible}">
+                        <Button Style="{StaticResource KfNavBtn}" Click="KfPrev_Click"
+                                ToolTip="Go to previous keyframe">
+                            <controls:IconGlyph IconName="ChevLeft" Width="14" Height="14"/>
+                        </Button>
+                        <Button Style="{StaticResource KfNavBtn}" Click="KfShow_Click" Margin="2,0"
+                                ToolTip="{Binding KeyCountTip}">
+                            <controls:IconGlyph IconName="Diamond" Width="12" Height="12"/>
+                        </Button>
+                        <Button Style="{StaticResource KfNavBtn}" Click="KfNext_Click"
+                                ToolTip="Go to next keyframe">
+                            <controls:IconGlyph IconName="ChevRight" Width="14" Height="14"/>
+                        </Button>
+                    </StackPanel>
                 </Grid>
             </Border>
         </DataTemplate>
 
-        <!-- keyframe row: # · time (seconds + frame/delta sub-line) ·
-             value · easing chip -->
+        <!-- keyframe row: # · AE timecode (frame + Δframes sub-line) ·
+             value · easing chip; the row is clickable and highlights while
+             selected, staying in sync with the graph's selection ring -->
         <DataTemplate x:Key="KfRow">
-            <Border Padding="12,7" CornerRadius="10" Margin="0,1" Background="Transparent"
-                    ToolTip="{Binding Tip}">
+            <!-- same rule as ParamRow: no local Background, or the
+                 selection highlight would never paint -->
+            <Border Padding="12,7" CornerRadius="10" Margin="0,1" Cursor="Hand"
+                    MouseLeftButtonUp="KfRow_Click" ToolTip="{Binding Tip}">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Selected}" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource B.SCLow}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="24"/>
@@ -108,7 +201,8 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="{Binding Index}" Style="{StaticResource Caption}" VerticalAlignment="Center"/>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding TimeSec}" Style="{StaticResource Body}" FontWeight="Medium"/>
+                        <TextBlock Text="{Binding TimeSec}" Style="{StaticResource Body}" FontWeight="Medium"
+                                   Foreground="{DynamicResource B.Primary}"/>
                         <TextBlock Text="{Binding Sub}" Style="{StaticResource Caption}" Margin="0,1,0,0"/>
                     </StackPanel>
                     <TextBlock Grid.Column="2" Text="{Binding Value}" Style="{StaticResource Body}" FontWeight="Medium"
@@ -283,6 +377,7 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="*"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
                                 <ComboBox x:Name="KfParamSelect" Grid.Row="0" Margin="0,0,0,8"
                                           SelectionChanged="AnimParam_SelectionChanged"/>
@@ -307,7 +402,12 @@
                                                    Visibility="Collapsed"/>
                                     </StackPanel>
                                 </ScrollViewer>
-                                <TextBlock Grid.Row="3" Text="1 tick = 1/1024 s (derived from the preset data) · frames assume 30 fps"
+                                <!-- easing numbers for the selected keyframe, AE
+                                     Graph Editor style (slope + influence per side) -->
+                                <TextBlock x:Name="KfDetail" Grid.Row="3" Style="{StaticResource Caption}"
+                                           Foreground="{DynamicResource B.OnSurfaceVariant}"
+                                           Margin="12,8,12,0" TextWrapping="Wrap" Visibility="Collapsed"/>
+                                <TextBlock Grid.Row="4" Text="timecode at 30 fps · 1 tick = 1/1024 s (derived from the preset data) · click a row, then read its easing below"
                                            Style="{StaticResource Caption}" Opacity="0.75" Margin="12,6,12,0"
                                            TextTrimming="CharacterEllipsis"/>
                             </Grid>
@@ -350,7 +450,7 @@
                                                 BorderBrush="{DynamicResource B.OutlineVariant}" BorderThickness="1">
                                             <TextBlock x:Name="GraphReadoutText" Style="{StaticResource Caption}"/>
                                         </Border>
-                                        <TextBlock x:Name="GraphHint" Text="Pick an animated parameter to plot its value and speed curves."
+                                        <TextBlock x:Name="GraphHint" Text="Pick an animated parameter to plot its curve — then click any keyframe to inspect its easing."
                                                    Style="{StaticResource Caption}" TextWrapping="Wrap"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
                                                    TextAlignment="Center" MaxWidth="220"/>

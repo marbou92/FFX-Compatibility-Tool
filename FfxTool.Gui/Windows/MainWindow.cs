@@ -67,6 +67,8 @@ namespace FfxTool.Gui
 
         private const int WM_ERASEBKGND = 0x0014;
         private const int WM_WINDOWPOSCHANGED = 0x0047;
+        private const int WM_ENTERSIZEMOVE = 0x0231;
+        private const int WM_EXITSIZEMOVE = 0x0232;
         private const uint SWP_NOSIZE = 0x0001;
         private const int WS_EX_COMPOSITED = 0x02000000;
 
@@ -83,6 +85,10 @@ namespace FfxTool.Gui
         // last size the rounded region was applied for — SetWindowRgn costs
         // a full-window invalidate, so skip redundant re-cuts
         private int _lastRgnW = -1, _lastRgnH = -1;
+        // true while the user is dragging the window border (between
+        // WM_ENTERSIZEMOVE and WM_EXITSIZEMOVE) — inside that loop the
+        // region is re-cut WITHOUT forcing a repaint, see WndProc
+        private bool _liveResize;
 
         private IntPtr _hwnd;
         private readonly PluginProfile _profile;
@@ -129,6 +135,9 @@ namespace FfxTool.Gui
             StateChanged += (s, e) => ApplyChromeState();
             // keep the rounded silhouette glued to the window while resizing
             WindowRoot.SizeChanged += (s, e) => UpdateWindowClip();
+            // DPI can flip at runtime (drag between monitors); both the clip
+            // and the device-pixel region must follow it
+            DpiChanged += (s, e) => UpdateWindowClip();
             // cache the HWND for the region calls as soon as it exists, and
             // re-apply once the first render has settled — the chrome worker
             // and the DWM both touch window geometry during startup, so the
@@ -141,8 +150,14 @@ namespace FfxTool.Gui
                 EnableComposited();
             };
             ContentRendered += (s, e) => UpdateWindowClip();
-            // inactive windows dim their title, like a native caption does
-            Activated += (s, e) => TitleBrand.Opacity = 1;
+            // inactive windows dim their title, like a native caption does;
+            // activation is also a cheap defensive moment to re-assert the
+            // rounded region in case anything in the system cleared it
+            Activated += (s, e) =>
+            {
+                TitleBrand.Opacity = 1;
+                UpdateWindowClip();
+            };
             Deactivated += (s, e) => TitleBrand.Opacity = 0.55;
 
             ShowSection(0);
@@ -237,7 +252,7 @@ namespace FfxTool.Gui
             WindowRoot.CornerRadius = max ? new CornerRadius(0) : new CornerRadius(8);
             WindowRoot.Padding = max ? new Thickness(8) : new Thickness(0);
             WindowRim.Visibility = max ? Visibility.Collapsed : Visibility.Visible;
-            WindowRim.CornerRadius = max ? new CornerRadius(0) : new CornerRadius(8);
+            WindowRim.CornerRadius = max ? new CornerRadius(0) : new CornerRadius(7.5);
             MaxIcon.IconName = max ? "Restore" : "Maximize";
             MaxBtn.ToolTip = max ? "Restore" : "Maximize";
             UpdateWindowClip();
@@ -299,9 +314,10 @@ namespace FfxTool.Gui
         /// Cuts the rounded region to an explicit DEVICE-pixel size. Called
         /// from both the WPF layout path (above) and the WndProc resize path
         /// (below); the size dedupe keeps whichever path runs first from
-        /// paying for SetWindowRgn twice.
+        /// paying for SetWindowRgn twice. `redraw` is FALSE inside a live
+        /// border drag — see WndProc for why that makes resizing smooth.
         /// </summary>
-        private void ApplyWindowRegionSize(int w, int h)
+        private void ApplyWindowRegionSize(int w, int h, bool redraw = true)
         {
             try
             {
@@ -316,7 +332,7 @@ namespace FfxTool.Gui
                 IntPtr rgn = CreateRoundRectRgn(0, 0, w + 1, h + 1, diameter, diameter);
                 // ownership: after a successful SetWindowRgn the system owns
                 // (and frees) the region — deliberately not deleted here
-                SetWindowRgn(hwnd, rgn, true);
+                SetWindowRgn(hwnd, rgn, redraw);
             }
             catch
             {
@@ -325,8 +341,9 @@ namespace FfxTool.Gui
         }
 
         /// <summary>
-        /// Kills the "window goes black while resizing" artifact on Win7.
-        /// Three stacked measures, all era-correct:
+        /// Kills the "window goes black while resizing" artifact on Win7 —
+        /// and, since the region went in, makes the resize SMOOTH. Stack of
+        /// era-correct measures:
         ///
         /// 1. WM_WINDOWPOSCHANGED — re-cut the rounded region to the NEW
         ///    size the instant the OS applies it. Waiting for WPF's
@@ -334,6 +351,14 @@ namespace FfxTool.Gui
         ///    than its region, and pixels outside a window region render
         ///    black — that gap WAS the flash. WINDOWPOS.cx/cy arrive in
         ///    device pixels, so this path needs no DPI conversion.
+        ///    INSIDE a live border drag the re-cut passes fRedraw=FALSE:
+        ///    SetWindowRgn with TRUE forces a full-window invalidate EVERY
+        ///    step, on top of the repaints the resize loop does anyway —
+        ///    that double invalidation was the visible jank. With FALSE the
+        ///    region still clips correctly (no black corners, the mask is
+        ///    applied immediately) and the sizing loop's own WM_PAINT for
+        ///    the newly exposed areas repaints everything; a final forced
+        ///    cut happens on WM_EXITSIZEMOVE for a clean settle.
         /// 2. WM_ERASEBKGND — answer "erased" without touching anything.
         ///    The old pixels stay on screen until WPF paints the new frame
         ///    instead of flashing an empty background between frames.
@@ -362,7 +387,25 @@ namespace FfxTool.Gui
                 return new IntPtr(1); // "already erased" — keeps old pixels
             }
 
-            if (msg == WM_WINDOWPOSCHANGED)
+            if (msg == WM_ENTERSIZEMOVE)
+            {
+                _liveResize = true; // border drag / resize loop begins
+            }
+            else if (msg == WM_EXITSIZEMOVE)
+            {
+                _liveResize = false;
+                // settle: one forced repaint with the region already synced
+                // (the dedupe skips the cut if the size did not change)
+                if (WindowState != WindowState.Minimized && WindowState != WindowState.Maximized)
+                {
+                    var source = PresentationSource.FromVisual(this);
+                    var dpi = source?.CompositionTarget?.TransformToDevice ?? Matrix.Identity;
+                    ApplyWindowRegionSize(
+                        (int)Math.Ceiling(ActualWidth * dpi.M11),
+                        (int)Math.Ceiling(ActualHeight * dpi.M22), true);
+                }
+            }
+            else if (msg == WM_WINDOWPOSCHANGED)
             {
                 // fire-and-forget safety: never fight the genie animation
                 if (WindowState != WindowState.Minimized)
@@ -381,7 +424,9 @@ namespace FfxTool.Gui
                         }
                         else
                         {
-                            ApplyWindowRegionSize(wp.cx, wp.cy);
+                            // inside the drag: keep the mask in sync but let
+                            // the sizing loop's own paints cover the pixels
+                            ApplyWindowRegionSize(wp.cx, wp.cy, !_liveResize);
                         }
                     }
                 }

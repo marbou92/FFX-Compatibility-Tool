@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 // System.IO and System.Windows.Shapes both define `Path` - bind the bare
 // name to the shape once so the graph code stays unambiguous
 using Path = System.Windows.Shapes.Path;
@@ -22,12 +23,14 @@ namespace FfxTool.Gui
     /// friendly empty state, drag-overlay language shared with Convert,
     /// and a recent-files flyout over the full 5-entry history.
     ///
-    /// The right-hand inspector adds a deep dive into the selected effect:
-    /// its decoded parameters, the timed keyframe stream of any animated
-    /// parameter (seconds + 30 fps frame numbers, converted by
-    /// PresetCurve), and an AE-style graph editor with Value and Speed
-    /// modes, a frame-based time grid and a hover probe (PresetInspector
-    /// reads, never writes — the pipeline's keyframes are untouched).
+    /// The right-hand inspector reads like AE's timeline: parameter rows
+    /// carry the stopwatch mark (lit = time-varying) and a keyframe
+    /// navigator, the Keyframes tab shows AE-style timecodes with slope
+    /// and influence numbers for the selected keyframe, and the Graph tab
+    /// draws the Graph Editor pair — a value graph with tangent handles
+    /// and a speed graph — with a hover probe. Everything is read-only
+    /// (PresetInspector reads, never writes; the pipeline's keyframes are
+    /// untouched).
     /// </summary>
     public partial class ListerPage : UserControl, ISection
     {
@@ -51,19 +54,39 @@ namespace FfxTool.Gui
             public bool Exists { get; set; }
         }
 
+        /// <summary>
+        /// One row of the Parameters tab, shaped like an AE property line:
+        /// stopwatch state, name + stream summary, the value slot, and the
+        /// keyframe navigator targets. Brushes stay in the template (via
+        /// DynamicResource triggers keyed on IsAnimated) so theme swaps keep
+        /// working — the VM only carries flags, text and counts.
+        /// </summary>
         public class ParamRowVm
         {
             public string Name { get; set; }
             public string Detail { get; set; }
-            public string Chip { get; set; }
-            public Visibility ChipVisible { get; set; }
-            public Visibility AccentVisible { get; set; }
             public string MatchName { get; set; }
+            public Visibility AccentVisible { get; set; }
+            public bool IsAnimated { get; set; }
+            public double StopwatchOpacity { get; set; }
+            public string StopwatchTip { get; set; }
+            public string ValueText { get; set; }
+            public Visibility ValueVisible { get; set; }
+            public string ValueTip { get; set; }
+            public Visibility NavVisible { get; set; }
+            public string KeyCountTip { get; set; }
+            public Cursor RowCursor { get; set; }
+            // the decoded parameter behind the row — what the navigator
+            // buttons and the row click resolve to
+            public PresetParameter ParamRef { get; set; }
 
             public ParamRowVm(PresetParameter p)
             {
+                ParamRef = p;
                 Name = p.Name;
                 MatchName = p.MatchName ?? p.Name;
+                IsAnimated = p.IsAnimated;
+                RowCursor = p.IsAnimated ? Cursors.Hand : Cursors.Arrow;
 
                 if (p.IsAnimated)
                 {
@@ -76,9 +99,17 @@ namespace FfxTool.Gui
                         ? $"flat at {Fmt(vMin)}"
                         : $"{Fmt(vMin)} → {Fmt(vMax)}";
                     Detail = $"animated · {travel} · {span.ToString("0.##")} s span";
-                    Chip = $"{p.Keyframes.Count} key{(p.Keyframes.Count == 1 ? "" : "s")}";
-                    ChipVisible = Visibility.Visible;
                     AccentVisible = Visibility.Visible;
+                    StopwatchOpacity = 1.0;
+                    StopwatchTip = "Time-varying: ON — this property carries a keyframe stream (read-only inspector)";
+
+                    // the value slot shows the value at the first keyframe,
+                    // the way AE shows the value at the playhead
+                    ValueText = Fmt(p.Keyframes[0].Value);
+                    ValueVisible = Visibility.Visible;
+                    ValueTip = $"value at the first keyframe · range {Fmt(vMin)} … {Fmt(vMax)} · {p.Keyframes.Count} keyframes";
+                    NavVisible = Visibility.Visible;
+                    KeyCountTip = $"{p.Keyframes.Count} keyframe{(p.Keyframes.Count == 1 ? "" : "s")} · click to open the Keyframes tab";
                 }
                 else
                 {
@@ -86,45 +117,65 @@ namespace FfxTool.Gui
                         ? $" · range {Fmt(p.Min)} … {Fmt(p.Max)}" : "";
                     Detail = "static value" + range;
                     AccentVisible = Visibility.Collapsed;
+                    StopwatchOpacity = 0.4;
+                    StopwatchTip = "Time-varying: OFF — static value (read-only inspector)";
+
                     if (p.StaticValue.HasValue)
                     {
-                        Chip = Fmt(p.StaticValue);
-                        ChipVisible = Visibility.Visible;
+                        ValueText = Fmt(p.StaticValue);
+                        ValueVisible = Visibility.Visible;
+                        ValueTip = p.Min.HasValue && p.Max.HasValue
+                            ? $"static value · range {Fmt(p.Min)} … {Fmt(p.Max)}"
+                            : "static value";
                     }
                     else
                     {
-                        Chip = "";
-                        ChipVisible = Visibility.Collapsed;
+                        ValueText = "";
+                        ValueVisible = Visibility.Collapsed;
+                        ValueTip = "";
                     }
+                    NavVisible = Visibility.Collapsed;
+                    KeyCountTip = "";
                 }
             }
 
             static string Fmt(double? v) => v?.ToString("0.###") ?? "—";
         }
 
+        /// <summary>One keyframe row: AE timecode, frame math, easing chip.</summary>
         public class KfRowVm
         {
             public string Index { get; set; }
+            public int KfIndex { get; set; }
             public string TimeSec { get; set; }
             public string Sub { get; set; }
             public string Value { get; set; }
             public string Interp { get; set; }
             public string Tip { get; set; }
+            public bool Selected { get; set; }
 
             public KfRowVm(int index, PresetKeyframe kf, PresetKeyframe prev)
             {
+                KfIndex = index - 1;
                 Index = index.ToString();
                 // ticks → seconds via PresetCurve's empirically derived
                 // timebase (1 tick = 1/1024 s); raw ticks stay in the tooltip
                 double sec = PresetCurve.Seconds(kf.Time);
-                TimeSec = sec.ToString("0.##") + " s";
+                TimeSec = Timecode(sec);
                 int frame = (int)Math.Round(sec * Fps);
-                Sub = prev == null
-                    ? $"frame {frame}"
-                    : $"frame {frame} · +{(sec - PresetCurve.Seconds(prev.Time)).ToString("0.##")} s";
+                if (prev == null)
+                {
+                    Sub = $"frame {frame} · {sec.ToString("0.##")} s";
+                }
+                else
+                {
+                    int prevFrame = (int)Math.Round(PresetCurve.Seconds(prev.Time) * Fps);
+                    Sub = $"frame {frame} · +{frame - prevFrame}f";
+                }
                 Value = kf.Value.ToString("0.###");
                 Interp = kf.InterpLabel;
-                Tip = $"raw time {kf.Time} ticks · in influence {kf.InInfluence.ToString("0.##")}" +
+                Tip = $"t = {sec.ToString("0.###")} s · raw time {kf.Time} ticks" +
+                      $" · in influence {kf.InInfluence.ToString("0.##")}" +
                       $" · out influence {kf.OutInfluence.ToString("0.##")}";
             }
         }
@@ -138,16 +189,26 @@ namespace FfxTool.Gui
 
         // inspector state: selected effect (by stable effect index), selected
         // animated parameter (for the keyframes/graph tabs), active tab,
-        // graph mode (0 = value like AE's value graph, 1 = speed graph)
+        // graph mode (0 = value like AE's value graph, 1 = speed graph),
+        // selected keyframe (drives the graph's ring + handles and the
+        // Keyframes tab's highlight + easing numbers)
         private int _inspEffectIndex = -1;
         private int _animParamIndex = -1;
         private int _tab;
         private int _graphMode;
+        private int _selKf = -1;
         private bool _syncingCombo;
 
         // DragEnter/DragLeave fire on every child boundary crossing; a depth
         // counter is the only flicker-free way to know the drag truly left.
         private int _dragDepth;
+
+        // live-resize redraw coalescing: while the window is being dragged
+        // by its border, SizeChanged fires per pixel and a full graph
+        // rebuild (geometry + labels + 260 samples) per pixel is exactly
+        // the kind of work that makes Win7 resize feel rough. The timer
+        // merges the storm into ~1 redraw per 70 ms plus a final one.
+        private DispatcherTimer _graphRedrawTimer;
 
         public ListerPage(PluginProfile profile)
         {
@@ -156,7 +217,7 @@ namespace FfxTool.Gui
             EffectList.ItemsSource = _rows;
             StatusBarVersion.Text = $"FFX Compatibility Tool {AppInfo.DisplayVersion}";
             UpdateRecentCard();
-            GraphCanvas.SizeChanged += (s, e) => DrawGraph();
+            GraphCanvas.SizeChanged += (s, e) => ScheduleGraphRedraw();
             SetTab(0);
             // row container brushes are captured per Refresh — re-run when the
             // theme changes so status tints match the new palette/mode; the
@@ -453,6 +514,7 @@ namespace FfxTool.Gui
                 ParamList.ItemsSource = null;
                 KfList.ItemsSource = null;
                 SetComboSource(null);
+                _selKf = -1;
                 StatusBarLeft.Text = "";
                 StatusSep.Visibility = Visibility.Collapsed;
                 DrawGraph();
@@ -471,6 +533,7 @@ namespace FfxTool.Gui
             var animParams = d.Parameters.Where(p => p.IsAnimated).ToList();
             SetComboSource(animParams.Select(p => p.Name).ToList());
             _animParamIndex = animParams.Count > 0 ? 0 : -1;
+            _selKf = -1;
             _syncingCombo = true;
             KfParamSelect.SelectedIndex = _animParamIndex;
             GraphParamSelect.SelectedIndex = _animParamIndex;
@@ -493,6 +556,7 @@ namespace FfxTool.Gui
             KfList.ItemsSource = null;
             SetComboSource(null);
             _animParamIndex = -1;
+            _selKf = -1;
             StatusBarLeft.Text = "";
             StatusSep.Visibility = Visibility.Collapsed;
             BuildKeyframes();
@@ -514,13 +578,93 @@ namespace FfxTool.Gui
             if (_syncingCombo) return;
             int idx = sender == KfParamSelect ? KfParamSelect.SelectedIndex : GraphParamSelect.SelectedIndex;
             if (idx < 0) return;
+            SelectAnimatedParam(idx);
+        }
+
+        /// <summary>
+        /// Selects an animated parameter (combo, param row and navigator all
+        /// funnel here), resets the keyframe selection and refreshes both tabs.
+        /// </summary>
+        private void SelectAnimatedParam(int animIndex)
+        {
+            if (animIndex < 0) return;
             _syncingCombo = true;
-            KfParamSelect.SelectedIndex = idx;
-            GraphParamSelect.SelectedIndex = idx;
+            KfParamSelect.SelectedIndex = animIndex;
+            GraphParamSelect.SelectedIndex = animIndex;
             _syncingCombo = false;
-            _animParamIndex = idx;
+            _animParamIndex = animIndex;
+            _selKf = -1;
             BuildKeyframes();
             DrawGraph();
+        }
+
+        /// <summary>Position of p among the effect's animated parameters.</summary>
+        private int AnimatedIndexOf(PresetParameter p)
+        {
+            var d = CurrentDetails();
+            if (d == null || p == null) return -1;
+            var anim = d.Parameters.Where(x => x.IsAnimated).ToList();
+            return anim.IndexOf(p);
+        }
+
+        // ---------- AE parameter rows: click + keyframe navigator ----------
+        private void ParamRow_Click(object sender, MouseButtonEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is ParamRowVm vm && vm.IsAnimated)
+                SelectAnimatedParam(AnimatedIndexOf(vm.ParamRef));
+        }
+
+        private void KfPrev_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is ParamRowVm vm && vm.IsAnimated)
+            {
+                SelectAnimatedParam(AnimatedIndexOf(vm.ParamRef));
+                SelectKeyframe(_selKf < 0 ? 0 : _selKf - 1);
+            }
+        }
+
+        private void KfNext_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is ParamRowVm vm && vm.IsAnimated)
+            {
+                SelectAnimatedParam(AnimatedIndexOf(vm.ParamRef));
+                SelectKeyframe(_selKf < 0 ? 0 : _selKf + 1);
+            }
+        }
+
+        /// <summary>The diamond button: jump to the Keyframes tab for that stream.</summary>
+        private void KfShow_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is ParamRowVm vm && vm.IsAnimated)
+            {
+                SelectAnimatedParam(AnimatedIndexOf(vm.ParamRef));
+                SetTab(1);
+            }
+        }
+
+        private void KfRow_Click(object sender, MouseButtonEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is KfRowVm vm)
+                SelectKeyframe(vm.KfIndex);
+        }
+
+        /// <summary>
+        /// Selects a keyframe (clamped): highlights its row, prints its
+        /// slope/influence numbers and draws the graph's selection ring.
+        /// </summary>
+        private void SelectKeyframe(int i)
+        {
+            var p = CurrentAnimParam();
+            if (p == null || p.Keyframes.Count == 0)
+            {
+                _selKf = -1;
+            }
+            else
+            {
+                _selKf = Math.Max(0, Math.Min(p.Keyframes.Count - 1, i));
+            }
+            BuildKeyframes();
+            if (_tab == 2) DrawGraph();
         }
 
         private void TabBtn_Click(object sender, RoutedEventArgs e)
@@ -536,7 +680,7 @@ namespace FfxTool.Gui
             GraphValueBtn.IsChecked = _graphMode == 0;
             GraphSpeedBtn.IsChecked = _graphMode == 1;
             GraphLegend.Text = _graphMode == 0
-                ? "value over time · 30 fps grid"
+                ? "value over time · click a keyframe to inspect it"
                 : "speed = |Δvalue / Δt| · 30 fps grid";
             DrawGraph();
         }
@@ -562,16 +706,56 @@ namespace FfxTool.Gui
             {
                 KfList.ItemsSource = null;
                 KfEmpty.Visibility = Visibility.Visible;
+                KfDetail.Visibility = Visibility.Collapsed;
                 return;
             }
             KfEmpty.Visibility = Visibility.Collapsed;
             var kfs = p.Keyframes;
             KfList.ItemsSource = kfs.Select((k, i) =>
-                new KfRowVm(i + 1, k, i > 0 ? kfs[i - 1] : null)).ToList();
+                new KfRowVm(i + 1, k, i > 0 ? kfs[i - 1] : null)
+                {
+                    Selected = i == _selKf
+                }).ToList();
+
+            // easing numbers for the selected keyframe — the AE Graph
+            // Editor's numeric readout of speed and influence per side
+            if (_selKf >= 0 && _selKf < kfs.Count)
+            {
+                var k = kfs[_selKf];
+                KfDetail.Text = $"#{_selKf + 1} easing — in:  slope {k.InSlope.ToString("0.###")} · influence {k.InInfluence.ToString("0.##")}" +
+                                $"   ·   out:  slope {k.OutSlope.ToString("0.###")} · influence {k.OutInfluence.ToString("0.##")}";
+                KfDetail.Visibility = Visibility.Visible;
+
+                // keep the picked row visible (the list is small and plain
+                // StackPanel-hosted, so the container exists after layout)
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        if (KfList.ItemContainerGenerator.ContainerFromIndex(_selKf) is FrameworkElement fe)
+                            fe.BringIntoView();
+                    }
+                    catch { /* cosmetic */ }
+                }), DispatcherPriority.Loaded);
+            }
+            else
+            {
+                KfDetail.Visibility = Visibility.Collapsed;
+            }
         }
 
         // ---------- AE-style graph ----------
         private const double Fps = 30.0; // frame numbers + grid assume 30 fps
+
+        /// <summary>AE-style timecode h:mm:ss:ff (hours only when needed).</summary>
+        private static string Timecode(double sec)
+        {
+            int total = (int)Math.Round(sec * Fps);
+            int f = total % 30, s = (total / 30) % 60, m = (total / 1800) % 60, h = total / 108000;
+            return h > 0
+                ? $"{h}:{m.ToString("00")}:{s.ToString("00")}:{f.ToString("00")}"
+                : $"0:{m.ToString("00")}:{s.ToString("00")}:{f.ToString("00")}";
+        }
 
         private sealed class PlotState
         {
@@ -594,9 +778,11 @@ namespace FfxTool.Gui
         /// Bezier segments with AE tangent handles from PresetCurve) with
         /// interpolation-shaped keyframe markers — square = linear, diamond
         /// = bezier, left triangle = hold. Speed mode: |Δvalue/Δt| sampled
-        /// from the same curve, drawn as AE's filled speed area.
-        /// Both modes share a frame-based time grid (30 fps) with second
-        /// labels and a hover probe (dashed cursor + floating readout).
+        /// from the same curve, drawn as AE's filled speed area. A selected
+        /// keyframe gets AE's accent ring plus its tangent handles, in both
+        /// tabs (graph markers, keyframe rows and the navigator stay in sync).
+        /// Curve geometry is deliberately NOT pixel-snapped: rounding every
+        /// coordinate quantized the beziers into visible kinks.
         /// Pure WPF shapes — Win7-safe, no bitmap effects.
         /// </summary>
         private void DrawGraph()
@@ -639,16 +825,61 @@ namespace FfxTool.Gui
 
             DrawTimeGrid(t0, t1, xOf, w, h, T, Bot, L, R, gridBrush, labelBrush);
 
+            // AE's plot axes: a solid left (value) and bottom (time) line so
+            // the plot reads as a chart, not a floating cloud
+            double axisX = Math.Round(L) + 0.5;
+            GraphCanvas.Children.Add(new Line
+            {
+                X1 = axisX, Y1 = T, X2 = axisX, Y2 = h - Bot,
+                Stroke = outline, StrokeThickness = 1
+            });
+            GraphCanvas.Children.Add(new Line
+            {
+                X1 = axisX, Y1 = Math.Round(h - Bot) + 0.5, X2 = w - R, Y2 = Math.Round(h - Bot) + 0.5,
+                Stroke = outline, StrokeThickness = 1
+            });
+
             var plot = new PlotState
             {
                 Segs = segs, T0 = t0, T1 = t1,
                 W = w, H = h, L = L, R = R, T = T, Bot = Bot, Mode = _graphMode
             };
 
-            if (_graphMode == 0) DrawValueCurve(plot, accent, surface);
-            else DrawSpeedCurve(plot, accent, surface);
+            double plotH = h - T - Bot;
+            if (_graphMode == 0)
+            {
+                Func<double, double> yOf = v => T + (plot.VMax - v) / Math.Max(plot.VMax - plot.VMin, 1e-9) * plotH;
+                DrawValueCurve(plot, accent, surface, yOf);
+                DrawSelection(plot, yOf, accent, surface);
+            }
+            else
+            {
+                Func<double, double> yOf = v => T + (plot.SpeedMax - v) / Math.Max(plot.SpeedMax, 1e-9) * plotH;
+                DrawSpeedCurve(plot, accent, surface, yOf);
+                DrawSelection(plot, yOf, accent, surface);
+            }
 
             _plot = plot;
+        }
+
+        /// <summary>
+        /// Coalesces redraw storms while the window is resized: each
+        /// SizeChanged restarts a 70 ms one-shot; the graph rebuilds once
+        /// the storm pauses, then once more when it ends.
+        /// </summary>
+        private void ScheduleGraphRedraw()
+        {
+            if (_graphRedrawTimer == null)
+            {
+                _graphRedrawTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(70) };
+                _graphRedrawTimer.Tick += (s, e) =>
+                {
+                    _graphRedrawTimer.Stop();
+                    DrawGraph();
+                };
+            }
+            _graphRedrawTimer.Stop();
+            _graphRedrawTimer.Start();
         }
 
         /// <summary>Vertical grid at whole-frame multiples of 30 fps.</summary>
@@ -666,6 +897,7 @@ namespace FfxTool.Gui
 
             double stepSec = step / Fps;
             int first = (int)Math.Ceiling(t0 * Fps / step - 1e-9);
+            double lastLabelX = -1000;
             for (int f = first; ; f += (int)step)
             {
                 double t = f / Fps;
@@ -676,11 +908,15 @@ namespace FfxTool.Gui
                     X1 = x, X2 = x, Y1 = top, Y2 = h - bot,
                     Stroke = gridBrush, StrokeThickness = 1
                 });
-                AddTimeLabel(x + 4, h - bot + 6, t.ToString("0.##") + "s", labelBrush);
+                if (x - lastLabelX >= 44)
+                {
+                    AddTimeLabel(x + 4, h - bot + 6, t.ToString("0.##") + "s", labelBrush);
+                    lastLabelX = x;
+                }
             }
         }
 
-        private void DrawValueCurve(PlotState plot, Brush accent, Brush surface)
+        private void DrawValueCurve(PlotState plot, Brush accent, Brush surface, Func<double, double> yOf)
         {
             var segs = plot.Segs;
             var gridBrush = (Brush)FindResource("B.OutlineVariant");
@@ -695,10 +931,11 @@ namespace FfxTool.Gui
             else { double pad = (vMax - vMin) * 0.12; vMin -= pad; vMax += pad; }
             plot.VMin = vMin; plot.VMax = vMax;
 
-            Func<double, double> yOf = v => plot.T + (vMax - v) / (vMax - vMin) * (plot.H - plot.T - plot.Bot);
-
-            // horizontal value grid at round steps
+            // horizontal value grid at round steps; labels right-aligned in
+            // the left gutter (AE's value ruler) and skipped when they would
+            // collide — 13px is the minimum pitch for the 10px label font
             double vStep = NiceStep((vMax - vMin) / 3.2);
+            double lastLabelY = -1000;
             for (double v = Math.Ceiling(vMin / vStep) * vStep; v <= vMax + 1e-9; v += vStep)
             {
                 double y = Math.Round(yOf(v)) + 0.5;
@@ -707,23 +944,34 @@ namespace FfxTool.Gui
                     X1 = plot.L, X2 = plot.W - plot.R, Y1 = y, Y2 = y,
                     Stroke = gridBrush, StrokeThickness = 1
                 });
-                var lbl = new TextBlock { Text = v.ToString("0.##"), FontSize = 10, Foreground = labelBrush };
-                Canvas.SetLeft(lbl, 2);
-                Canvas.SetTop(lbl, y - 6);
-                GraphCanvas.Children.Add(lbl);
+                if (Math.Abs(y - lastLabelY) >= 13)
+                {
+                    var lbl = new TextBlock
+                    {
+                        Text = v.ToString("0.##"),
+                        FontSize = 10,
+                        Foreground = labelBrush,
+                        Width = plot.L - 10,
+                        TextAlignment = TextAlignment.Right
+                    };
+                    Canvas.SetLeft(lbl, 2);
+                    Canvas.SetTop(lbl, y - 6);
+                    GraphCanvas.Children.Add(lbl);
+                    lastLabelY = y;
+                }
             }
 
-            // the curve itself
+            // the curve itself — smooth coordinates, no pixel snapping
             var geo = new StreamGeometry();
             using (var ctx = geo.Open())
             {
-                ctx.BeginFigure(new Point(Math.Round(XOf(plot, segs[0].T0)), Math.Round(yOf(segs[0].V0))), false, false);
+                ctx.BeginFigure(new Point(XOf(plot, segs[0].T0), yOf(segs[0].V0)), false, false);
                 foreach (var s in segs)
                 {
-                    var end = new Point(Math.Round(XOf(plot, s.T1)), Math.Round(yOf(s.V1)));
+                    var end = new Point(XOf(plot, s.T1), yOf(s.V1));
                     if (s.Mode == PresetCurve.InterpHold)
                     {
-                        ctx.LineTo(new Point(end.X, Math.Round(yOf(s.V0))), true, false);
+                        ctx.LineTo(new Point(end.X, yOf(s.V0)), true, false);
                         ctx.LineTo(end, true, false);
                     }
                     else if (s.Mode == PresetCurve.InterpLinear)
@@ -732,8 +980,8 @@ namespace FfxTool.Gui
                     }
                     else
                     {
-                        var c1 = new Point(Math.Round(XOf(plot, s.C1T)), Math.Round(yOf(s.C1V)));
-                        var c2 = new Point(Math.Round(XOf(plot, s.C2T)), Math.Round(yOf(s.C2V)));
+                        var c1 = new Point(XOf(plot, s.C1T), yOf(s.C1V));
+                        var c2 = new Point(XOf(plot, s.C2T), yOf(s.C2V));
                         ctx.BezierTo(c1, c2, end, true, false);
                     }
                 }
@@ -743,11 +991,14 @@ namespace FfxTool.Gui
             {
                 Data = geo,
                 Stroke = accent,
-                StrokeThickness = 2,
-                StrokeLineJoin = PenLineJoin.Round
+                StrokeThickness = 2.2,
+                StrokeLineJoin = PenLineJoin.Round,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round
             });
 
-            // keyframe markers, shaped by interpolation like AE's icons
+            // keyframe markers, shaped by interpolation like AE's icons,
+            // clickable to select (ring + handles + easing numbers)
             var stream = CurrentAnimParam();
             if (stream == null) return;
             for (int i = 0; i < stream.Keyframes.Count; i++)
@@ -756,14 +1007,15 @@ namespace FfxTool.Gui
                 int shape = i + 1 < stream.Keyframes.Count ? k.InterpOut : k.InterpIn;
                 double x = XOf(plot, PresetCurve.Seconds(k.Time));
                 double y = yOf(k.Value);
-                string tip = $"#{i + 1}  t {PresetCurve.Seconds(k.Time).ToString("0.##")} s" +
-                             $"  ·  value {k.Value.ToString("0.###")}  ·  {k.InterpLabel}";
-                var marker = MakeMarker(shape, x, y, accent, surface, tip);
+                string tip = $"#{i + 1}  {Timecode(PresetCurve.Seconds(k.Time))}" +
+                             $"  ·  value {k.Value.ToString("0.###")}  ·  {k.InterpLabel}  ·  click to select";
+                int idx = i;
+                var marker = MakeMarker(shape, x, y, accent, surface, tip, idx);
                 GraphCanvas.Children.Add(marker);
             }
         }
 
-        private void DrawSpeedCurve(PlotState plot, Brush accent, Brush surface)
+        private void DrawSpeedCurve(PlotState plot, Brush accent, Brush surface, Func<double, double> yOf)
         {
             var segs = plot.Segs;
             var gridBrush = (Brush)FindResource("B.OutlineVariant");
@@ -783,11 +1035,11 @@ namespace FfxTool.Gui
             spMax *= 1.1; // headroom so the peak never kisses the top edge
             plot.SpeedMax = spMax;
 
-            Func<double, double> yOf = v => plot.T + (spMax - v) / spMax * (plot.H - plot.T - plot.Bot);
             double baseY = Math.Round(plot.H - plot.Bot) + 0.5;
 
-            // horizontal speed grid
+            // horizontal speed grid; labels right-aligned in the gutter
             double vStep = NiceStep(spMax / 3.0);
+            double lastLabelY = -1000;
             for (double v = vStep; v <= spMax + 1e-9; v += vStep)
             {
                 double y = Math.Round(yOf(v)) + 0.5;
@@ -796,20 +1048,31 @@ namespace FfxTool.Gui
                     X1 = plot.L, X2 = plot.W - plot.R, Y1 = y, Y2 = y,
                     Stroke = gridBrush, StrokeThickness = 1
                 });
-                var lbl = new TextBlock { Text = v.ToString("0.##") + "/s", FontSize = 10, Foreground = labelBrush };
-                Canvas.SetLeft(lbl, 2);
-                Canvas.SetTop(lbl, y - 6);
-                GraphCanvas.Children.Add(lbl);
+                if (Math.Abs(y - lastLabelY) >= 13)
+                {
+                    var lbl = new TextBlock
+                    {
+                        Text = v.ToString("0.##") + "/s",
+                        FontSize = 10,
+                        Foreground = labelBrush,
+                        Width = plot.L - 10,
+                        TextAlignment = TextAlignment.Right
+                    };
+                    Canvas.SetLeft(lbl, 2);
+                    Canvas.SetTop(lbl, y - 6);
+                    GraphCanvas.Children.Add(lbl);
+                    lastLabelY = y;
+                }
             }
 
             // AE-style: the speed graph reads as a filled area over the axis
             var area = new StreamGeometry();
             using (var ctx = area.Open())
             {
-                ctx.BeginFigure(new Point(Math.Round(XOf(plot, ts[0])), baseY), true, false);
+                ctx.BeginFigure(new Point(XOf(plot, ts[0]), baseY), true, false);
                 for (int i = 0; i < N; i++)
-                    ctx.LineTo(new Point(Math.Round(XOf(plot, ts[i])), Math.Round(yOf(sp[i]))), true, false);
-                ctx.LineTo(new Point(Math.Round(XOf(plot, ts[N - 1])), baseY), true, false);
+                    ctx.LineTo(new Point(XOf(plot, ts[i]), yOf(sp[i])), true, false);
+                ctx.LineTo(new Point(XOf(plot, ts[N - 1]), baseY), true, false);
             }
             area.Freeze();
             GraphCanvas.Children.Add(new Path
@@ -823,9 +1086,9 @@ namespace FfxTool.Gui
             var line = new StreamGeometry();
             using (var ctx = line.Open())
             {
-                ctx.BeginFigure(new Point(Math.Round(XOf(plot, ts[0])), Math.Round(yOf(sp[0]))), false, false);
+                ctx.BeginFigure(new Point(XOf(plot, ts[0]), yOf(sp[0])), false, false);
                 for (int i = 1; i < N; i++)
-                    ctx.LineTo(new Point(Math.Round(XOf(plot, ts[i])), Math.Round(yOf(sp[i]))), true, false);
+                    ctx.LineTo(new Point(XOf(plot, ts[i]), yOf(sp[i])), true, false);
             }
             line.Freeze();
             GraphCanvas.Children.Add(new Path
@@ -833,29 +1096,114 @@ namespace FfxTool.Gui
                 Data = line,
                 Stroke = accent,
                 StrokeThickness = 1.6,
-                StrokeLineJoin = PenLineJoin.Round
+                StrokeLineJoin = PenLineJoin.Round,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round
             });
 
-            // keyframe markers on the speed curve: numeric slope around each kf
+            // keyframe markers on the speed curve: numeric slope around each
+            // kf, clickable like their value-graph twins
             var stream = CurrentAnimParam();
             if (stream == null) return;
-            double eps = Math.Max((plot.T1 - plot.T0) / 2000.0, 1e-6);
-            foreach (var k in stream.Keyframes)
+            for (int i = 0; i < stream.Keyframes.Count; i++)
             {
+                var k = stream.Keyframes[i];
                 double t = PresetCurve.Seconds(k.Time);
-                double before = PresetCurve.ValueAt(segs, t - eps);
-                double after = PresetCurve.ValueAt(segs, t + eps);
-                if (double.IsNaN(before) || double.IsNaN(after)) continue;
-                double s = Math.Abs(after - before) / (2 * eps);
-                if (s > spMax) s = spMax;
-                string tip = $"t {t.ToString("0.##")} s  ·  speed {s.ToString("0.###")} /s";
+                double s = SpeedAt(segs, t);
+                if (double.IsNaN(s)) continue;
+                string tip = $"#{i + 1}  {Timecode(t)}  ·  speed {s.ToString("0.###")} /s  ·  click to select";
+                int idx = i;
                 GraphCanvas.Children.Add(MakeMarker(PresetCurve.InterpBezier,
-                    XOf(plot, t), yOf(s), accent, surface, tip));
+                    XOf(plot, t), yOf(Math.Min(s, spMax)), accent, surface, tip, idx));
             }
         }
 
-        /// <summary>Linear keyframes → square, bezier → diamond, hold → left triangle.</summary>
-        private UIElement MakeMarker(int interp, double x, double y, Brush fill, Brush stroke, string tip)
+        /// <summary>Numeric |Δvalue/Δt| at t via a tiny centered difference.</summary>
+        private static double SpeedAt(List<PresetCurve.Segment> segs, double t)
+        {
+            if (segs == null || segs.Count == 0) return double.NaN;
+            double span = Math.Max((segs[segs.Count - 1].T1 - segs[0].T0) / 2000.0, 1e-6);
+            double before = PresetCurve.ValueAt(segs, t - span);
+            double after = PresetCurve.ValueAt(segs, t + span);
+            if (double.IsNaN(before) || double.IsNaN(after)) return double.NaN;
+            return Math.Abs(after - before) / (2 * span);
+        }
+
+        /// <summary>
+        /// The selected keyframe, AE Graph Editor style: an accent ring on
+        /// its marker (value or speed position) plus its tangent handles in
+        /// value mode — thin lines to the two control points with hollow
+        /// handle dots, only for bezier segments, exactly when AE shows them.
+        /// </summary>
+        private void DrawSelection(PlotState plot, Func<double, double> yOf, Brush accent, Brush surface)
+        {
+            var stream = CurrentAnimParam();
+            if (stream == null || _selKf < 0 || _selKf >= stream.Keyframes.Count) return;
+
+            var k = stream.Keyframes[_selKf];
+            double t = PresetCurve.Seconds(k.Time);
+            double kx = XOf(plot, t);
+
+            if (plot.Mode == 0)
+            {
+                double ky = yOf(k.Value);
+                var handleBrush = (Brush)FindResource("B.Outline");
+                // outgoing handle: control point 1 of the segment that starts here
+                if (_selKf < plot.Segs.Count && plot.Segs[_selKf].Mode == PresetCurve.InterpBezier)
+                {
+                    var s = plot.Segs[_selKf];
+                    AddHandle(kx, ky, XOf(plot, s.C1T), yOf(s.C1V), handleBrush, surface);
+                }
+                // incoming handle: control point 2 of the segment that ends here
+                if (_selKf > 0 && plot.Segs[_selKf - 1].Mode == PresetCurve.InterpBezier)
+                {
+                    var s = plot.Segs[_selKf - 1];
+                    AddHandle(kx, ky, XOf(plot, s.C2T), yOf(s.C2V), handleBrush, surface);
+                }
+            }
+
+            double y = plot.Mode == 0 ? yOf(k.Value) : yOf(Math.Min(SpeedAt(plot.Segs, t), plot.SpeedMax));
+            if (double.IsNaN(y)) return;
+            var ring = new Ellipse
+            {
+                Width = 15,
+                Height = 15,
+                Stroke = accent,
+                StrokeThickness = 1.6,
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(ring, kx - 7.5);
+            Canvas.SetTop(ring, y - 7.5);
+            GraphCanvas.Children.Add(ring);
+        }
+
+        /// <summary>One tangent handle: a thin line plus a hollow handle dot.</summary>
+        private void AddHandle(double x0, double y0, double x1, double y1, Brush lineBrush, Brush fill)
+        {
+            GraphCanvas.Children.Add(new Line
+            {
+                X1 = x0, Y1 = y0, X2 = x1, Y2 = y1,
+                Stroke = lineBrush, StrokeThickness = 1
+            });
+            var dot = new Ellipse
+            {
+                Width = 7,
+                Height = 7,
+                Fill = fill,
+                Stroke = lineBrush,
+                StrokeThickness = 1.2,
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(dot, x1 - 3.5);
+            Canvas.SetTop(dot, y1 - 3.5);
+            GraphCanvas.Children.Add(dot);
+        }
+
+        /// <summary>
+        /// Linear keyframes → square, bezier → diamond, hold → left triangle.
+        /// kfIndex &gt;= 0 makes the marker clickable for selection.
+        /// </summary>
+        private UIElement MakeMarker(int interp, double x, double y, Brush fill, Brush stroke, string tip, int kfIndex)
         {
             UIElement el;
             if (interp == PresetCurve.InterpLinear)
@@ -902,13 +1250,24 @@ namespace FfxTool.Gui
                 Canvas.SetLeft(el, x - 5.5);
                 Canvas.SetTop(el, y - 5.5);
             }
+
+            if (kfIndex >= 0)
+            {
+                var fe = (FrameworkElement)el;
+                fe.Cursor = Cursors.Hand;
+                fe.MouseLeftButtonUp += (s, e) =>
+                {
+                    SelectKeyframe(kfIndex);
+                    e.Handled = true;
+                };
+            }
             return el;
         }
 
         /// <summary>
         /// Hover probe: dashed vertical cursor + floating readout with the
-        /// exact time and the interpolated value (value mode) or numeric
-        /// speed (speed mode) under the mouse.
+        /// exact time (and its frame number), the interpolated value (value
+        /// mode) or numeric speed (speed mode) under the mouse.
         /// </summary>
         private void GraphCanvas_MouseMove(object sender, MouseEventArgs e)
         {
@@ -921,6 +1280,7 @@ namespace FfxTool.Gui
                 return;
             }
             double t = _plot.T0 + (pt.X - _plot.L) / innerW * (_plot.T1 - _plot.T0);
+            int frame = (int)Math.Round(t * Fps);
 
             EnsureCursor();
             double x = Math.Round(pt.X) + 0.5;
@@ -939,18 +1299,18 @@ namespace FfxTool.Gui
                 Canvas.SetLeft(_cursorDot, x - 3.5);
                 Canvas.SetTop(_cursorDot, Math.Round(y) - 3.5);
                 _cursorDot.Visibility = Visibility.Visible;
-                readout = $"{t.ToString("0.##")} s · value {v.ToString("0.###")}";
+                readout = $"{t.ToString("0.##")} s · f{frame} · value {v.ToString("0.###")}";
             }
             else
             {
-                double eps = Math.Max((_plot.T1 - _plot.T0) / 2000.0, 1e-6);
-                double s = Math.Abs(PresetCurve.ValueAt(_plot.Segs, t + eps) -
-                                    PresetCurve.ValueAt(_plot.Segs, t - eps)) / (2 * eps);
-                double y = _plot.T + (1 - Math.Min(s / Math.Max(_plot.SpeedMax, 1e-9), 1)) * plotH;
+                double s = SpeedAt(_plot.Segs, t);
+                double y = _plot.T + (1 - Math.Min(Math.Max(s, 0) / Math.Max(_plot.SpeedMax, 1e-9), 1)) * plotH;
                 Canvas.SetLeft(_cursorDot, x - 3.5);
                 Canvas.SetTop(_cursorDot, Math.Round(y) - 3.5);
                 _cursorDot.Visibility = Visibility.Visible;
-                readout = $"{t.ToString("0.##")} s · speed {s.ToString("0.###")} /s";
+                readout = double.IsNaN(s)
+                    ? $"{t.ToString("0.##")} s · f{frame}"
+                    : $"{t.ToString("0.##")} s · f{frame} · speed {s.ToString("0.###")} /s";
             }
 
             GraphReadoutText.Text = readout;
