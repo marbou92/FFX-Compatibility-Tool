@@ -16,8 +16,9 @@
 
             <StackPanel Grid.Row="0">
                 <!-- the real app icon — the exe/taskbar artwork, so the
-                     brand inside the app matches the taskbar one -->
-                <Image Source="pack://application:,,,/Assets/app.ico" Width="36" Height="36"
+                     brand inside the app matches the taskbar one. Exact-size
+                     PNG: no rescaling, no blur at rail size. -->
+                <Image Source="pack://application:,,,/Assets/app-36.png" Width="36" Height="36"
                        HorizontalAlignment="Center" Margin="0,22,0,0"
                        RenderOptions.BitmapScalingMode="HighQuality"/>
                 <!-- M3E FAB: rounded-square silhouette + soft elevation, so it

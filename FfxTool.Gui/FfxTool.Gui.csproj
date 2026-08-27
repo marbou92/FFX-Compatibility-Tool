@@ -19,6 +19,9 @@
 
   <ItemGroup>
     <Resource Include="Assets\app.ico" />
+    <!-- exact-size in-app brand marks (title bar / nav rail / About) -->
+    <Resource Include="Assets\app-24.png" />
+    <Resource Include="Assets\app-36.png" />
   </ItemGroup>
 
   <ItemGroup>

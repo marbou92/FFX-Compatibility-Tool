@@ -152,17 +152,17 @@ namespace FfxTool.Gui
         /// area on each side (the invisible resize border hangs off-screen),
         /// so while maximized we square the corners, drop the rim and pad
         /// the content back into the visible area — otherwise the outer 8px
-        /// of the app silently disappear at the screen edges. Windowed: 1px
-        /// themed rim + rounded corners on all four sides, cut with a clip
-        /// geometry so child surfaces follow the silhouette (zero
-        /// transparency, Win7-safe).
+        /// of the app silently disappear at the screen edges. Windowed: an
+        /// anti-aliased 1px Outline rim traces the rounded silhouette over
+        /// every child (zero transparency, Win7-safe).
         /// </summary>
         private void ApplyChromeState()
         {
             bool max = WindowState == WindowState.Maximized;
-            WindowRoot.Margin = max ? new Thickness(0) : new Thickness(1);
             WindowRoot.CornerRadius = max ? new CornerRadius(0) : new CornerRadius(8);
             WindowRoot.Padding = max ? new Thickness(8) : new Thickness(0);
+            WindowRim.Visibility = max ? Visibility.Collapsed : Visibility.Visible;
+            WindowRim.CornerRadius = max ? new CornerRadius(0) : new CornerRadius(8);
             MaxIcon.IconName = max ? "Restore" : "Maximize";
             MaxBtn.ToolTip = max ? "Restore" : "Maximize";
             UpdateWindowClip();
@@ -172,7 +172,8 @@ namespace FfxTool.Gui
         /// Border.CornerRadius rounds the window's own background but not its
         /// children — the nav rail and the page surfaces are rectangles, and
         /// unclipped they would poke square corners through the rounded
-        /// silhouette. The clip cuts the whole subtree to match; maximized
+        /// silhouette. The clip cuts the whole subtree to match; the rim
+        /// overlay then strokes the same curve anti-aliased on top. Maximized
         /// windows go back to a full square.
         /// </summary>
         private void UpdateWindowClip()

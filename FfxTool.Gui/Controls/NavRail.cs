@@ -94,6 +94,15 @@ namespace FfxTool.Gui
             Items.Children.Add(btn);
             _buttons.Add(btn);
 
+            // Every item starts life unselected: bind glyph + label to theme
+            // resource KEYS immediately. Before this fix only item 0 was ever
+            // styled at construction (the old init loop ran while the list
+            // still held a single button), so the remaining items kept the
+            // implicit Button style's Foreground (B.OnPrimary — white in the
+            // light theme). On first paint the rail read as icon-only and the
+            // labels only appeared after the first selection change.
+            StyleItem(index, selected: false);
+
             if (_buttons.Count == 1)
             {
                 _selectedIndex = 0;
@@ -137,20 +146,22 @@ namespace FfxTool.Gui
             }
 
             for (int i = 0; i < _buttons.Count; i++)
+                StyleItem(i, i == index);
+        }
+
+        private void StyleItem(int i, bool selected)
+        {
+            if (_buttons[i].Tag is IconGlyph glyph)
+                // resource KEY, not a captured brush — WPF re-resolves these
+                // on every palette/dark-mode dictionary swap, so the rail
+                // can no longer go stale after a theme change
+                glyph.SetResourceReference(IconGlyph.ForegroundProperty,
+                    selected ? "B.Primary" : "B.OnSurfaceVariant");
+            if (_buttons[i].Content is StackPanel sp && sp.Children.Count > 1 && sp.Children[1] is TextBlock tb)
             {
-                bool selected = i == index;
-                if (_buttons[i].Tag is IconGlyph glyph)
-                    // resource KEY, not a captured brush — WPF re-resolves these
-                    // on every palette/dark-mode dictionary swap, so the rail
-                    // can no longer go stale after a theme change
-                    glyph.SetResourceReference(IconGlyph.ForegroundProperty,
-                        selected ? "B.Primary" : "B.OnSurfaceVariant");
-                if (_buttons[i].Content is StackPanel sp && sp.Children.Count > 1 && sp.Children[1] is TextBlock tb)
-                {
-                    tb.FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal;
-                    tb.SetResourceReference(TextBlock.ForegroundProperty,
-                        selected ? "B.Primary" : "B.OnSurfaceVariant");
-                }
+                tb.FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal;
+                tb.SetResourceReference(TextBlock.ForegroundProperty,
+                    selected ? "B.Primary" : "B.OnSurfaceVariant");
             }
         }
 

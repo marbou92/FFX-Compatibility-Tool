@@ -5,7 +5,7 @@
         xmlns:controls="clr-namespace:FfxTool.Gui"
         Title="FFX Compatibility Tool" Width="1180" Height="740"
         MinWidth="960" MinHeight="620" WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource B.OutlineVariant}"
+        Background="{DynamicResource B.Surface}"
         UseLayoutRounding="True" TextOptions.TextFormattingMode="Display"
         WindowStyle="SingleBorderWindow" AllowsTransparency="False" ResizeMode="CanResize">
 
@@ -23,12 +23,19 @@
          strips it — that is exactly why minimizing used to snap shut with
          no animation. WindowChrome still keeps the client area covering the
          whole window via WM_NCCALCSIZE, so the native frame is never drawn.
-         The window itself paints the rim colour; WindowRoot insets 1px and
-         rounds all four corners on top of it — an M3 silhouette with no
-         AllowsTransparency, which stays fast and flicker-free on Windows 7.
+         Edge anatomy: the HWND itself is a hard-edged rectangle (zero
+         transparency, Win7-safe), so a contrasting square rim can never
+         follow the rounded silhouette — it used to leave a small square
+         notch of rim colour poking past every rounded corner. The window
+         background is therefore B.SURFACE (corner pixels blend into the
+         content instead of drawing a notch), WindowRoot rounds its own
+         background and is clipped to the same 8px silhouette, and a
+         topmost WindowRim overlay strokes an ANTI-ALIASED 1px Outline line
+         that traces the rounded edge over every child — a crisp, continuous
+         outline with no staircase and no corner notch.
          Maximized: MainWindow.ApplyChromeState squares the corners, drops
          the rim and pads the content back inside the visible work area. -->
-    <Border x:Name="WindowRoot" Margin="1" CornerRadius="8"
+    <Border x:Name="WindowRoot" CornerRadius="8"
             Background="{DynamicResource B.Surface}">
         <Grid>
             <Grid.RowDefinitions>
@@ -40,8 +47,10 @@
             <Grid Grid.Row="0">
                 <StackPanel x:Name="TitleBrand" Orientation="Horizontal" VerticalAlignment="Center" Margin="24,0,0,0">
                     <!-- the real app icon — same artwork as the exe and
-                         taskbar button, so the brand matches everywhere -->
-                    <Image Source="pack://application:,,,/Assets/app.ico" Width="24" Height="24"
+                         taskbar button, so the brand matches everywhere.
+                         Rendered natively at exactly 24px (app.ico only
+                         ships ico frames; this PNG is pixel-perfect here) -->
+                    <Image Source="pack://application:,,,/Assets/app-24.png" Width="24" Height="24"
                            RenderOptions.BitmapScalingMode="HighQuality" VerticalAlignment="Center"/>
                     <TextBlock Text="FFX Compatibility Tool" FontSize="16" FontWeight="SemiBold"
                                Foreground="{DynamicResource B.OnSurface}" Margin="12,0,0,0" VerticalAlignment="Center"/>
@@ -70,6 +79,13 @@
                 <controls:NavRail x:Name="Rail" Grid.Column="0"/>
                 <ContentControl x:Name="PageHost" Grid.Column="1"/>
             </Grid>
+
+            <!-- anti-aliased rounded edge, drawn over every child so the
+                 window silhouette reads as one crisp line (see comment above) -->
+            <Border x:Name="WindowRim" Grid.Row="0" Grid.RowSpan="2" Panel.ZIndex="16"
+                    CornerRadius="8" BorderThickness="1"
+                    BorderBrush="{DynamicResource B.Outline}"
+                    IsHitTestVisible="False"/>
         </Grid>
     </Border>
 </Window>
