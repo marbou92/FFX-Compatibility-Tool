@@ -329,6 +329,49 @@
                 </Grid>
             </Border>
         </DataTemplate>
+        <!-- one Effect Controls group: the AE panel's effect block - the
+             fx badge, display name and (display-only) Reset link on the
+             header line, the disclosure triangle collapsing the parameter
+             body, and the same AE property rows the inspector uses -->
+        <DataTemplate x:Key="EcEffectGroup">
+            <Border CornerRadius="12" Background="{DynamicResource B.SCLowest}" Padding="4,4,8,8" Margin="0,0,0,8">
+                <StackPanel>
+                    <Grid Background="Transparent" MouseLeftButtonUp="EcHeader_Click" Cursor="Hand"
+                          ToolTip="{Binding Sub}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ToggleButton Style="{StaticResource AEDisclosure}" IsChecked="{Binding Open}"
+                                      Click="EcToggle_Click" VerticalAlignment="Center"
+                                      ToolTip="Show / hide this effect's parameters">
+                            <controls:IconGlyph IconName="ArrowDrop" Width="14" Height="14"/>
+                        </ToggleButton>
+                        <Border Grid.Column="1" Width="26" Height="26" CornerRadius="8"
+                                Background="{DynamicResource B.PrimaryContainer}"
+                                VerticalAlignment="Center" Margin="4,0,9,0" IsHitTestVisible="False">
+                            <TextBlock Text="fx" FontStyle="Italic" FontWeight="SemiBold" FontSize="12"
+                                       Foreground="{DynamicResource B.OnPrimaryContainer}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Title}" Style="{StaticResource Body}" FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding Sub}" Style="{StaticResource Caption}" Margin="0,1,0,0"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="3" Text="Reset" FontSize="12" FontWeight="Medium"
+                                   Foreground="{DynamicResource B.Primary}" Opacity="0.4"
+                                   VerticalAlignment="Center" Margin="10,0,4,0" IsHitTestVisible="False"
+                                   ToolTip="Display only - this inspector never modifies presets"/>
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding Params}" ItemTemplate="{StaticResource ParamRow}"
+                                  Margin="8,2,0,0" Visibility="{Binding BodyVisible}"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
     </UserControl.Resources>
 
     <Grid Margin="32,24,32,24">
@@ -338,7 +381,22 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="Effect Lister" Style="{StaticResource TitlePage}" Margin="0,0,0,20"/>
+        <Grid Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="Effect Lister" Style="{StaticResource TitlePage}"/>
+            <!-- view switcher: AE's Effect Controls panel vs. the split
+                 workspace (compatibility list + tabbed inspector) -->
+            <StackPanel x:Name="ViewSwitcher" Orientation="Horizontal" HorizontalAlignment="Right"
+                        VerticalAlignment="Center">
+                <Border Background="{DynamicResource B.SCLowest}" CornerRadius="12" Padding="3">
+                    <StackPanel Orientation="Horizontal">
+                        <ToggleButton x:Name="ViewEcBtn" Content="Effect Controls" Style="{StaticResource InspTab}"
+                                      IsChecked="True" Click="ViewBtn_Click"/>
+                        <ToggleButton x:Name="ViewInspectorBtn" Content="Inspector" Style="{StaticResource InspTab}"
+                                      Click="ViewBtn_Click"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
 
         <!-- ============ workspace ============ -->
         <Grid Grid.Row="1">
@@ -587,6 +645,40 @@
                     </Grid>
                 </Border>
             </Grid>
+
+            <!-- ============ Effect Controls view (AE panel anatomy) ============
+                 Every effect of the preset as one scrollable group list,
+                 laid out like AE's Effect Controls panel: fx badge + name +
+                 Reset on the block header, then the familiar property lines
+                 (stopwatch, disclosure triangle, value slot, keyframe
+                 navigator). The switcher above flips between this view and
+                 the split inspector; both read the same decoded data and
+                 share lane/eye/keyframe state. -->
+            <Border x:Name="EcHost" Visibility="Collapsed" Margin="8,8,8,0" CornerRadius="22"
+                    Background="{DynamicResource B.SC}">
+                <Grid Margin="18,14,18,16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Margin="2,0,2,10">
+                        <TextBlock Text="Effect Controls" Style="{StaticResource Body}"
+                                   FontWeight="SemiBold" FontSize="15"/>
+                        <TextBlock x:Name="EcSub" Text="Open a preset to see its effect controls"
+                                   Style="{StaticResource Caption}" Margin="0,3,0,0"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    <ScrollViewer Grid.Row="1" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <ItemsControl x:Name="EcList" ItemTemplate="{StaticResource EcEffectGroup}"/>
+                            <TextBlock x:Name="EcEmpty" Text="Parameter data for this preset couldn't be decoded - the compatibility list still works, and the inspector explains what could be read."
+                                       Style="{StaticResource BodySecondary}" TextWrapping="Wrap"
+                                       HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="430"
+                                       Margin="8,18,8,8" Visibility="Collapsed"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
 
             <!-- drag feedback overlay (visual only — drop is handled by the page root) -->
             <Border x:Name="DragOverlay" Visibility="Collapsed" IsHitTestVisible="False" CornerRadius="26"

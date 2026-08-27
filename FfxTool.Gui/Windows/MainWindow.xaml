@@ -5,7 +5,7 @@
         xmlns:controls="clr-namespace:FfxTool.Gui"
         Title="FFX Compatibility Tool" Width="1180" Height="740"
         MinWidth="960" MinHeight="620" WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource B.Outline}"
+        Background="{DynamicResource B.Surface}"
         UseLayoutRounding="True" TextOptions.TextFormattingMode="Display"
         WindowStyle="SingleBorderWindow" AllowsTransparency="False" ResizeMode="CanResize">
 
@@ -20,36 +20,34 @@
          Windows 7 minimize/maximize animations (and grants Aero Snap + live
          taskbar previews) to windows that carry WS_CAPTION, and the stock
          WindowChrome worker never re-adds it once WindowStyle="None"
-         strips it — that is exactly why minimizing used to snap shut with
+         strips it - that is exactly why minimizing used to snap shut with
          no animation. WindowChrome still keeps the client area covering the
          whole window via WM_NCCALCSIZE, so the native frame is never drawn.
-         Edge anatomy (v2): the HWND is cut to the rounded silhouette with
-         SetWindowRgn (MainWindow.ApplyWindowRegion) — the OS simply never
-         paints the corner pixels, on any desktop, any wallpaper. But a GDI
-         region is a 1-bit mask: the edge it cuts is aliased, and a rim
-         stroke CENTERED on the boundary loses its outer half to the cut,
-         which read as a broken half-strength hairline. So the rim is now
-         INSET: a 0.5px margin + 7.5px corner radius put the full 1px
-         anti-aliased Outline line just INSIDE the region, where nothing
-         clips it — the hard (aliased) OS cut lands exactly on the dark
-         line, and the eye sees one crisp full-strength edge. WindowRoot
-         still rounds + clips the content subtree to the same silhouette.
-         THE BACKDROP IS B.OUTLINE ON PURPOSE: a GDI region is a 1-bit
-         mask and a WPF arc is anti-aliased, so the two curves never
-         coincide perfectly — at every corner a ~0.5px crescent of pixels
-         sits between the rim arc and the OS cut. With a Surface backdrop
-         that crescent painted the light content color OUTSIDE the dark
-         line and read as "something sticking out at the edge"; with an
-         Outline backdrop every such pixel is the line's own color, so
-         the silhouette reads as one continuous dark edge running into
-         the OS cut, on any wallpaper, in any theme.
-         Maximized: MainWindow.ApplyChromeState squares the corners, drops
-         the rim and pads the content back inside the visible work area.
-         Live resize: MainWindow.EngageResizeFreeze shows the last fully
-         rendered frame (FreezeLayer below) while the content tree is
-         collapsed, which is what makes Win7 border drags smooth. -->
-    <Border x:Name="WindowRoot" CornerRadius="8"
-            Background="{DynamicResource B.Surface}">
+
+         SQUARE CORNERS, DELIBERATELY: rounds 5-9 chased a rounded silhouette
+         with an OS-level region cut (SetWindowRgn) plus an anti-aliased rim
+         stroke, and every variant still showed a stray crescent at the
+         corners on the user's Windows 7 machine. The cause is structural -
+         a GDI region is a 1-bit mask, WPF arcs are anti-aliased, so the two
+         curves can never coincide pixel-for-pixel and ~0.5px of backdrop
+         always survives between them. This build stops fighting physics:
+         the window is a plain rectangle, the edge is a single 1px border
+         (WindowRim) drawn just inside the client area, and the HWND IS the
+         silhouette - there is no second curve left to disagree with, so
+         nothing can ever stick out, on any OS, any DPI, any wallpaper.
+         Classic Windows 7 apps (and AE itself on Windows) are square; the
+         rounded look was never worth this cost.
+
+         Resizing is the OS's own border drag again - the round-9 snapshot
+         "freeze frame" (stretch the last rendered bitmap while the content
+         tree is collapsed) read as blurry and is gone; the black-flash
+         guards (WM_ERASEBKGND swallowed + WS_EX_COMPOSITED, see
+         MainWindow.EnableComposited) stay.
+
+         Maximized: MainWindow.ApplyChromeState pads the content back inside
+         the visible work area (a maximized chromeless window overhangs the
+         screen by the invisible resize border) and drops the rim. -->
+    <Border x:Name="WindowRoot">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="64"/>
@@ -59,7 +57,7 @@
             <!-- ============ custom title bar (native drag/snap via WindowChrome) ============ -->
             <Grid Grid.Row="0" x:Name="ChromeGrid">
                 <StackPanel x:Name="TitleBrand" Orientation="Horizontal" VerticalAlignment="Center" Margin="24,0,0,0">
-                    <!-- the real app icon — same artwork as the exe and
+                    <!-- the real app icon - same artwork as the exe and
                          taskbar button, so the brand matches everywhere.
                          Rendered natively at exactly 24px (app.ico only
                          ships ico frames; this PNG is pixel-perfect here) -->
@@ -93,21 +91,14 @@
                 <ContentControl x:Name="PageHost" Grid.Column="1"/>
             </Grid>
 
-            <!-- live-resize freeze frame: during a border drag the last
-                 fully rendered frame is stretched here while the two
-                 content grids above are collapsed (see MainWindow.cs) —
-                 the rim below stays live so the silhouette never blurs -->
-            <Image x:Name="FreezeLayer" Grid.Row="0" Grid.RowSpan="2" Panel.ZIndex="15"
-                   Stretch="Fill" IsHitTestVisible="False" Visibility="Collapsed"/>
-
-            <!-- anti-aliased rounded edge, drawn over every child. The
-                 0.5px inset keeps the whole stroke inside the OS window
-                 region (see the anatomy comment above): a boundary-centered
-                 stroke used to lose its outer half to the 1-bit region cut
-                 and read as a broken half-strength hairline -->
+            <!-- the entire window edge: one crisp 1px line just inside the
+                 client rect. No corner radius, no region, no layered curves -
+                 the silhouette and this line are the same rectangle, so the
+                 "something sticking out at the edge" artifact is structurally
+                 impossible now. Collapses while maximized (rimmed windows
+                 floating inside the screen edge look wrong). -->
             <Border x:Name="WindowRim" Grid.Row="0" Grid.RowSpan="2" Panel.ZIndex="16"
-                    Margin="0.5" CornerRadius="7.5" BorderThickness="1"
-                    BorderBrush="{DynamicResource B.Outline}"
+                    BorderThickness="1" BorderBrush="{DynamicResource B.Outline}"
                     IsHitTestVisible="False"/>
         </Grid>
     </Border>

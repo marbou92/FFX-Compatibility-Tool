@@ -23,6 +23,12 @@ namespace FfxTool.Gui
     /// friendly empty state, drag-overlay language shared with Convert,
     /// and a recent-files flyout over the full 5-entry history.
     ///
+    /// The workspace switches between two views: AE's Effect Controls panel
+    /// (the default — every effect as a collapsible block of property
+    /// lines, fx badge + Reset on the header) and the split compatibility
+    /// list + tabbed inspector. Both read the same decoded data and share
+    /// lane/eye/keyframe selection state.
+    ///
     /// The right-hand inspector reads like AE's timeline: parameter rows
     /// carry the stopwatch mark (lit = time-varying) and a keyframe
     /// navigator, the Keyframes tab shows AE-style timecodes with slope
@@ -223,6 +229,21 @@ namespace FfxTool.Gui
             }
         }
 
+        /// <summary>
+        /// One effect block of the Effect Controls view: header data plus
+        /// the AE property rows (the same ParamRowVm anatomy the inspector
+        /// uses, so lane/eye/navigator behavior is identical in both views).
+        /// </summary>
+        public class EcGroupVm
+        {
+            public string Title { get; set; }
+            public string Sub { get; set; }
+            public bool Open { get; set; }
+            public Visibility BodyVisible => Open ? Visibility.Visible : Visibility.Collapsed;
+            public List<ParamRowVm> Params { get; set; }
+            public int EffectIndex { get; set; }
+        }
+
         private readonly PluginProfile _profile;
         private List<Pipeline.EffectInfo> _currentEffects = new List<Pipeline.EffectInfo>();
         private List<PresetEffectDetails> _details = new List<PresetEffectDetails>();
@@ -252,6 +273,16 @@ namespace FfxTool.Gui
         // counter is the only flicker-free way to know the drag truly left.
         private int _dragDepth;
 
+        // ---------- view modes: AE Effect Controls panel vs. split inspector ----------
+        // 0 = Effect Controls (the AE-style panel, the default), 1 = split
+        // compatibility list + tabbed inspector. Group open/closed state and
+        // the per-effect status/vendor header lines survive every rebuild;
+        // the dictionaries are keyed by stable effect index.
+        private int _viewMode;
+        private readonly Dictionary<int, bool> _ecOpen = new Dictionary<int, bool>();
+        private readonly Dictionary<int, string> _ecStatus = new Dictionary<int, string>();
+        private readonly Dictionary<int, string> _ecVendor = new Dictionary<int, string>();
+
         // live-resize redraw coalescing: while the window is being dragged
         // by its border, SizeChanged fires per pixel and a full graph
         // rebuild (geometry + labels + 260 samples) per pixel is exactly
@@ -269,6 +300,7 @@ namespace FfxTool.Gui
             GraphCanvas.SizeChanged += (s, e) => ScheduleGraphRedraw();
             KfTimeline.SizeChanged += (s, e) => DrawKfTimeline();
             SetTab(0);
+            SetView(0); // Effect Controls is the default workspace view
             // row container brushes are captured per Refresh — re-run when the
             // theme changes so status tints match the new palette/mode; the
             // graph and the keyframe strip bake brush colors too
@@ -402,6 +434,12 @@ namespace FfxTool.Gui
                 try { _details = PresetInspector.Inspect(bytes); }
                 catch { _details = new List<PresetEffectDetails>(); }
 
+                int ecParams = _details.Sum(x => x.Parameters.Count);
+                int ecAnim = _details.Sum(x => x.AnimatedCount);
+                EcSub.Text = $"{_currentEffects.Count(x => !x.IsSentinel)} effects · " +
+                             $"{ecParams} parameter{(ecParams == 1 ? "" : "s")} · " +
+                             $"{ecAnim} animated — read-only, like AE's panel";
+
                 HistoryStore.Push(path, _currentEffects.Count(e => !e.IsSentinel));
                 Refresh();
                 if (_rows.Count > 0) EffectList.SelectedIndex = 0; // open the inspector right away
@@ -414,6 +452,7 @@ namespace FfxTool.Gui
                 FileChipText.Text = "No file loaded";
                 _currentEffects = new List<Pipeline.EffectInfo>();
                 _details = new List<PresetEffectDetails>();
+                EcSub.Text = "Open a preset to see its effect controls";
                 Refresh();
             }
         }
@@ -493,11 +532,16 @@ namespace FfxTool.Gui
                     RowBrush = row,
                     EffectIndex = fileOrder[eff]
                 });
+
+                // header data for the Effect Controls block, keyed by the
+                // same stable effect index the rows carry
+                _ecStatus[fileOrder[eff]] = status;
+                _ecVendor[fileOrder[eff]] = $"{match.Vendor ?? "?"} — {match.Suite ?? "?"}";
             }
 
             bool hasContent = _currentEffects.Any(e => !e.IsSentinel);
             EmptyState.Visibility = hasContent ? Visibility.Collapsed : Visibility.Visible;
-            SplitHost.Visibility = hasContent ? Visibility.Visible : Visibility.Collapsed;
+            SetView(_viewMode); // shows/hides EcHost + SplitHost for the active view
 
             if (hasContent && shown > 0)
             {
@@ -524,6 +568,106 @@ namespace FfxTool.Gui
             // its separator hidden while empty so no orphan "·" ever shows
             StatusSep.Visibility = string.IsNullOrEmpty(StatusBarLeft.Text)
                 ? Visibility.Collapsed : Visibility.Visible;
+
+            RefreshEcRows();
+        }
+
+        // ---------- view modes: Effect Controls ↔ split inspector ----------
+        private void ViewBtn_Click(object sender, RoutedEventArgs e)
+        {
+            SetView(sender == ViewInspectorBtn ? 1 : 0);
+        }
+
+        /// <summary>
+        /// Switches the workspace between the AE Effect Controls panel
+        /// (mode 0, the default) and the split compatibility list +
+        /// inspector (mode 1). Hidden while no preset is loaded.
+        /// </summary>
+        private void SetView(int mode)
+        {
+            _viewMode = mode;
+            if (ViewEcBtn == null) return; // XAML not loaded yet (design-time)
+            bool has = _currentEffects.Any(x => !x.IsSentinel);
+            ViewEcBtn.IsChecked = mode == 0;
+            ViewInspectorBtn.IsChecked = mode == 1;
+            ViewSwitcher.Visibility = has ? Visibility.Visible : Visibility.Collapsed;
+            EcHost.Visibility = has && mode == 0 ? Visibility.Visible : Visibility.Collapsed;
+            SplitHost.Visibility = has && mode == 1 ? Visibility.Visible : Visibility.Collapsed;
+            if (mode == 0) RefreshEcRows();
+        }
+
+        /// <summary>Vendor/status line under one Effect Controls block title.</summary>
+        private string EcSubFor(int effectIndex, PresetEffectDetails d)
+        {
+            string vendor = _ecVendor.TryGetValue(effectIndex, out string v) ? v : "unknown plugin";
+            string status = _ecStatus.TryGetValue(effectIndex, out string s) ? s : "";
+            return $"{vendor}  ·  {d.Parameters.Count} parameter{(d.Parameters.Count == 1 ? "" : "s")}" +
+                   $"  ·  {d.AnimatedCount} animated  ·  {status}";
+        }
+
+        /// <summary>
+        /// Rebuilds the Effect Controls groups from the decoded preset. The
+        /// rows share the inspector's ParamRowVm/template and the same
+        /// lane/eye dictionaries, so toggles stay consistent across both
+        /// views. Cheap — runs only on load, theme change, or a toggle.
+        /// </summary>
+        private void RefreshEcRows()
+        {
+            if (EcList == null) return;
+            var groups = new List<EcGroupVm>();
+            for (int i = 0; i < _details.Count; i++)
+            {
+                var d = _details[i];
+                if (d.Parameters.Count == 0) continue;
+                bool open = !_ecOpen.TryGetValue(i, out bool o) || o;
+                var rows = new List<ParamRowVm>();
+                foreach (var p in d.Parameters)
+                {
+                    bool eye = !_eyeState.TryGetValue(p, out bool on) || on;
+                    rows.Add(new ParamRowVm(p)
+                    {
+                        LaneOpen = _laneState.TryGetValue(p, out bool ln) && ln,
+                        EyeOn = eye,
+                        RowOpacity = eye ? 1.0 : 0.42
+                    });
+                }
+                groups.Add(new EcGroupVm
+                {
+                    Title = string.IsNullOrEmpty(d.ShortName) ? d.MatchName : d.ShortName,
+                    Sub = EcSubFor(i, d),
+                    Open = open,
+                    Params = rows,
+                    EffectIndex = i
+                });
+            }
+            EcList.ItemsSource = groups;
+            EcEmpty.Visibility = groups.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        // ---------- Effect Controls group toggles ----------
+        private void FlipEcGroup(int effectIndex)
+        {
+            bool open = !_ecOpen.TryGetValue(effectIndex, out bool cur) || cur;
+            _ecOpen[effectIndex] = !open;
+            RefreshEcRows();
+        }
+
+        private void EcToggle_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is EcGroupVm g)
+            {
+                FlipEcGroup(g.EffectIndex);
+                e.Handled = true;
+            }
+        }
+
+        private void EcHeader_Click(object sender, MouseButtonEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is EcGroupVm g)
+            {
+                FlipEcGroup(g.EffectIndex);
+                e.Handled = true;
+            }
         }
 
         // ---------- inspector ----------
@@ -551,15 +695,25 @@ namespace FfxTool.Gui
                 SetInspectorEmpty();
                 return;
             }
+            ShowEffect(row.EffectIndex, row.Name);
+        }
 
-            _inspEffectIndex = row.EffectIndex;
+        /// <summary>
+        /// Populates the inspector for a stable effect index. Normally the
+        /// (visible) list row drives this; Effect Controls clicks resolve
+        /// their owning effect directly, even when that row is filtered
+        /// out of the compatibility list.
+        /// </summary>
+        private void ShowEffect(int effectIndex, string fallbackName)
+        {
+            _inspEffectIndex = effectIndex;
             _laneState.Clear();
             _eyeState.Clear();
             var d = CurrentDetails();
 
             if (d == null)
             {
-                InspTitle.Text = row.Name;
+                InspTitle.Text = fallbackName;
                 InspSub.Text = "No parameter data available";
                 InspEmpty.Visibility = Visibility.Collapsed;
                 InspUnavailable.Visibility = Visibility.Visible;
@@ -573,7 +727,7 @@ namespace FfxTool.Gui
                 return;
             }
 
-            InspTitle.Text = string.IsNullOrEmpty(d.ShortName) ? row.Name : d.ShortName;
+            InspTitle.Text = string.IsNullOrEmpty(d.ShortName) ? fallbackName : d.ShortName;
             InspSub.Text = $"{d.MatchName}  ·  {d.Parameters.Count} parameter{(d.Parameters.Count == 1 ? "" : "s")}" +
                            $"  ·  {d.AnimatedCount} animated";
             InspEmpty.Visibility = Visibility.Collapsed;
@@ -651,13 +805,33 @@ namespace FfxTool.Gui
             DrawGraph();
         }
 
-        /// <summary>Position of p among the effect's animated parameters.</summary>
+        /// <summary>
+        /// Position of p among the effect's animated parameters. Effect
+        /// Controls clicks arrive without a (visible) list selection, so the
+        /// owning effect is resolved from the decoded details on demand —
+        /// which also makes the hidden inspector's state correct.
+        /// </summary>
         private int AnimatedIndexOf(PresetParameter p)
         {
+            if (p == null) return -1;
             var d = CurrentDetails();
-            if (d == null || p == null) return -1;
-            var anim = d.Parameters.Where(x => x.IsAnimated).ToList();
-            return anim.IndexOf(p);
+            if (d != null)
+            {
+                var anim = d.Parameters.Where(x => x.IsAnimated).ToList();
+                int idx = anim.IndexOf(p);
+                if (idx >= 0) return idx;
+            }
+            for (int e = 0; e < _details.Count; e++)
+            {
+                if (_details[e].Parameters.Contains(p))
+                {
+                    var det = _details[e];
+                    ShowEffect(e, string.IsNullOrEmpty(det.ShortName) ? det.MatchName : det.ShortName);
+                    var anim = det.Parameters.Where(x => x.IsAnimated).ToList();
+                    return anim.IndexOf(p);
+                }
+            }
+            return -1;
         }
 
         /// <summary>
@@ -701,6 +875,7 @@ namespace FfxTool.Gui
                 bool open = _laneState.TryGetValue(vm.ParamRef, out bool cur) && cur;
                 _laneState[vm.ParamRef] = !open;
                 RefreshParamRows();
+                RefreshEcRows(); // the same lane lives in both views
                 e.Handled = true;
             }
         }
@@ -712,6 +887,7 @@ namespace FfxTool.Gui
                 bool on = !_eyeState.TryGetValue(vm.ParamRef, out bool cur) || cur;
                 _eyeState[vm.ParamRef] = !on;
                 RefreshParamRows();
+                RefreshEcRows(); // the same eye lives in both views
                 e.Handled = true;
             }
         }
@@ -757,6 +933,7 @@ namespace FfxTool.Gui
             if ((sender as FrameworkElement)?.DataContext is ParamRowVm vm && vm.IsAnimated)
             {
                 SelectAnimatedParam(AnimatedIndexOf(vm.ParamRef));
+                if (_viewMode == 0) SetView(1); // the Keyframes tab lives in the inspector
                 SetTab(1);
             }
         }
@@ -784,6 +961,7 @@ namespace FfxTool.Gui
             }
             BuildKeyframes();
             if (_tab == 0) RefreshParamRows(); // chip highlight follows the ring
+            if (_viewMode == 0) RefreshEcRows(); // and so do the panel's chips
             if (_tab == 2) DrawGraph();
         }
 
