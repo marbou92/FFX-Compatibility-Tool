@@ -155,12 +155,13 @@
             </Border>
         </DataTemplate>
 
-        <!-- AE keyframe-navigator button: 24px ghost square behind a glyph -->
+        <!-- AE keyframe-navigator button: 19px ghost square behind a glyph
+             (three of them must fit the reserved left gutter of a row) -->
         <Style x:Key="KfNavBtn" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
-            <Setter Property="Width" Value="24"/>
-            <Setter Property="Height" Value="24"/>
+            <Setter Property="Width" Value="19"/>
+            <Setter Property="Height" Value="19"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="FocusVisualStyle" Value="{StaticResource M3FocusVisual}"/>
@@ -184,17 +185,21 @@
             </Setter>
         </Style>
 
-        <!-- parameter row: the AE property-line anatomy — disclosure
-             triangle (opens the inline keyframe chips lane), the stopwatch
-             mark (lit = time-varying, like AE's stopwatch state), name +
-             stream summary, the value slot, an eye toggle that dims the
-             row (display only — this inspector never edits presets), and
-             (animated rows only) the keyframe navigator ◀ ◆ ▶ -->
+        <!-- parameter row: AE's Effect Controls PROPERTY LINE, at AE's row
+             density (one 26px line, no second description line — the
+             stream summary moved into the tooltip). Anatomy, left to
+             right: the reserved keyframe-navigator gutter (‹ ◆ › on
+             animated rows, empty on static ones so every NAME column
+             aligns, exactly like AE), the lane disclosure triangle, the
+             stopwatch slot (lit = time-varying), the fixed-width name
+             column, the value slot (primary color + underline = AE's
+             editable-value look), and the eye toggle that dims the row.
+             Grouped rows arrive pre-indented via RowMargin. -->
         <DataTemplate x:Key="ParamRow">
             <!-- background defaults live in the STYLE, not as a local
                  attribute — a local value would outrank the trigger and
                  the animated tint would never show -->
-            <Border Padding="8,6" CornerRadius="10" Margin="0,1"
+            <Border Padding="2,0,4,0" CornerRadius="8" Margin="{Binding RowMargin}"
                     ToolTip="{Binding MatchName}" Cursor="{Binding RowCursor}"
                     MouseLeftButtonUp="ParamRow_Click">
                 <Border.Style>
@@ -208,18 +213,35 @@
                     </Style>
                 </Border.Style>
                 <StackPanel>
-                    <Grid Opacity="{Binding RowOpacity}">
+                    <Grid Height="26" Opacity="{Binding RowOpacity}">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="59"/>   <!-- keyframe navigator gutter -->
+                            <ColumnDefinition Width="Auto"/> <!-- lane disclosure triangle -->
+                            <ColumnDefinition Width="18"/>   <!-- stopwatch slot -->
+                            <ColumnDefinition Width="150"/>  <!-- property name (fixed: AE column alignment) -->
+                            <ColumnDefinition Width="*"/>    <!-- value slot -->
+                            <ColumnDefinition Width="Auto"/> <!-- eye -->
                         </Grid.ColumnDefinitions>
+                        <!-- keyframe navigator: AE parks ‹ ◆ › in the
+                             leftmost gutter of animated rows -->
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                    Visibility="{Binding NavVisible}">
+                            <Button Style="{StaticResource KfNavBtn}" Click="KfPrev_Click"
+                                    ToolTip="Go to previous keyframe">
+                                <controls:IconGlyph IconName="ChevLeft" Width="11" Height="11"/>
+                            </Button>
+                            <Button Style="{StaticResource KfNavBtn}" Click="KfShow_Click" Margin="1,0"
+                                    ToolTip="{Binding KeyCountTip}">
+                                <controls:IconGlyph IconName="Diamond" Width="10" Height="10"/>
+                            </Button>
+                            <Button Style="{StaticResource KfNavBtn}" Click="KfNext_Click"
+                                    ToolTip="Go to next keyframe">
+                                <controls:IconGlyph IconName="ChevRight" Width="11" Height="11"/>
+                            </Button>
+                        </StackPanel>
                         <!-- disclosure triangle: toggles the inline keyframe
                              lane, exactly like AE's property triangles -->
-                        <ToggleButton Style="{StaticResource AEDisclosure}" Click="LaneToggle_Click"
+                        <ToggleButton Grid.Column="1" Style="{StaticResource AEDisclosure}" Click="LaneToggle_Click"
                                       IsChecked="{Binding LaneOpen}" Visibility="{Binding TriangleVisible}"
                                       ToolTip="Show / hide this property's keyframes" VerticalAlignment="Center">
                             <controls:IconGlyph IconName="ArrowDrop" Width="14" Height="14"/>
@@ -229,8 +251,9 @@
                              read-only and never removes keyframe data).
                              Foreground keyed through a trigger so the theme
                              swap keeps working (no captured brushes) -->
-                        <controls:IconGlyph Grid.Column="1" IconName="Stopwatch" Width="14" Height="14"
-                                            VerticalAlignment="Center" Margin="3,0,5,0" IsHitTestVisible="False"
+                        <controls:IconGlyph Grid.Column="2" IconName="Stopwatch" Width="13" Height="13"
+                                            VerticalAlignment="Center" IsHitTestVisible="False"
+                                            HorizontalAlignment="Center"
                                             Opacity="{Binding StopwatchOpacity}" ToolTip="{Binding StopwatchTip}">
                             <controls:IconGlyph.Style>
                                 <Style TargetType="controls:IconGlyph">
@@ -243,43 +266,34 @@
                                 </Style>
                             </controls:IconGlyph.Style>
                         </controls:IconGlyph>
-                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="Medium"
-                                       TextTrimming="CharacterEllipsis"/>
-                            <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}"
-                                       Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
-                        </StackPanel>
-                        <TextBlock Grid.Column="3" Text="{Binding ValueText}" FontWeight="SemiBold" FontSize="12.5"
+                        <!-- property name at AE's fixed column; the stream
+                             summary (animated · travel · span) lives in the
+                             tooltip now, keeping the row one line tall -->
+                        <TextBlock Grid.Column="3" Text="{Binding Name}" Style="{StaticResource Body}"
+                                   FontWeight="Medium" FontSize="12.5" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding Detail}"/>
+                        <!-- value slot: AE renders editable values underlined
+                             in the accent color — this inspector never
+                             edits, but the underline keeps the anatomy
+                             reading as AE's panel -->
+                        <TextBlock Grid.Column="4" Text="{Binding ValueText}" FontWeight="SemiBold" FontSize="12.5"
                                    Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"
-                                   Margin="8,0,0,0" Visibility="{Binding ValueVisible}"
+                                   Margin="6,0,0,0" Visibility="{Binding ValueVisible}"
+                                   TextDecorations="Underline" TextTrimming="CharacterEllipsis"
                                    ToolTip="{Binding ValueTip}"/>
                         <!-- eye: dims the row, AE layer-visibility feel -->
-                        <ToggleButton Grid.Column="4" Style="{StaticResource AEToggle}" Click="EyeToggle_Click"
-                                      IsChecked="{Binding EyeOn}" VerticalAlignment="Center" Margin="6,0,0,0"
+                        <ToggleButton Grid.Column="5" Style="{StaticResource AEToggle}" Click="EyeToggle_Click"
+                                      IsChecked="{Binding EyeOn}" VerticalAlignment="Center" Margin="4,0,0,0"
                                       ToolTip="Toggle this row's visibility (display only)">
-                            <controls:IconGlyph IconName="Eye" Width="13" Height="13"/>
+                            <controls:IconGlyph IconName="Eye" Width="12" Height="12"/>
                         </ToggleButton>
-                        <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center"
-                                    Margin="2,0,0,0" Visibility="{Binding NavVisible}">
-                            <Button Style="{StaticResource KfNavBtn}" Click="KfPrev_Click"
-                                    ToolTip="Go to previous keyframe">
-                                <controls:IconGlyph IconName="ChevLeft" Width="13" Height="13"/>
-                            </Button>
-                            <Button Style="{StaticResource KfNavBtn}" Click="KfShow_Click" Margin="1,0"
-                                    ToolTip="{Binding KeyCountTip}">
-                                <controls:IconGlyph IconName="Diamond" Width="11" Height="11"/>
-                            </Button>
-                            <Button Style="{StaticResource KfNavBtn}" Click="KfNext_Click"
-                                    ToolTip="Go to next keyframe">
-                                <controls:IconGlyph IconName="ChevRight" Width="13" Height="13"/>
-                            </Button>
-                        </StackPanel>
                     </Grid>
                     <!-- inline keyframe lane: one chip per keyframe
                          (frame number + value in the tooltip), the same
-                         selection the graph ring and the table highlight -->
+                         selection the graph ring and the table highlight;
+                         indented to the name column like AE's keyframe lane -->
                     <ItemsControl ItemsSource="{Binding Chips}" Visibility="{Binding LaneVisible}"
-                                  ItemTemplate="{StaticResource KfChip}" Margin="22,3,0,2">
+                                  ItemTemplate="{StaticResource KfChip}" Margin="59,1,0,3">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <WrapPanel Orientation="Horizontal"/>
@@ -329,16 +343,53 @@
                 </Grid>
             </Border>
         </DataTemplate>
-        <!-- one Effect Controls group: the AE panel's effect block - the
-             fx badge, display name and (display-only) Reset link on the
-             header line, the disclosure triangle collapsing the parameter
-             body, and the same AE property rows the inspector uses -->
+        <!-- named parameter group inside an effect block: AE's collapsible
+             sub-group row ("Compositing Options" and friends). The nested
+             body reuses the same template selector, so deeper nesting
+             keeps working; templates come from the selector because WPF
+             XAML cannot target the page's nested VM classes with x:Type. -->
+        <DataTemplate x:Key="EcSubGroupTpl">
+            <StackPanel>
+                <Grid Background="Transparent" MouseLeftButtonUp="EcSub_Click" Cursor="Hand"
+                      Margin="0,1,0,1" ToolTip="Show / hide this parameter group">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <ToggleButton Style="{StaticResource AEDisclosure}" IsChecked="{Binding Open}"
+                                  Click="EcSubToggle_Click" VerticalAlignment="Center"
+                                  ToolTip="Show / hide this parameter group">
+                        <controls:IconGlyph IconName="ArrowDrop" Width="14" Height="14"/>
+                    </ToggleButton>
+                    <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="Medium"
+                               FontSize="12.5" Foreground="{DynamicResource B.OnSurface}"
+                               VerticalAlignment="Center" Margin="2,0,0,0"
+                               TextTrimming="CharacterEllipsis"/>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding Items}" Margin="14,0,0,0"
+                              Visibility="{Binding BodyVisible}">
+                    <ItemsControl.ItemTemplateSelector>
+                        <controls:EcBodySelector GroupTemplate="{StaticResource EcSubGroupTpl}"
+                                                 RowTemplate="{StaticResource ParamRow}"/>
+                    </ItemsControl.ItemTemplateSelector>
+                </ItemsControl>
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- one Effect Controls group: AE's effect block anatomy — the
+             disclosure triangle, the effect on/off EYE (AE's effect
+             switch, dims the whole block), the fx badge + effect name on
+             the header line and the display-only Reset link; the body is
+             a tree of property lines and named parameter groups
+             (EcSubGroupVm disclosure rows), the way AE nests
+             "Compositing Options" and friends. -->
         <DataTemplate x:Key="EcEffectGroup">
-            <Border CornerRadius="12" Background="{DynamicResource B.SCLowest}" Padding="4,4,8,8" Margin="0,0,0,8">
+            <Border CornerRadius="12" Background="{DynamicResource B.SCLowest}" Padding="6,5,10,9" Margin="0,0,0,8">
                 <StackPanel>
                     <Grid Background="Transparent" MouseLeftButtonUp="EcHeader_Click" Cursor="Hand"
                           ToolTip="{Binding Sub}">
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
@@ -349,26 +400,41 @@
                                       ToolTip="Show / hide this effect's parameters">
                             <controls:IconGlyph IconName="ArrowDrop" Width="14" Height="14"/>
                         </ToggleButton>
-                        <Border Grid.Column="1" Width="26" Height="26" CornerRadius="8"
+                        <!-- effect on/off eye: AE's effect switch — display
+                             only here, dims every row of the block -->
+                        <ToggleButton Grid.Column="1" Style="{StaticResource AEToggle}" IsChecked="{Binding EyeOn}"
+                                      Click="EcEye_Click" VerticalAlignment="Center" Margin="3,0,1,0"
+                                      ToolTip="Effect visibility (display only)">
+                            <controls:IconGlyph IconName="Eye" Width="12" Height="12"/>
+                        </ToggleButton>
+                        <Border Grid.Column="2" Width="24" Height="24" CornerRadius="8"
                                 Background="{DynamicResource B.PrimaryContainer}"
-                                VerticalAlignment="Center" Margin="4,0,9,0" IsHitTestVisible="False">
+                                VerticalAlignment="Center" Margin="5,0,9,0" IsHitTestVisible="False">
                             <TextBlock Text="fx" FontStyle="Italic" FontWeight="SemiBold" FontSize="12"
                                        Foreground="{DynamicResource B.OnPrimaryContainer}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
-                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                        <StackPanel Grid.Column="3" VerticalAlignment="Center">
                             <TextBlock Text="{Binding Title}" Style="{StaticResource Body}" FontWeight="SemiBold"
                                        TextTrimming="CharacterEllipsis"/>
                             <TextBlock Text="{Binding Sub}" Style="{StaticResource Caption}" Margin="0,1,0,0"
                                        TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
-                        <TextBlock Grid.Column="3" Text="Reset" FontSize="12" FontWeight="Medium"
+                        <TextBlock Grid.Column="4" Text="Reset" FontSize="12" FontWeight="Medium"
                                    Foreground="{DynamicResource B.Primary}" Opacity="0.4"
                                    VerticalAlignment="Center" Margin="10,0,4,0" IsHitTestVisible="False"
                                    ToolTip="Display only - this inspector never modifies presets"/>
                     </Grid>
-                    <ItemsControl ItemsSource="{Binding Params}" ItemTemplate="{StaticResource ParamRow}"
-                                  Margin="8,2,0,0" Visibility="{Binding BodyVisible}"/>
+                    <!-- body: property lines + nested parameter groups in
+                         document order — the selector picks the group
+                         disclosure template or the AE property row -->
+                    <ItemsControl ItemsSource="{Binding Items}" Margin="8,4,0,0"
+                                  Visibility="{Binding BodyVisible}">
+                        <ItemsControl.ItemTemplateSelector>
+                            <controls:EcBodySelector GroupTemplate="{StaticResource EcSubGroupTpl}"
+                                                     RowTemplate="{StaticResource ParamRow}"/>
+                        </ItemsControl.ItemTemplateSelector>
+                    </ItemsControl>
                 </StackPanel>
             </Border>
         </DataTemplate>
@@ -390,9 +456,9 @@
                 <Border Background="{DynamicResource B.SCLowest}" CornerRadius="12" Padding="3">
                     <StackPanel Orientation="Horizontal">
                         <ToggleButton x:Name="ViewEcBtn" Content="Effect Controls" Style="{StaticResource InspTab}"
-                                      IsChecked="True" Click="ViewBtn_Click"/>
-                        <ToggleButton x:Name="ViewInspectorBtn" Content="Inspector" Style="{StaticResource InspTab}"
                                       Click="ViewBtn_Click"/>
+                        <ToggleButton x:Name="ViewInspectorBtn" Content="Inspector" Style="{StaticResource InspTab}"
+                                      IsChecked="True" Click="ViewBtn_Click"/>
                     </StackPanel>
                 </Border>
             </StackPanel>

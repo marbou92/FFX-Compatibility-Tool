@@ -22,10 +22,16 @@ namespace FfxTool.Core
     /// EASING: each segment interpolates as a cubic Bezier that mirrors
     /// AE's tangent model — the outgoing handle of keyframe A sits at
     /// time A.t + outInfluence·Δt with value A.v + outSlope·(outInfluence
-    /// ·Δt / TicksPerSecond), and keyframe B's incoming handle mirrors
-    /// it. Linear segments are straight lines, Hold segments step at the
-    /// right keyframe. The fixture's Easy-Ease streams (slope 0,
-    /// influences 1/3 + 1/6) render as the familiar S-curve.
+    /// ·Δt), and keyframe B's incoming handle mirrors it. Slopes are
+    /// VALUE-PER-SECOND — the same numbers AE's Graph Editor speed readout
+    /// shows — so the handle's value offset is simply speed × its time
+    /// offset in seconds. (An earlier revision divided by TicksPerSecond
+    /// here, which collapsed every real-world handle onto its keyframe and
+    /// flattened eased curves into straight lines — Easy Ease only looked
+    /// right because its slopes are zero.) Linear segments are straight
+    /// lines, Hold segments step at the right keyframe. The fixture's
+    /// Easy-Ease streams (slope 0, influences 1/3 + 1/6) render as the
+    /// familiar S-curve.
     /// </summary>
     public static class PresetCurve
     {
@@ -73,12 +79,12 @@ namespace FfxTool.Core
 
                 double oi = Clamp01(a.OutInfluence);
                 double ii = Clamp01(b.InInfluence);
-                // handle offset in seconds, slope converted value/second:
-                // Δv = slope × Δseconds
+                // handles: time offset = influence × Δt (seconds); value
+                // offset = slope × time offset — slopes are value/second
                 seg.C1T = t0 + oi * (t1 - t0);
-                seg.C1V = a.Value + a.OutSlope * oi * (t1 - t0) / TicksPerSecond;
+                seg.C1V = a.Value + a.OutSlope * oi * (t1 - t0);
                 seg.C2T = t1 - ii * (t1 - t0);
-                seg.C2V = b.Value - b.InSlope * ii * (t1 - t0) / TicksPerSecond;
+                seg.C2V = b.Value - b.InSlope * ii * (t1 - t0);
 
                 segs.Add(seg);
             }

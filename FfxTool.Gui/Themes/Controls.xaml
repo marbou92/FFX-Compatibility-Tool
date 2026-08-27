@@ -177,15 +177,15 @@
          Hover lifts the glyph too: IconGlyph.Foreground inherits down the
          tree, so a Foreground setter on the button reaches the glyph. -->
     <Style x:Key="ChromeButton" TargetType="Button">
-        <Setter Property="Width" Value="44"/>
-        <Setter Property="Height" Value="64"/>
+        <Setter Property="Width" Value="40"/>
+        <Setter Property="Height" Value="40"/>
         <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Focusable" Value="False"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bg" Background="Transparent" CornerRadius="8">
+                    <Border x:Name="Bg" Background="Transparent" CornerRadius="6">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>
@@ -209,7 +209,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bg" Background="Transparent" CornerRadius="0,7,0,0">
+                    <Border x:Name="Bg" Background="Transparent" CornerRadius="0,6,0,0">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>

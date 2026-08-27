@@ -36,16 +36,33 @@ namespace FfxTool.Core
         public int InterpIn;
         public int InterpOut;
 
-        /// <summary>Human label for this keyframe's easing, e.g. "Bezier".</summary>
+        /// <summary>
+        /// Human label for this keyframe's easing. Linear and Hold come
+        /// straight from the stored interpolation codes; everything else
+        /// is a Bezier, and the stored tangents tell AE's Easy Ease apart
+        /// from a hand-drawn curve: Easy Ease is exactly "zero speed with
+        /// the classic influence" (1/3 mid-stream, 1/6 on stream edges),
+        /// which is how the shipped fixture's smooth streams decode.
+        /// </summary>
         public string InterpLabel
         {
             get
             {
-                string In(int v) => v == 1 ? "Linear" : v == 3 ? "Hold" : "Bezier";
-                string a = In(InterpIn), b = In(InterpOut);
+                string a = SideLabel(InterpIn, InSlope, InInfluence);
+                string b = SideLabel(InterpOut, OutSlope, OutInfluence);
                 return a == b ? a : a + " / " + b;
             }
         }
+
+        static string SideLabel(int code, double slope, double influence)
+        {
+            if (code == 1) return "Linear";
+            if (code == 3) return "Hold";
+            return IsEasyEase(slope, influence) ? "Easy Ease" : "Bezier";
+        }
+
+        static bool IsEasyEase(double slope, double influence) =>
+            Math.Abs(slope) < 1e-9 && influence > 1e-9 && influence <= 0.5;
     }
 
     /// <summary>One parameter of one effect: static value or a keyframe stream.</summary>
@@ -53,6 +70,12 @@ namespace FfxTool.Core
     {
         public string Name;
         public string MatchName;
+        /// <summary>
+        /// Enclosing display group path ("Compositing Options", or deeper
+        /// levels joined with '\u0001'), or null for top-level parameters —
+        /// mirrors how AE nests parameters under tdgp disclosure groups.
+        /// </summary>
+        public string Group;
         public bool IsAnimated;
         public double? StaticValue;
         public double? Min;
@@ -121,7 +144,17 @@ namespace FfxTool.Core
 
                 foreach (var child in sspcs[i].Children)
                     if (child.IsContainer && Same(child.Form, RiffFile.Cid("tdgp")))
-                        WalkGroup(child, details);
+                    {
+                        // the effect's ROOT tdgp: its own tdsn is the effect
+                        // display name, not a parameter group
+                        WalkGroup(child, details, null);
+                        if (string.IsNullOrEmpty(details.ShortName))
+                        {
+                            var rootName = child.Children.FirstOrDefault(
+                                c => !c.IsContainer && Same(c.Cid, TDSN));
+                            if (rootName != null) details.ShortName = DecodeString(rootName.Content);
+                        }
+                    }
 
                 result.Add(details);
             }
@@ -139,11 +172,12 @@ namespace FfxTool.Core
         /// <summary>
         /// Walk a parameter group tree in document order. tdmn chunks carry
         /// the match name of whatever parameter record (LIST tdbs) follows
-        /// them; nested tdgp groups are recursed into and their params are
-        /// flattened with names kept, which matches how AE presents nested
-        /// groups in the effect controls.
+        /// them; nested tdgp groups are recursed into as DISPLAY groups —
+        /// their first tdsn leaf names them ("Compositing Options") and the
+        /// path is stamped on every parameter found inside, which mirrors
+        /// how AE nests groups in the effect controls.
         /// </summary>
-        static void WalkGroup(RiffNode group, PresetEffectDetails into)
+        static void WalkGroup(RiffNode group, PresetEffectDetails into, string groupPath)
         {
             string pendingMatch = null;
             foreach (var child in group.Children)
@@ -154,16 +188,28 @@ namespace FfxTool.Core
                 }
                 else if (child.IsContainer && Same(child.Form, RiffFile.Cid("tdgp")))
                 {
-                    WalkGroup(child, into);
+                    WalkGroup(child, into, ChildGroupPath(child, groupPath));
                 }
                 else if (child.IsContainer && Same(child.Form, RiffFile.Cid("tdbs")))
                 {
                     var p = ParseParameter(child, pendingMatch);
                     pendingMatch = null;
                     if (p != null && !SkipMatchNames.Contains(p.MatchName))
+                    {
+                        p.Group = groupPath;
                         into.Parameters.Add(p);
+                    }
                 }
             }
+        }
+
+        /// <summary>Display-group path of a tdgp, appended to the parent path.</summary>
+        static string ChildGroupPath(RiffNode node, string parentPath)
+        {
+            var tdsn = node.Children.FirstOrDefault(c => !c.IsContainer && Same(c.Cid, TDSN));
+            string name = tdsn != null ? DecodeString(tdsn.Content) : null;
+            if (string.IsNullOrEmpty(name)) return parentPath; // anonymous wrapper: keep parent depth
+            return parentPath == null ? name : parentPath + '\u0001' + name;
         }
 
         static PresetParameter ParseParameter(RiffNode tdbs, string matchName)

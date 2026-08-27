@@ -23,11 +23,13 @@ namespace FfxTool.Gui
     /// friendly empty state, drag-overlay language shared with Convert,
     /// and a recent-files flyout over the full 5-entry history.
     ///
-    /// The workspace switches between two views: AE's Effect Controls panel
-    /// (the default — every effect as a collapsible block of property
-    /// lines, fx badge + Reset on the header) and the split compatibility
-    /// list + tabbed inspector. Both read the same decoded data and share
-    /// lane/eye/keyframe selection state.
+    /// The workspace switches between two views: the split compatibility
+    /// list + tabbed inspector (the default) and AE's Effect Controls
+    /// panel — every effect as a collapsible block of real AE property
+    /// lines (keyframe-navigator gutter, stopwatch, underlined value
+    /// slot, per-row eye, per-effect eye on the header, nested parameter
+    /// groups). Both read the same decoded data and share lane/eye/
+    /// keyframe selection state.
     ///
     /// The right-hand inspector reads like AE's timeline: parameter rows
     /// carry the stopwatch mark (lit = time-varying) and a keyframe
@@ -91,12 +93,17 @@ namespace FfxTool.Gui
             // the decoded parameter behind the row — what the navigator
             // buttons and the row click resolve to
             public PresetParameter ParamRef { get; set; }
+            // nesting depth of this row's AE parameter group (0 = top
+            // level); the Effect Controls body indents grouped rows by it
+            public int GroupDepth { get; set; }
+            public Thickness RowMargin => new Thickness(GroupDepth * 14, 1, 0, 1);
 
             public ParamRowVm(PresetParameter p)
             {
                 ParamRef = p;
                 Name = p.Name;
                 MatchName = p.MatchName ?? p.Name;
+                GroupDepth = p.Group == null ? 0 : p.Group.Split('\u0001').Length;
                 IsAnimated = p.IsAnimated;
                 RowCursor = p.IsAnimated ? Cursors.Hand : Cursors.Arrow;
 
@@ -240,7 +247,10 @@ namespace FfxTool.Gui
             public string Sub { get; set; }
             public bool Open { get; set; }
             public Visibility BodyVisible => Open ? Visibility.Visible : Visibility.Collapsed;
-            public List<ParamRowVm> Params { get; set; }
+            public bool EyeOn { get; set; }
+            // body tree: ParamRowVm property lines and EcSubGroupVm group
+            // nodes, in the preset's document order
+            public List<object> Items { get; set; }
             public int EffectIndex { get; set; }
         }
 
@@ -280,6 +290,11 @@ namespace FfxTool.Gui
         // the dictionaries are keyed by stable effect index.
         private int _viewMode;
         private readonly Dictionary<int, bool> _ecOpen = new Dictionary<int, bool>();
+        // AE anatomy state: the effect block's on/off eye (keyed by effect
+        // index) and each named parameter group's disclosure state (keyed
+        // "effectIndex|groupPath"); both survive every rebuild
+        private readonly Dictionary<int, bool> _ecEyeState = new Dictionary<int, bool>();
+        private readonly Dictionary<string, bool> _ecGroupOpen = new Dictionary<string, bool>();
         private readonly Dictionary<int, string> _ecStatus = new Dictionary<int, string>();
         private readonly Dictionary<int, string> _ecVendor = new Dictionary<int, string>();
 
@@ -300,7 +315,7 @@ namespace FfxTool.Gui
             GraphCanvas.SizeChanged += (s, e) => ScheduleGraphRedraw();
             KfTimeline.SizeChanged += (s, e) => DrawKfTimeline();
             SetTab(0);
-            SetView(0); // Effect Controls is the default workspace view
+            SetView(1); // the Inspector is the default workspace view
             // row container brushes are captured per Refresh — re-run when the
             // theme changes so status tints match the new palette/mode; the
             // graph and the keyframe strip bake brush colors too
@@ -594,6 +609,12 @@ namespace FfxTool.Gui
             EcHost.Visibility = has && mode == 0 ? Visibility.Visible : Visibility.Collapsed;
             SplitHost.Visibility = has && mode == 1 ? Visibility.Visible : Visibility.Collapsed;
             if (mode == 0) RefreshEcRows();
+            else
+            {
+                // the graph pane may be getting its first real size this
+                // pass — repaint after layout instead of 70ms later
+                Dispatcher.BeginInvoke(new Action(DrawGraph), DispatcherPriority.Loaded);
+            }
         }
 
         /// <summary>Vendor/status line under one Effect Controls block title.</summary>
@@ -620,28 +641,66 @@ namespace FfxTool.Gui
                 var d = _details[i];
                 if (d.Parameters.Count == 0) continue;
                 bool open = !_ecOpen.TryGetValue(i, out bool o) || o;
-                var rows = new List<ParamRowVm>();
+                bool blockOn = !_ecEyeState.TryGetValue(i, out bool bo) || bo;
+                var root = new List<object>();
+                var created = new Dictionary<string, EcSubGroupVm>();
                 foreach (var p in d.Parameters)
                 {
                     bool eye = !_eyeState.TryGetValue(p, out bool on) || on;
-                    rows.Add(new ParamRowVm(p)
+                    var row = new ParamRowVm(p)
                     {
                         LaneOpen = _laneState.TryGetValue(p, out bool ln) && ln,
                         EyeOn = eye,
-                        RowOpacity = eye ? 1.0 : 0.42
-                    });
+                        RowOpacity = (eye ? 1.0 : 0.42) * (blockOn ? 1.0 : 0.42)
+                    };
+                    AddEcRow(root, created, i, p.Group, row);
                 }
                 groups.Add(new EcGroupVm
                 {
                     Title = string.IsNullOrEmpty(d.ShortName) ? d.MatchName : d.ShortName,
                     Sub = EcSubFor(i, d),
                     Open = open,
-                    Params = rows,
+                    EyeOn = blockOn,
+                    Items = root,
                     EffectIndex = i
                 });
             }
             EcList.ItemsSource = groups;
             EcEmpty.Visibility = groups.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        /// <summary>
+        /// Places one property row into the EC body tree: at the root, or
+        /// inside its parameter group — intermediate group nodes are
+        /// created on first encounter, so the preset's document order of
+        /// groups and rows (AE's panel order) is preserved.
+        /// </summary>
+        private void AddEcRow(List<object> root, Dictionary<string, EcSubGroupVm> created,
+                              int effectIndex, string path, ParamRowVm row)
+        {
+            if (string.IsNullOrEmpty(path)) { root.Add(row); return; }
+            AddEcNode(root, created, effectIndex, path).Items.Add(row);
+        }
+
+        /// <summary>Gets or creates the group node for a group path.</summary>
+        private EcSubGroupVm AddEcNode(List<object> root, Dictionary<string, EcSubGroupVm> created,
+                                       int effectIndex, string path)
+        {
+            if (created.TryGetValue(path, out var g)) return g;
+            string name = path, parent = null;
+            int sep = path.LastIndexOf('\u0001');
+            if (sep >= 0) { name = path.Substring(sep + 1); parent = path.Substring(0, sep); }
+            g = new EcSubGroupVm
+            {
+                Title = name,
+                GroupKey = path,
+                EffectIndex = effectIndex,
+                Open = !_ecGroupOpen.TryGetValue(effectIndex + "|" + path, out bool stored) || stored
+            };
+            created[path] = g;
+            if (parent == null) root.Add(g);
+            else AddEcNode(root, created, effectIndex, parent).Items.Add(g);
+            return g;
         }
 
         // ---------- Effect Controls group toggles ----------
@@ -668,6 +727,46 @@ namespace FfxTool.Gui
                 FlipEcGroup(g.EffectIndex);
                 e.Handled = true;
             }
+        }
+
+        // effect on/off eye: AE's effect switch — display-only, dims the
+        // whole block (multiplied with each row's own eye state)
+        private void EcEye_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is EcGroupVm g)
+            {
+                bool on = !_ecEyeState.TryGetValue(g.EffectIndex, out bool cur) || cur;
+                _ecEyeState[g.EffectIndex] = !on;
+                RefreshEcRows();
+                e.Handled = true;
+            }
+        }
+
+        // named parameter group disclosure rows
+        private void EcSubToggle_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is EcSubGroupVm g)
+            {
+                FlipEcSub(g);
+                e.Handled = true;
+            }
+        }
+
+        private void EcSub_Click(object sender, MouseButtonEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is EcSubGroupVm g)
+            {
+                FlipEcSub(g);
+                e.Handled = true;
+            }
+        }
+
+        private void FlipEcSub(EcSubGroupVm g)
+        {
+            string key = g.EffectIndex + "|" + g.GroupKey;
+            bool open = !_ecGroupOpen.TryGetValue(key, out bool cur) || cur;
+            _ecGroupOpen[key] = !open;
+            RefreshEcRows();
         }
 
         // ---------- inspector ----------
@@ -995,6 +1094,13 @@ namespace FfxTool.Gui
             GraphPane.Visibility = tab == 2 ? Visibility.Visible : Visibility.Collapsed;
             BuildKeyframes();
             DrawGraph();
+            if (tab == 2)
+            {
+                // first paint after the pane was collapsed: ActualWidth is
+                // still 0 in this layout pass — repaint once layout is done
+                // instead of leaving a blank plot until the SizeChanged timer
+                Dispatcher.BeginInvoke(new Action(DrawGraph), DispatcherPriority.Loaded);
+            }
         }
 
         private void BuildKeyframes()
@@ -1021,8 +1127,8 @@ namespace FfxTool.Gui
             if (_selKf >= 0 && _selKf < kfs.Count)
             {
                 var k = kfs[_selKf];
-                KfDetail.Text = $"#{_selKf + 1} easing — in:  slope {k.InSlope.ToString("0.###")} · influence {k.InInfluence.ToString("0.##")}" +
-                                $"   ·   out:  slope {k.OutSlope.ToString("0.###")} · influence {k.OutInfluence.ToString("0.##")}";
+                KfDetail.Text = $"#{_selKf + 1} {k.InterpLabel} — in:  speed {k.InSlope.ToString("0.###")} /s · influence {Pct(k.InInfluence)}" +
+                                $"   ·   out:  speed {k.OutSlope.ToString("0.###")} /s · influence {Pct(k.OutInfluence)}";
                 KfDetail.Visibility = Visibility.Visible;
 
                 // keep the picked row visible (the list is small and plain
@@ -1056,6 +1162,9 @@ namespace FfxTool.Gui
                 ? $"{h}:{m.ToString("00")}:{s.ToString("00")}:{f.ToString("00")}"
                 : $"0:{m.ToString("00")}:{s.ToString("00")}:{f.ToString("00")}";
         }
+
+        /// <summary>AE shows influences as percentages ("Influence: 33.3%").</summary>
+        private static string Pct(double v) => (v * 100).ToString("0.#") + "%";
 
         private sealed class PlotState
         {
@@ -1772,5 +1881,32 @@ namespace FfxTool.Gui
             Canvas.SetTop(lbl, y);
             GraphCanvas.Children.Add(lbl);
         }
+    }
+
+    /// <summary>
+    /// One named parameter group inside an Effect Controls block — AE's
+    /// collapsible sub-groups ("Compositing Options" and friends). A
+    /// top-level class because the XAML template selector references it.
+    /// </summary>
+    public class EcSubGroupVm
+    {
+        public string Title { get; set; }
+        public string GroupKey { get; set; }
+        public int EffectIndex { get; set; }
+        public bool Open { get; set; }
+        public Visibility BodyVisible => Open ? Visibility.Visible : Visibility.Collapsed;
+        public List<object> Items { get; set; } = new List<object>();
+    }
+
+    /// <summary>
+    /// Picks the Effect Controls body template: a group disclosure row for
+    /// EcSubGroupVm nodes, the AE property line for everything else.
+    /// </summary>
+    public sealed class EcBodySelector : DataTemplateSelector
+    {
+        public DataTemplate GroupTemplate { get; set; }
+        public DataTemplate RowTemplate { get; set; }
+        public override DataTemplate SelectTemplate(object item, DependencyObject container) =>
+            item is EcSubGroupVm ? GroupTemplate : RowTemplate;
     }
 }

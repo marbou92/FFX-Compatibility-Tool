@@ -10,7 +10,7 @@
         WindowStyle="SingleBorderWindow" AllowsTransparency="False" ResizeMode="CanResize">
 
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="64" ResizeBorderThickness="8"
+        <shell:WindowChrome CaptionHeight="40" ResizeBorderThickness="8"
                             GlassFrameThickness="0" CornerRadius="0"
                             UseAeroCaptionButtons="False"/>
     </shell:WindowChrome.WindowChrome>
@@ -50,32 +50,35 @@
     <Border x:Name="WindowRoot">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="64"/>
+                <RowDefinition Height="40"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- ============ custom title bar (native drag/snap via WindowChrome) ============ -->
+            <!-- ============ custom title bar (native drag/snap via WindowChrome) ============
+                 Compact caption: the native Win7/Win10 bar this app replaces
+                 is ~30px, and 64px of custom chrome read as a second
+                 header. 40px keeps the custom buttons comfortable while
+                 the content starts where users expect it. -->
             <Grid Grid.Row="0" x:Name="ChromeGrid">
-                <StackPanel x:Name="TitleBrand" Orientation="Horizontal" VerticalAlignment="Center" Margin="24,0,0,0">
+                <StackPanel x:Name="TitleBrand" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
                     <!-- the real app icon - same artwork as the exe and
                          taskbar button, so the brand matches everywhere.
-                         Rendered natively at exactly 24px (app.ico only
-                         ships ico frames; this PNG is pixel-perfect here) -->
-                    <Image Source="pack://application:,,,/Assets/app-24.png" Width="24" Height="24"
+                         16px matches the caption height's icon proportions -->
+                    <Image Source="pack://application:,,,/Assets/app-24.png" Width="16" Height="16"
                            RenderOptions.BitmapScalingMode="HighQuality" VerticalAlignment="Center"/>
-                    <TextBlock Text="FFX Compatibility Tool" FontSize="16" FontWeight="SemiBold"
-                               Foreground="{DynamicResource B.OnSurface}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="FFX Compatibility Tool" FontSize="13" FontWeight="SemiBold"
+                               Foreground="{DynamicResource B.OnSurface}" Margin="9,0,0,0" VerticalAlignment="Center"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"
                             WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button x:Name="MinBtn" Style="{StaticResource ChromeButton}" ToolTip="Minimize">
-                        <controls:IconGlyph IconName="Minimize" Width="18" Height="18"/>
+                        <controls:IconGlyph IconName="Minimize" Width="14" Height="14"/>
                     </Button>
                     <Button x:Name="MaxBtn" Style="{StaticResource ChromeButton}" ToolTip="Maximize">
-                        <controls:IconGlyph x:Name="MaxIcon" IconName="Maximize" Width="18" Height="18"/>
+                        <controls:IconGlyph x:Name="MaxIcon" IconName="Maximize" Width="14" Height="14"/>
                     </Button>
                     <Button x:Name="CloseBtn" Style="{StaticResource ChromeCloseButton}" ToolTip="Close">
-                        <controls:IconGlyph IconName="Close" Width="18" Height="18"/>
+                        <controls:IconGlyph IconName="Close" Width="14" Height="14"/>
                     </Button>
                 </StackPanel>
                 <Border VerticalAlignment="Bottom" Height="1" Background="{DynamicResource B.OutlineVariant}" Opacity="0.6"/>
