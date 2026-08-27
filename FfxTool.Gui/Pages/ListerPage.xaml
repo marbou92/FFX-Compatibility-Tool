@@ -3,6 +3,84 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:FfxTool.Gui"
              AllowDrop="True" DragEnter="Page_DragEnter" DragLeave="Page_DragLeave" Drop="Page_Drop">
+    <UserControl.Resources>
+        <!-- inspector sub-tabs: M3 segmented control (pill container below) -->
+        <Style x:Key="InspTab" TargetType="ToggleButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource M3FocusVisual}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="9"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource B.PrimaryContainer}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource B.OnPrimaryContainer}"/>
+                                <Setter TargetName="Bg" Property="Opacity" Value="1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- parameter row: name + range/match detail, chip on the right -->
+        <DataTemplate x:Key="ParamRow">
+            <Border Padding="12,9" CornerRadius="10" Margin="0,1" Background="Transparent"
+                    ToolTip="{Binding MatchName}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="Medium"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}"
+                                   Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    <Border Grid.Column="1" Style="{StaticResource Chip}" VerticalAlignment="Center" Margin="10,0,0,0"
+                            Visibility="{Binding ChipVisible}">
+                        <TextBlock Text="{Binding Chip}" Style="{StaticResource Caption}"/>
+                    </Border>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <!-- keyframe row: # · time · value · easing -->
+        <DataTemplate x:Key="KfRow">
+            <Border Padding="12,8" CornerRadius="10" Margin="0,1" Background="Transparent">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="30"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding Index}" Style="{StaticResource Caption}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Time}" Style="{StaticResource Caption}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Value}" Style="{StaticResource Body}" FontWeight="Medium"
+                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                    <Border Grid.Column="3" Style="{StaticResource Chip}" VerticalAlignment="Center" Margin="8,0,0,0">
+                        <TextBlock Text="{Binding Interp}" Style="{StaticResource Caption}"/>
+                    </Border>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
     <Grid Margin="32,24,32,24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -50,49 +128,154 @@
                 </Grid>
             </Border>
 
-            <!-- list -->
-            <Border x:Name="ListHost" Visibility="Collapsed" Margin="8,8,8,0" CornerRadius="22"
-                    Background="{DynamicResource B.SC}">
-                <Grid Margin="14,10,14,10">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <!-- column header -->
-                    <Grid Grid.Row="0" Margin="6,2,6,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="2*"/>
-                            <ColumnDefinition Width="2*"/>
-                            <ColumnDefinition Width="1.2*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="EFFECT NAME" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
-                        <TextBlock Grid.Column="1" Text="PLUGIN VENDOR" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
-                        <TextBlock Grid.Column="2" Text="COMPATIBILITY" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+            <!-- loaded state: effect list + inspector side by side -->
+            <Grid x:Name="SplitHost" Visibility="Collapsed">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="340"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- effect list -->
+                <Border x:Name="ListHost" Grid.Column="0" Margin="8,8,4,0" CornerRadius="22"
+                        Background="{DynamicResource B.SC}">
+                    <Grid Margin="14,10,14,10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <!-- column header -->
+                        <Grid Grid.Row="0" Margin="6,2,6,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="1.4*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="EFFECT NAME" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="1" Text="PLUGIN VENDOR" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="2" Text="COMPATIBILITY" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                        </Grid>
+                        <ListBox x:Name="EffectList" Grid.Row="1" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 VirtualizingPanel.ScrollUnit="Pixel" Focusable="False"
+                                 SelectionChanged="EffectList_SelectionChanged">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{Binding RowBrush}" CornerRadius="10" Padding="14,9" Margin="0,1">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="2*"/>
+                                                <ColumnDefinition Width="1.4*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="Medium"
+                                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding VendorLabel}" Style="{StaticResource BodySecondary}"
+                                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding Status}" Style="{StaticResource Body}"
+                                                       VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
                     </Grid>
-                    <ListBox x:Name="EffectList" Grid.Row="1" ScrollViewer.VerticalScrollBarVisibility="Auto"
-                             VirtualizingPanel.ScrollUnit="Pixel" Focusable="False">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="{Binding RowBrush}" CornerRadius="10" Padding="14,9" Margin="0,1">
+                </Border>
+
+                <!-- ============ inspector ============ -->
+                <Border x:Name="InspectorHost" Grid.Column="1" Margin="4,8,8,0" CornerRadius="22"
+                        Background="{DynamicResource B.SC}">
+                    <Grid Margin="14,10,14,12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0">
+                            <TextBlock x:Name="InspTitle" Text="Inspector" Style="{StaticResource Body}"
+                                       FontWeight="SemiBold" FontSize="15" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock x:Name="InspSub" Text="Select an effect to inspect it"
+                                       Style="{StaticResource Caption}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+
+                        <Border Grid.Row="1" Background="{DynamicResource B.SCLowest}" CornerRadius="12"
+                                Padding="3" Margin="0,12,0,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <ToggleButton x:Name="TabParamsBtn" Content="Parameters" Style="{StaticResource InspTab}"
+                                              IsChecked="True" Click="TabBtn_Click"/>
+                                <ToggleButton x:Name="TabKeyframesBtn" Grid.Column="1" Content="Keyframes"
+                                              Style="{StaticResource InspTab}" Click="TabBtn_Click"/>
+                                <ToggleButton x:Name="TabGraphBtn" Grid.Column="2" Content="Graph"
+                                              Style="{StaticResource InspTab}" Click="TabBtn_Click"/>
+                            </Grid>
+                        </Border>
+
+                        <Grid Grid.Row="2">
+                            <!-- prompts (nothing selected / undecodable) -->
+                            <TextBlock x:Name="InspEmpty" Text="Select an effect on the left to inspect its parameters, keyframes and value graph."
+                                       Style="{StaticResource BodySecondary}" TextWrapping="Wrap"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
+                                       MaxWidth="240"/>
+                            <TextBlock x:Name="InspUnavailable" Text="Parameter data for this effect couldn't be decoded — the preset may use a structure this inspector doesn't know yet."
+                                       Style="{StaticResource BodySecondary}" TextWrapping="Wrap"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
+                                       MaxWidth="240" Visibility="Collapsed"/>
+
+                            <!-- tab 1: parameters -->
+                            <ScrollViewer x:Name="ParamPane" Visibility="Collapsed"
+                                          ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                <StackPanel>
+                                    <ItemsControl x:Name="ParamList" ItemTemplate="{StaticResource ParamRow}"/>
+                                    <TextBlock x:Name="ParamEmpty" Text="No decodable parameters in this effect block."
+                                               Style="{StaticResource Caption}" Margin="12,8,12,8" TextWrapping="Wrap"
+                                               Visibility="Collapsed"/>
+                                </StackPanel>
+                            </ScrollViewer>
+
+                            <!-- tab 2: keyframes -->
+                            <Grid x:Name="KfPane" Visibility="Collapsed">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <ComboBox x:Name="KfParamSelect" Grid.Row="0" Margin="0,0,0,8"
+                                          SelectionChanged="AnimParam_SelectionChanged"/>
+                                <ScrollViewer Grid.Row="1" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                    <StackPanel>
+                                        <ItemsControl x:Name="KfList" ItemTemplate="{StaticResource KfRow}"/>
+                                        <TextBlock x:Name="KfEmpty" Text="This effect has no animated parameters — its values are static. Static values are listed under Parameters."
+                                                   Style="{StaticResource Caption}" Margin="12,8,12,8" TextWrapping="Wrap"
+                                                   Visibility="Collapsed"/>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Grid>
+
+                            <!-- tab 3: value graph -->
+                            <Grid x:Name="GraphPane" Visibility="Collapsed">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <ComboBox x:Name="GraphParamSelect" Grid.Row="0" Margin="0,0,0,8"
+                                          SelectionChanged="AnimParam_SelectionChanged"/>
+                                <Border Grid.Row="1" Background="{DynamicResource B.SCLowest}" CornerRadius="14" Padding="6">
                                     <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="2*"/>
-                                            <ColumnDefinition Width="2*"/>
-                                            <ColumnDefinition Width="1.2*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="Medium"
-                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding VendorLabel}" Style="{StaticResource BodySecondary}"
-                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="2" Text="{Binding Status}" Style="{StaticResource Body}"
-                                                   VerticalAlignment="Center"/>
+                                        <Canvas x:Name="GraphCanvas" Background="Transparent" ClipToBounds="True"/>
+                                        <TextBlock x:Name="GraphHint" Text="Pick an animated parameter to plot its value curve."
+                                                   Style="{StaticResource Caption}" TextWrapping="Wrap"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   TextAlignment="Center" MaxWidth="220"/>
                                     </Grid>
                                 </Border>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Grid>
-            </Border>
+                            </Grid>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
 
             <!-- drag feedback overlay (visual only — drop is handled by the page root) -->
             <Border x:Name="DragOverlay" Visibility="Collapsed" IsHitTestVisible="False" CornerRadius="26"

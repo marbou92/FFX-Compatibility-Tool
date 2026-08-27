@@ -29,10 +29,12 @@
          notch of rim colour poking past every rounded corner. The window
          background is therefore B.SURFACE (corner pixels blend into the
          content instead of drawing a notch), WindowRoot rounds its own
-         background and is clipped to the same 8px silhouette, and a
-         topmost WindowRim overlay strokes an ANTI-ALIASED 1px Outline line
-         that traces the rounded edge over every child — a crisp, continuous
-         outline with no staircase and no corner notch.
+         background and is clipped to the same 8px silhouette, a topmost
+         WindowRim overlay strokes an ANTI-ALIASED 1px Outline line that
+         traces the rounded edge over every child, and MainWindow's
+         ApplyWindowRegion cuts the HWND itself to the rounded rectangle
+         with SetWindowRgn — the OS simply never paints those corner
+         pixels, on any desktop, on any wallpaper.
          Maximized: MainWindow.ApplyChromeState squares the corners, drops
          the rim and pads the content back inside the visible work area. -->
     <Border x:Name="WindowRoot" CornerRadius="8"

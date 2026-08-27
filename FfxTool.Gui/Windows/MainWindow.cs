@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Windows;
@@ -22,6 +23,24 @@ namespace FfxTool.Gui
 
     public partial class MainWindow : Window
     {
+        // ---------- true rounded window region (Win7-safe) ----------
+        // The HWND itself is always a rectangle; no amount of WPF-side
+        // clipping changes what the OS paints AROUND our content, so on a
+        // patterned desktop the square corner pixels used to peek out past
+        // the rounded silhouette (the artifact from the latest screenshots).
+        // SetWindowRgn makes the window genuinely non-rectangular at the OS
+        // level — the standard skinned-app technique of that era — while the
+        // WPF-side rim + clip keep drawing the anti-aliased edge just inside
+        // it. The region is re-applied on every size/state change and is
+        // removed entirely while maximized. Best-effort by design: if it ever
+        // fails, the window simply falls back to square corners.
+        [DllImport("gdi32.dll")]
+        private static extern IntPtr CreateRoundRectRgn(int x1, int y1, int x2, int y2, int w, int h);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SetWindowRgn(IntPtr hWnd, IntPtr hRgn, bool redraw);
+
+        private IntPtr _hwnd;
         private readonly PluginProfile _profile;
         private readonly ConvertPage _convert;
         private readonly ListerPage _lister;
@@ -66,6 +85,12 @@ namespace FfxTool.Gui
             StateChanged += (s, e) => ApplyChromeState();
             // keep the rounded silhouette glued to the window while resizing
             WindowRoot.SizeChanged += (s, e) => UpdateWindowClip();
+            // cache the HWND for the region calls as soon as it exists, and
+            // re-apply once the first render has settled — the chrome worker
+            // and the DWM both touch window geometry during startup, so the
+            // last writer (us) has to come after them
+            SourceInitialized += (s, e) => _hwnd = new WindowInteropHelper(this).Handle;
+            ContentRendered += (s, e) => UpdateWindowClip();
             // inactive windows dim their title, like a native caption does
             Activated += (s, e) => TitleBrand.Opacity = 1;
             Deactivated += (s, e) => TitleBrand.Opacity = 0.55;
@@ -173,18 +198,54 @@ namespace FfxTool.Gui
         /// children — the nav rail and the page surfaces are rectangles, and
         /// unclipped they would poke square corners through the rounded
         /// silhouette. The clip cuts the whole subtree to match; the rim
-        /// overlay then strokes the same curve anti-aliased on top. Maximized
-        /// windows go back to a full square.
+        /// overlay then strokes the same curve anti-aliased on top, and the
+        /// OS-level window region (ApplyWindowRegion) removes the corner
+        /// pixels the HWND would otherwise paint past it. Maximized windows
+        /// go back to a full square.
         /// </summary>
         private void UpdateWindowClip()
         {
-            if (WindowState == WindowState.Maximized)
+            bool max = WindowState == WindowState.Maximized;
+            if (max)
             {
                 WindowRoot.Clip = null;
-                return;
             }
-            WindowRoot.Clip = new RectangleGeometry(
-                new Rect(0, 0, WindowRoot.ActualWidth, WindowRoot.ActualHeight), 8, 8);
+            else
+            {
+                WindowRoot.Clip = new RectangleGeometry(
+                    new Rect(0, 0, WindowRoot.ActualWidth, WindowRoot.ActualHeight), 8, 8);
+            }
+            ApplyWindowRegion(max);
+        }
+
+        private void ApplyWindowRegion(bool maximized)
+        {
+            try
+            {
+                IntPtr hwnd = _hwnd != IntPtr.Zero ? _hwnd : new WindowInteropHelper(this).Handle;
+                if (hwnd == IntPtr.Zero) return; // window not created yet
+
+                if (maximized)
+                {
+                    SetWindowRgn(hwnd, IntPtr.Zero, true); // square again
+                    return;
+                }
+
+                // device pixels, not DIUs
+                var source = PresentationSource.FromVisual(this);
+                var dpi = source?.CompositionTarget?.TransformToDevice ?? Matrix.Identity;
+                int w = (int)Math.Ceiling(ActualWidth * dpi.M11);
+                int h = (int)Math.Ceiling(ActualHeight * dpi.M22);
+                int diameter = Math.Max(2, (int)Math.Round(8 * dpi.M11) * 2); // ellipse size, not radius
+                IntPtr rgn = CreateRoundRectRgn(0, 0, w + 1, h + 1, diameter, diameter);
+                // ownership: after a successful SetWindowRgn the system owns
+                // (and frees) the region — deliberately not deleted here
+                SetWindowRgn(hwnd, rgn, true);
+            }
+            catch
+            {
+                // cosmetic — worst case the corners stay square
+            }
         }
 
         // ---------- window bounds persistence (window.json) ----------
