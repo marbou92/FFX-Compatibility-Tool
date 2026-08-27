@@ -15,11 +15,11 @@
             </Grid.RowDefinitions>
 
             <StackPanel Grid.Row="0">
-                <Border Width="48" Height="48" CornerRadius="12" HorizontalAlignment="Center" Margin="0,16,0,0"
-                        Background="{DynamicResource B.PrimaryContainer}">
-                    <controls:IconGlyph IconName="Logo" Width="28" Height="28"
-                                        Foreground="{DynamicResource B.Primary}"/>
-                </Border>
+                <!-- the real app icon — the exe/taskbar artwork, so the
+                     brand inside the app matches the taskbar one -->
+                <Image Source="pack://application:,,,/Assets/app.ico" Width="36" Height="36"
+                       HorizontalAlignment="Center" Margin="0,22,0,0"
+                       RenderOptions.BitmapScalingMode="HighQuality"/>
                 <!-- M3E FAB: rounded-square silhouette + soft elevation, so it
                      never reads as a second selected item beside the round
                      active pill. Hover/pressed are state layers, not opacity

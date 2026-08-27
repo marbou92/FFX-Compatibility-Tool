@@ -171,12 +171,14 @@
         </Setter>
     </Style>
 
-    <!-- Icon-only chrome buttons (title bar). Hover lifts the glyph too:
-         IconGlyph.Foreground inherits down the tree, so a Foreground setter
-         on the button reaches the vector glyph inside it. -->
+    <!-- Icon-only chrome buttons (title bar). They span the full 64px
+         caption strip — like the native Win7/8/10/11 caption buttons — for
+         bigger hit targets and a hover fill that reaches the window edge.
+         Hover lifts the glyph too: IconGlyph.Foreground inherits down the
+         tree, so a Foreground setter on the button reaches the glyph. -->
     <Style x:Key="ChromeButton" TargetType="Button">
         <Setter Property="Width" Value="44"/>
-        <Setter Property="Height" Value="40"/>
+        <Setter Property="Height" Value="64"/>
         <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Focusable" Value="False"/>

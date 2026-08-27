@@ -123,8 +123,8 @@
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
                                     <Border Width="56" Height="56" CornerRadius="14" Background="{DynamicResource B.Surface}"
                                             BorderBrush="{DynamicResource B.OutlineVariant}" BorderThickness="1">
-                                        <controls:IconGlyph IconName="Logo" Width="30" Height="30"
-                                                            Foreground="{DynamicResource B.Primary}"/>
+                                        <Image Source="pack://application:,,,/Assets/app.ico" Width="36" Height="36"
+                                               RenderOptions.BitmapScalingMode="HighQuality"/>
                                     </Border>
                                     <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
                                         <TextBlock Text="FFX Compatibility Tool" Style="{StaticResource Body}" FontWeight="SemiBold" FontSize="14"/>

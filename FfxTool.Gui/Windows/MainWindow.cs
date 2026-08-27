@@ -64,12 +64,14 @@ namespace FfxTool.Gui
             MaxBtn.Click += (s, e) => ToggleMaximize();
             CloseBtn.Click += (s, e) => Close();
             StateChanged += (s, e) => ApplyChromeState();
+            // keep the rounded silhouette glued to the window while resizing
+            WindowRoot.SizeChanged += (s, e) => UpdateWindowClip();
             // inactive windows dim their title, like a native caption does
             Activated += (s, e) => TitleBrand.Opacity = 1;
             Deactivated += (s, e) => TitleBrand.Opacity = 0.55;
 
             ShowSection(0);
-            ApplyChromeState(); // first paint: rim + rounded top corners
+            ApplyChromeState(); // first paint: rim + rounded corners
         }
 
         private ISection ActiveSection()
@@ -151,16 +153,37 @@ namespace FfxTool.Gui
         /// so while maximized we square the corners, drop the rim and pad
         /// the content back into the visible area — otherwise the outer 8px
         /// of the app silently disappear at the screen edges. Windowed: 1px
-        /// themed rim + rounded top corners, zero transparency (Win7-safe).
+        /// themed rim + rounded corners on all four sides, cut with a clip
+        /// geometry so child surfaces follow the silhouette (zero
+        /// transparency, Win7-safe).
         /// </summary>
         private void ApplyChromeState()
         {
             bool max = WindowState == WindowState.Maximized;
             WindowRoot.Margin = max ? new Thickness(0) : new Thickness(1);
-            WindowRoot.CornerRadius = max ? new CornerRadius(0) : new CornerRadius(8, 8, 0, 0);
+            WindowRoot.CornerRadius = max ? new CornerRadius(0) : new CornerRadius(8);
             WindowRoot.Padding = max ? new Thickness(8) : new Thickness(0);
             MaxIcon.IconName = max ? "Restore" : "Maximize";
             MaxBtn.ToolTip = max ? "Restore" : "Maximize";
+            UpdateWindowClip();
+        }
+
+        /// <summary>
+        /// Border.CornerRadius rounds the window's own background but not its
+        /// children — the nav rail and the page surfaces are rectangles, and
+        /// unclipped they would poke square corners through the rounded
+        /// silhouette. The clip cuts the whole subtree to match; maximized
+        /// windows go back to a full square.
+        /// </summary>
+        private void UpdateWindowClip()
+        {
+            if (WindowState == WindowState.Maximized)
+            {
+                WindowRoot.Clip = null;
+                return;
+            }
+            WindowRoot.Clip = new RectangleGeometry(
+                new Rect(0, 0, WindowRoot.ActualWidth, WindowRoot.ActualHeight), 8, 8);
         }
 
         // ---------- window bounds persistence (window.json) ----------
