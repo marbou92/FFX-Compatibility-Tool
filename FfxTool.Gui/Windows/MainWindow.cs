@@ -89,6 +89,9 @@ namespace FfxTool.Gui
         // WM_ENTERSIZEMOVE and WM_EXITSIZEMOVE) — inside that loop the
         // region is re-cut WITHOUT forcing a repaint, see WndProc
         private bool _liveResize;
+        // live-resize freeze frame: true while the drag shows the captured
+        // bitmap and the content tree is collapsed (EngageResizeFreeze)
+        private bool _freezeActive;
 
         private IntPtr _hwnd;
         private readonly PluginProfile _profile;
@@ -248,6 +251,10 @@ namespace FfxTool.Gui
         /// </summary>
         private void ApplyChromeState()
         {
+            // a state flip (maximize / restore / aero-snap) ends any frozen
+            // drag — the live tree must be back before paddings change
+            if (WindowState != WindowState.Normal && _freezeActive)
+                DisengageResizeFreeze();
             bool max = WindowState == WindowState.Maximized;
             WindowRoot.CornerRadius = max ? new CornerRadius(0) : new CornerRadius(8);
             WindowRoot.Padding = max ? new Thickness(8) : new Thickness(0);
@@ -341,6 +348,61 @@ namespace FfxTool.Gui
         }
 
         /// <summary>
+        /// Live-resize "freeze frame" — the decisive Win7 smoothness
+        /// measure. Weak-GPU (or plain software-rendered) Win7 machines
+        /// repaint the whole window for every pixel of a border drag, and
+        /// a content-heavy page like the Lister turns that into visible
+        /// rubber-banding. So the moment a drag produces its first real
+        /// size change, the last fully rendered frame is captured into a
+        /// frozen bitmap, the real content tree is COLLAPSED (no layout,
+        /// no render cost at all) and the bitmap is stretched to follow
+        /// the window — the same "stretch the last frame" behaviour the
+        /// DWM itself uses for glass frames. One snapshot per drag, zero
+        /// per-pixel work; WM_EXITSIZEMOVE brings the live tree back for
+        /// one final exact layout (and the Lister's graph redraws through
+        /// its coalescing timer). If the snapshot fails for any reason
+        /// the content is restored immediately — the worst case is the
+        /// previous per-pixel behaviour, never a blank window.
+        /// </summary>
+        private void EngageResizeFreeze()
+        {
+            if (_freezeActive || WindowRoot == null) return;
+            try
+            {
+                if (WindowRoot.ActualWidth < 2 || WindowRoot.ActualHeight < 2) return;
+                var source = PresentationSource.FromVisual(this);
+                var dpi = source?.CompositionTarget?.TransformToDevice ?? Matrix.Identity;
+                int pw = Math.Max(1, (int)Math.Ceiling(WindowRoot.ActualWidth * dpi.M11));
+                int ph = Math.Max(1, (int)Math.Ceiling(WindowRoot.ActualHeight * dpi.M22));
+                var rtb = new RenderTargetBitmap(pw, ph, 96 * dpi.M11, 96 * dpi.M22, PixelFormats.Pbgra32);
+                rtb.Render(WindowRoot);
+                rtb.Freeze();
+                FreezeLayer.Source = rtb;
+                FreezeLayer.Visibility = Visibility.Visible;
+                ChromeGrid.Visibility = Visibility.Collapsed;
+                BodyGrid.Visibility = Visibility.Collapsed;
+                _freezeActive = true;
+            }
+            catch
+            {
+                DisengageResizeFreeze(); // never trade content for a failed snapshot
+            }
+        }
+
+        /// <summary>Ends the freeze frame and restores the live tree.</summary>
+        private void DisengageResizeFreeze()
+        {
+            _freezeActive = false;
+            if (FreezeLayer != null)
+            {
+                FreezeLayer.Source = null;
+                FreezeLayer.Visibility = Visibility.Collapsed;
+            }
+            if (ChromeGrid != null) ChromeGrid.Visibility = Visibility.Visible;
+            if (BodyGrid != null) BodyGrid.Visibility = Visibility.Visible;
+        }
+
+        /// <summary>
         /// Kills the "window goes black while resizing" artifact on Win7 —
         /// and, since the region went in, makes the resize SMOOTH. Stack of
         /// era-correct measures:
@@ -394,6 +456,7 @@ namespace FfxTool.Gui
             else if (msg == WM_EXITSIZEMOVE)
             {
                 _liveResize = false;
+                DisengageResizeFreeze(); // live tree back for the final exact layout
                 // settle: one forced repaint with the region already synced
                 // (the dedupe skips the cut if the size did not change)
                 if (WindowState != WindowState.Minimized && WindowState != WindowState.Maximized)
@@ -424,6 +487,10 @@ namespace FfxTool.Gui
                         }
                         else
                         {
+                            // first real size change of a border drag: switch
+                            // to the freeze frame so the drag stays smooth
+                            if (_liveResize && WindowState == WindowState.Normal)
+                                EngageResizeFreeze();
                             // inside the drag: keep the mask in sync but let
                             // the sizing loop's own paints cover the pixels
                             ApplyWindowRegionSize(wp.cx, wp.cy, !_liveResize);

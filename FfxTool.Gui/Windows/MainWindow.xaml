@@ -5,7 +5,7 @@
         xmlns:controls="clr-namespace:FfxTool.Gui"
         Title="FFX Compatibility Tool" Width="1180" Height="740"
         MinWidth="960" MinHeight="620" WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource B.Surface}"
+        Background="{DynamicResource B.Outline}"
         UseLayoutRounding="True" TextOptions.TextFormattingMode="Display"
         WindowStyle="SingleBorderWindow" AllowsTransparency="False" ResizeMode="CanResize">
 
@@ -33,11 +33,21 @@
          anti-aliased Outline line just INSIDE the region, where nothing
          clips it — the hard (aliased) OS cut lands exactly on the dark
          line, and the eye sees one crisp full-strength edge. WindowRoot
-         still rounds + clips the content subtree to the same silhouette,
-         and the window background is B.SURFACE so any corner pixel blends
-         into the content instead of drawing a notch.
+         still rounds + clips the content subtree to the same silhouette.
+         THE BACKDROP IS B.OUTLINE ON PURPOSE: a GDI region is a 1-bit
+         mask and a WPF arc is anti-aliased, so the two curves never
+         coincide perfectly — at every corner a ~0.5px crescent of pixels
+         sits between the rim arc and the OS cut. With a Surface backdrop
+         that crescent painted the light content color OUTSIDE the dark
+         line and read as "something sticking out at the edge"; with an
+         Outline backdrop every such pixel is the line's own color, so
+         the silhouette reads as one continuous dark edge running into
+         the OS cut, on any wallpaper, in any theme.
          Maximized: MainWindow.ApplyChromeState squares the corners, drops
-         the rim and pads the content back inside the visible work area. -->
+         the rim and pads the content back inside the visible work area.
+         Live resize: MainWindow.EngageResizeFreeze shows the last fully
+         rendered frame (FreezeLayer below) while the content tree is
+         collapsed, which is what makes Win7 border drags smooth. -->
     <Border x:Name="WindowRoot" CornerRadius="8"
             Background="{DynamicResource B.Surface}">
         <Grid>
@@ -47,7 +57,7 @@
             </Grid.RowDefinitions>
 
             <!-- ============ custom title bar (native drag/snap via WindowChrome) ============ -->
-            <Grid Grid.Row="0">
+            <Grid Grid.Row="0" x:Name="ChromeGrid">
                 <StackPanel x:Name="TitleBrand" Orientation="Horizontal" VerticalAlignment="Center" Margin="24,0,0,0">
                     <!-- the real app icon — same artwork as the exe and
                          taskbar button, so the brand matches everywhere.
@@ -74,7 +84,7 @@
             </Grid>
 
             <!-- ============ body: rail + page host ============ -->
-            <Grid Grid.Row="1">
+            <Grid Grid.Row="1" x:Name="BodyGrid">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="88"/>
                     <ColumnDefinition Width="*"/>
@@ -82,6 +92,13 @@
                 <controls:NavRail x:Name="Rail" Grid.Column="0"/>
                 <ContentControl x:Name="PageHost" Grid.Column="1"/>
             </Grid>
+
+            <!-- live-resize freeze frame: during a border drag the last
+                 fully rendered frame is stretched here while the two
+                 content grids above are collapsed (see MainWindow.cs) —
+                 the rim below stays live so the silhouette never blurs -->
+            <Image x:Name="FreezeLayer" Grid.Row="0" Grid.RowSpan="2" Panel.ZIndex="15"
+                   Stretch="Fill" IsHitTestVisible="False" Visibility="Collapsed"/>
 
             <!-- anti-aliased rounded edge, drawn over every child. The
                  0.5px inset keeps the whole stroke inside the OS window

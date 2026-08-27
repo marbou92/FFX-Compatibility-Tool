@@ -76,6 +76,12 @@ namespace FfxTool.Gui
             public Visibility NavVisible { get; set; }
             public string KeyCountTip { get; set; }
             public Cursor RowCursor { get; set; }
+            public Visibility TriangleVisible { get; set; }
+            public bool LaneOpen { get; set; }
+            public Visibility LaneVisible => LaneOpen ? Visibility.Visible : Visibility.Collapsed;
+            public double RowOpacity { get; set; }
+            public bool EyeOn { get; set; }
+            public List<KfChipVm> Chips { get; set; }
             // the decoded parameter behind the row — what the navigator
             // buttons and the row click resolve to
             public PresetParameter ParamRef { get; set; }
@@ -110,6 +116,8 @@ namespace FfxTool.Gui
                     ValueTip = $"value at the first keyframe · range {Fmt(vMin)} … {Fmt(vMax)} · {p.Keyframes.Count} keyframes";
                     NavVisible = Visibility.Visible;
                     KeyCountTip = $"{p.Keyframes.Count} keyframe{(p.Keyframes.Count == 1 ? "" : "s")} · click to open the Keyframes tab";
+                    TriangleVisible = Visibility.Visible;
+                    Chips = BuildChips(p);
                 }
                 else
                 {
@@ -136,10 +144,44 @@ namespace FfxTool.Gui
                     }
                     NavVisible = Visibility.Collapsed;
                     KeyCountTip = "";
+                    TriangleVisible = Visibility.Collapsed;
                 }
             }
 
             static string Fmt(double? v) => v?.ToString("0.###") ?? "—";
+
+            /// <summary>
+            /// The inline keyframe lane's chips: one per keyframe, frame
+            /// number as the label, timecode + value in the tooltip.
+            /// </summary>
+            static List<KfChipVm> BuildChips(PresetParameter p)
+            {
+                var chips = new List<KfChipVm>();
+                for (int i = 0; i < p.Keyframes.Count; i++)
+                {
+                    var k = p.Keyframes[i];
+                    double sec = PresetCurve.Seconds(k.Time);
+                    int frame = (int)Math.Round(sec * Fps);
+                    chips.Add(new KfChipVm
+                    {
+                        Param = p,
+                        KfIndex = i,
+                        Label = $"#{i + 1} · f{frame}",
+                        Tip = $"{Timecode(sec)} · value {k.Value.ToString("0.###")} · {k.InterpLabel} · click to select"
+                    });
+                }
+                return chips;
+            }
+        }
+
+        /// <summary>One inline keyframe chip of the Parameters-tab lane.</summary>
+        public class KfChipVm
+        {
+            public string Label { get; set; }
+            public string Tip { get; set; }
+            public int KfIndex { get; set; }
+            public bool Selected { get; set; }
+            public PresetParameter Param { get; set; }
         }
 
         /// <summary>One keyframe row: AE timecode, frame math, easing chip.</summary>
@@ -170,7 +212,8 @@ namespace FfxTool.Gui
                 else
                 {
                     int prevFrame = (int)Math.Round(PresetCurve.Seconds(prev.Time) * Fps);
-                    Sub = $"frame {frame} · +{frame - prevFrame}f";
+                    double ds = sec - PresetCurve.Seconds(prev.Time);
+                    Sub = $"frame {frame} · +{frame - prevFrame}f · +{ds.ToString("0.##")}s";
                 }
                 Value = kf.Value.ToString("0.###");
                 Interp = kf.InterpLabel;
@@ -199,6 +242,12 @@ namespace FfxTool.Gui
         private int _selKf = -1;
         private bool _syncingCombo;
 
+        // AE-toggle state per parameter: the disclosure triangle's inline
+        // keyframe lane and the eye's display dimming survive every row
+        // rebuild (the VMs are rebuilt on each refresh, these are not)
+        private readonly Dictionary<PresetParameter, bool> _laneState = new Dictionary<PresetParameter, bool>();
+        private readonly Dictionary<PresetParameter, bool> _eyeState = new Dictionary<PresetParameter, bool>();
+
         // DragEnter/DragLeave fire on every child boundary crossing; a depth
         // counter is the only flicker-free way to know the drag truly left.
         private int _dragDepth;
@@ -218,11 +267,12 @@ namespace FfxTool.Gui
             StatusBarVersion.Text = $"FFX Compatibility Tool {AppInfo.DisplayVersion}";
             UpdateRecentCard();
             GraphCanvas.SizeChanged += (s, e) => ScheduleGraphRedraw();
+            KfTimeline.SizeChanged += (s, e) => DrawKfTimeline();
             SetTab(0);
             // row container brushes are captured per Refresh — re-run when the
             // theme changes so status tints match the new palette/mode; the
-            // graph bakes brush colors too, so it redraws as well
-            ThemeService.Changed += () => { Refresh(); DrawGraph(); };
+            // graph and the keyframe strip bake brush colors too
+            ThemeService.Changed += () => { Refresh(); BuildKeyframes(); DrawGraph(); };
         }
 
         public void OnShown() => UpdateRecentCard();
@@ -503,6 +553,8 @@ namespace FfxTool.Gui
             }
 
             _inspEffectIndex = row.EffectIndex;
+            _laneState.Clear();
+            _eyeState.Clear();
             var d = CurrentDetails();
 
             if (d == null)
@@ -527,8 +579,7 @@ namespace FfxTool.Gui
             InspEmpty.Visibility = Visibility.Collapsed;
             InspUnavailable.Visibility = Visibility.Collapsed;
 
-            ParamList.ItemsSource = d.Parameters.Select(p => new ParamRowVm(p)).ToList();
-            ParamEmpty.Visibility = d.Parameters.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            RefreshParamRows();
 
             var animParams = d.Parameters.Where(p => p.IsAnimated).ToList();
             SetComboSource(animParams.Select(p => p.Name).ToList());
@@ -548,6 +599,8 @@ namespace FfxTool.Gui
 
         private void SetInspectorEmpty()
         {
+            _laneState.Clear();
+            _eyeState.Clear();
             InspTitle.Text = "Inspector";
             InspSub.Text = "Select an effect to inspect it";
             InspEmpty.Visibility = Visibility.Visible;
@@ -607,6 +660,72 @@ namespace FfxTool.Gui
             return anim.IndexOf(p);
         }
 
+        /// <summary>
+        /// Rebuilds the Parameters tab rows from the current effect while
+        /// preserving the AE-toggle state (inline lane open/closed, eye
+        /// dimming) and syncing the inline keyframe chips' selection to the
+        /// graph ring. Cheap — the list is at most a few dozen rows.
+        /// </summary>
+        private void RefreshParamRows()
+        {
+            var d = CurrentDetails();
+            if (d == null)
+            {
+                ParamList.ItemsSource = null;
+                return;
+            }
+            var cur = CurrentAnimParam();
+            var rows = new List<ParamRowVm>();
+            foreach (var p in d.Parameters)
+            {
+                bool eye = !_eyeState.TryGetValue(p, out bool eyeOn) || eyeOn;
+                var vm = new ParamRowVm(p)
+                {
+                    LaneOpen = _laneState.TryGetValue(p, out bool open) && open,
+                    EyeOn = eye,
+                    RowOpacity = eye ? 1.0 : 0.42
+                };
+                if (cur != null && ReferenceEquals(cur, p) && _selKf >= 0)
+                    foreach (var c in vm.Chips) c.Selected = c.KfIndex == _selKf;
+                rows.Add(vm);
+            }
+            ParamList.ItemsSource = rows;
+            ParamEmpty.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        // ---------- AE toggles: lane triangle + row eye + inline chips ----------
+        private void LaneToggle_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is ParamRowVm vm && vm.ParamRef != null)
+            {
+                bool open = _laneState.TryGetValue(vm.ParamRef, out bool cur) && cur;
+                _laneState[vm.ParamRef] = !open;
+                RefreshParamRows();
+                e.Handled = true;
+            }
+        }
+
+        private void EyeToggle_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is ParamRowVm vm && vm.ParamRef != null)
+            {
+                bool on = !_eyeState.TryGetValue(vm.ParamRef, out bool cur) || cur;
+                _eyeState[vm.ParamRef] = !on;
+                RefreshParamRows();
+                e.Handled = true;
+            }
+        }
+
+        private void KfChip_Click(object sender, MouseButtonEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is KfChipVm chip && chip.Param != null)
+            {
+                SelectAnimatedParam(AnimatedIndexOf(chip.Param));
+                SelectKeyframe(chip.KfIndex);
+                e.Handled = true;
+            }
+        }
+
         // ---------- AE parameter rows: click + keyframe navigator ----------
         private void ParamRow_Click(object sender, MouseButtonEventArgs e)
         {
@@ -664,6 +783,7 @@ namespace FfxTool.Gui
                 _selKf = Math.Max(0, Math.Min(p.Keyframes.Count - 1, i));
             }
             BuildKeyframes();
+            if (_tab == 0) RefreshParamRows(); // chip highlight follows the ring
             if (_tab == 2) DrawGraph();
         }
 
@@ -680,8 +800,8 @@ namespace FfxTool.Gui
             GraphValueBtn.IsChecked = _graphMode == 0;
             GraphSpeedBtn.IsChecked = _graphMode == 1;
             GraphLegend.Text = _graphMode == 0
-                ? "value over time · click a keyframe to inspect it"
-                : "speed = |Δvalue / Δt| · 30 fps grid";
+                ? "value over time · right axis = value"
+                : "speed = |Δvalue / Δt| · right axis = speed";
             DrawGraph();
         }
 
@@ -707,6 +827,7 @@ namespace FfxTool.Gui
                 KfList.ItemsSource = null;
                 KfEmpty.Visibility = Visibility.Visible;
                 KfDetail.Visibility = Visibility.Collapsed;
+                DrawKfTimeline();
                 return;
             }
             KfEmpty.Visibility = Visibility.Collapsed;
@@ -742,6 +863,7 @@ namespace FfxTool.Gui
             {
                 KfDetail.Visibility = Visibility.Collapsed;
             }
+            DrawKfTimeline();
         }
 
         // ---------- AE-style graph ----------
@@ -818,7 +940,7 @@ namespace FfxTool.Gui
             var surface = (Brush)FindResource("B.Surface");
             var outline = (Brush)FindResource("B.Outline");
 
-            const double L = 46, R = 12, T = 14, Bot = 24;
+            const double L = 14, R = 48, T = 14, Bot = 24;
             double t0 = segs[0].T0, t1 = segs[segs.Count - 1].T1;
             if (t1 - t0 < 1e-6) t1 = t0 + 0.5; // single-instant stream still gets an axis
             Func<double, double> xOf = t => L + (t - t0) / (t1 - t0) * (w - L - R);
@@ -836,6 +958,14 @@ namespace FfxTool.Gui
             GraphCanvas.Children.Add(new Line
             {
                 X1 = axisX, Y1 = Math.Round(h - Bot) + 0.5, X2 = w - R, Y2 = Math.Round(h - Bot) + 0.5,
+                Stroke = outline, StrokeThickness = 1
+            });
+            // AE's value ruler lives on the RIGHT edge of the plot — the
+            // labels sit in the right gutter, outside the plot area
+            double rulerX = Math.Round(w - R) - 0.5;
+            GraphCanvas.Children.Add(new Line
+            {
+                X1 = rulerX, Y1 = T, X2 = rulerX, Y2 = h - Bot,
                 Stroke = outline, StrokeThickness = 1
             });
 
@@ -951,10 +1081,10 @@ namespace FfxTool.Gui
                         Text = v.ToString("0.##"),
                         FontSize = 10,
                         Foreground = labelBrush,
-                        Width = plot.L - 10,
-                        TextAlignment = TextAlignment.Right
+                        Width = plot.R - 8,
+                        TextAlignment = TextAlignment.Left
                     };
-                    Canvas.SetLeft(lbl, 2);
+                    Canvas.SetLeft(lbl, plot.W - plot.R + 6);
                     Canvas.SetTop(lbl, y - 6);
                     GraphCanvas.Children.Add(lbl);
                     lastLabelY = y;
@@ -1055,10 +1185,10 @@ namespace FfxTool.Gui
                         Text = v.ToString("0.##") + "/s",
                         FontSize = 10,
                         Foreground = labelBrush,
-                        Width = plot.L - 10,
-                        TextAlignment = TextAlignment.Right
+                        Width = plot.R - 8,
+                        TextAlignment = TextAlignment.Left
                     };
-                    Canvas.SetLeft(lbl, 2);
+                    Canvas.SetLeft(lbl, plot.W - plot.R + 6);
                     Canvas.SetTop(lbl, y - 6);
                     GraphCanvas.Children.Add(lbl);
                     lastLabelY = y;
@@ -1118,6 +1248,91 @@ namespace FfxTool.Gui
             }
         }
 
+        /// <summary>
+        /// AE-timeline strip for the Keyframes tab: a frame-grid baseline
+        /// with the stream's keyframes as clickable markers and the selected
+        /// one ringed — the "when do the keys land" view; the table below
+        /// carries the exact numbers. Pure shapes, redrawn on size and
+        /// theme changes.
+        /// </summary>
+        private void DrawKfTimeline()
+        {
+            if (KfTimeline == null) return;
+            KfTimeline.Children.Clear();
+            var p = CurrentAnimParam();
+            if (p == null || p.Keyframes.Count == 0) return;
+            double w = KfTimeline.ActualWidth;
+            if (w < 60) return; // not laid out yet — SizeChanged redraws
+
+            var accent = (Brush)FindResource("B.Primary");
+            var surface = (Brush)FindResource("B.Surface");
+            var grid = (Brush)FindResource("B.OutlineVariant");
+            var label = (Brush)FindResource("B.OnSurfaceVariant");
+
+            const double y = 16, pad = 18;
+            var kfs = p.Keyframes;
+            double t0 = PresetCurve.Seconds(kfs[0].Time);
+            double t1 = PresetCurve.Seconds(kfs[kfs.Count - 1].Time);
+            if (t1 - t0 < 1e-6) t1 = t0 + 0.5;
+            Func<double, double> xOf = t => pad + (t - t0) / (t1 - t0) * (w - 2 * pad);
+
+            // baseline + round time ticks, coarsest step that keeps ~5 of them
+            double midY = y + 0.5;
+            KfTimeline.Children.Add(new Line
+            {
+                X1 = pad, Y1 = midY, X2 = w - pad, Y2 = midY,
+                Stroke = grid, StrokeThickness = 1
+            });
+            double stepSec = NiceStep((t1 - t0) / 5.0);
+            for (double t = Math.Ceiling(t0 / stepSec) * stepSec; t <= t1 + 1e-9; t += stepSec)
+            {
+                double x = Math.Round(xOf(t)) + 0.5;
+                KfTimeline.Children.Add(new Line
+                {
+                    X1 = x, Y1 = y - 3, X2 = x, Y2 = y + 3,
+                    Stroke = grid, StrokeThickness = 1
+                });
+            }
+
+            // end timecodes (the table carries every exact per-key time)
+            var first = new TextBlock { Text = Timecode(t0), FontSize = 9.5, Foreground = label };
+            Canvas.SetLeft(first, pad - 2);
+            Canvas.SetTop(first, y + 9);
+            KfTimeline.Children.Add(first);
+            double x1 = xOf(t1);
+            if (kfs.Count > 1 && x1 > 128) // both timecodes need ~72px each
+            {
+                var last = new TextBlock { Text = Timecode(t1), FontSize = 9.5, Foreground = label, Opacity = 0.85 };
+                Canvas.SetLeft(last, x1 - 56);
+                Canvas.SetTop(last, y + 9);
+                KfTimeline.Children.Add(last);
+            }
+
+            // keyframe markers — the same AE squares as the graph, clickable
+            for (int i = 0; i < kfs.Count; i++)
+            {
+                var k = kfs[i];
+                int shape = i + 1 < kfs.Count ? k.InterpOut : k.InterpIn;
+                double t = PresetCurve.Seconds(k.Time);
+                string tip = $"#{i + 1}  {Timecode(t)}  ·  value {k.Value.ToString("0.###")}  ·  click to select";
+                KfTimeline.Children.Add(MakeMarker(shape, xOf(t), y, accent, surface, tip, i));
+            }
+
+            // selection ring over its marker, in sync with the table + graph
+            if (_selKf >= 0 && _selKf < kfs.Count)
+            {
+                double x = xOf(PresetCurve.Seconds(kfs[_selKf].Time));
+                var ring = new Ellipse
+                {
+                    Width = 15, Height = 15, Stroke = accent, StrokeThickness = 1.6,
+                    IsHitTestVisible = false
+                };
+                Canvas.SetLeft(ring, x - 7.5);
+                Canvas.SetTop(ring, y - 7.5);
+                KfTimeline.Children.Add(ring);
+            }
+        }
+
         /// <summary>Numeric |Δvalue/Δt| at t via a tiny centered difference.</summary>
         private static double SpeedAt(List<PresetCurve.Segment> segs, double t)
         {
@@ -1143,6 +1358,16 @@ namespace FfxTool.Gui
             var k = stream.Keyframes[_selKf];
             double t = PresetCurve.Seconds(k.Time);
             double kx = XOf(plot, t);
+
+            // AE time marker: a dashed accent playhead at the selected
+            // keyframe's time, in both modes, under the ring
+            GraphCanvas.Children.Add(new Line
+            {
+                X1 = kx, X2 = kx, Y1 = plot.T, Y2 = plot.H - plot.Bot,
+                Stroke = accent, StrokeThickness = 1,
+                StrokeDashArray = new DoubleCollection { 3, 3 },
+                Opacity = 0.7, IsHitTestVisible = false
+            });
 
             if (plot.Mode == 0)
             {
@@ -1200,61 +1425,58 @@ namespace FfxTool.Gui
         }
 
         /// <summary>
-        /// Linear keyframes → square, bezier → diamond, hold → left triangle.
-        /// kfIndex &gt;= 0 makes the marker clickable for selection.
+        /// AE Graph Editor keyframes are small SQUARES; the interpolation
+        /// reads through the fill — hollow = linear, filled = bezier,
+        /// left-half-filled = hold. kfIndex &gt;= 0 makes the marker
+        /// clickable for selection.
         /// </summary>
         private UIElement MakeMarker(int interp, double x, double y, Brush fill, Brush stroke, string tip, int kfIndex)
         {
+            const double S = 9, Half = 4.5;
             UIElement el;
-            if (interp == PresetCurve.InterpLinear)
+            if (interp == PresetCurve.InterpHold)
+            {
+                var host = new Canvas { Width = S, Height = S };
+                host.Children.Add(new Rectangle
+                {
+                    Width = Half, Height = S, RadiusX = 1.5, RadiusY = 1.5, Fill = fill
+                });
+                host.Children.Add(new Rectangle
+                {
+                    Width = S, Height = S, RadiusX = 1.5, RadiusY = 1.5,
+                    Fill = Brushes.Transparent, // full-rect hit target
+                    Stroke = fill, StrokeThickness = 1.2
+                });
+                el = host;
+            }
+            else if (interp == PresetCurve.InterpLinear)
             {
                 el = new Rectangle
                 {
-                    Width = 7.5,
-                    Height = 7.5,
-                    RadiusX = 1.5,
-                    RadiusY = 1.5,
-                    Fill = fill,
-                    Stroke = stroke,
-                    StrokeThickness = 1.2,
-                    ToolTip = tip
+                    Width = S, Height = S, RadiusX = 1.5, RadiusY = 1.5,
+                    // transparent fill keeps the whole square clickable
+                    // while the marker still reads as hollow
+                    Fill = Brushes.Transparent,
+                    Stroke = fill, StrokeThickness = 1.4
                 };
-                Canvas.SetLeft(el, x - 3.75);
-                Canvas.SetTop(el, y - 3.75);
-            }
-            else if (interp == PresetCurve.InterpHold)
-            {
-                el = new Polygon
-                {
-                    Points = new PointCollection { new Point(11, 0), new Point(11, 10), new Point(1, 5) },
-                    Fill = fill,
-                    Stroke = stroke,
-                    StrokeThickness = 1.2,
-                    StrokeLineJoin = PenLineJoin.Round,
-                    ToolTip = tip
-                };
-                Canvas.SetLeft(el, x - 6);
-                Canvas.SetTop(el, y - 5);
             }
             else
             {
-                el = new Polygon
+                el = new Rectangle
                 {
-                    Points = new PointCollection { new Point(5.5, 0), new Point(11, 5.5), new Point(5.5, 11), new Point(0, 5.5) },
-                    Fill = fill,
-                    Stroke = stroke,
-                    StrokeThickness = 1.2,
-                    StrokeLineJoin = PenLineJoin.Round,
-                    ToolTip = tip
+                    Width = S, Height = S, RadiusX = 1.5, RadiusY = 1.5,
+                    Fill = fill, Stroke = stroke, StrokeThickness = 1.2
                 };
-                Canvas.SetLeft(el, x - 5.5);
-                Canvas.SetTop(el, y - 5.5);
             }
+
+            Canvas.SetLeft(el, x - Half);
+            Canvas.SetTop(el, y - Half);
 
             if (kfIndex >= 0)
             {
                 var fe = (FrameworkElement)el;
                 fe.Cursor = Cursors.Hand;
+                fe.ToolTip = tip;
                 fe.MouseLeftButtonUp += (s, e) =>
                 {
                     SelectKeyframe(kfIndex);
