@@ -429,7 +429,7 @@
         </DataTemplate>
 
         <!-- one Effect Controls group: AE's block anatomy — ONE flat
-             header line (twirl + effect name at the left; Reset and About
+             header line (twirl + effect name at the left; the About link
              parked at the right the way AE's panel does it — no fx switch,
              AE doesn't keep one here; the vendor line lives in the
              tooltip), then the property tree, then a quiet hairline so
@@ -442,7 +442,6 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <ToggleButton Style="{StaticResource AEDisclosure}" IsChecked="{Binding Open}"
                                   Click="EcToggle_Click" VerticalAlignment="Center"
@@ -452,22 +451,7 @@
                     <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
                                Foreground="{DynamicResource B.OnSurface}" VerticalAlignment="Center"
                                Margin="4,0,8,0" TextTrimming="CharacterEllipsis"/>
-                    <!-- AE's Reset + About cluster: Reset as the accent link -->
-                    <TextBlock Grid.Column="2" Text="Reset" FontSize="11.5" FontWeight="Medium"
-                               VerticalAlignment="Center" Margin="0,0,14,0" Cursor="Hand"
-                               ToolTip="Display only - this inspector never modifies presets">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Foreground" Value="{DynamicResource B.Primary}"/>
-                                <Style.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Foreground" Value="{DynamicResource B.OnSurface}"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                    <TextBlock Grid.Column="3" Text="About" FontSize="11.5" FontWeight="Medium"
+                    <TextBlock Grid.Column="2" Text="About" FontSize="11.5" FontWeight="Medium"
                                VerticalAlignment="Center" ToolTip="{Binding Sub}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
@@ -779,8 +763,8 @@
             <!-- ============ Effect Controls view (AE panel anatomy) ============
                  Every effect of the preset as one scrollable group list,
                  laid out exactly like AE's Effect Controls panel: a flat
-                 header line (twirl + effect name at the left, fx switch +
-                 Reset + About at the right), then the familiar property
+                 header line (twirl + effect name at the left, the About
+                 link at the right), then the familiar property
                  lines (keyframe-navigator gutter, stopwatch, fixed name
                  column, hover-underlined value — no eyes, no keyframe
                  lanes; AE keeps those in the timeline). The switcher

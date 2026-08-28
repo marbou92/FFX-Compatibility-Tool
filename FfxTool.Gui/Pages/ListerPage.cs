@@ -26,7 +26,7 @@ namespace FfxTool.Gui
     /// The workspace opens into AE's Effect Controls panel — every effect
     /// as a collapsible block of real AE property lines (keyframe-navigator
     /// gutter, stopwatch, fixed name column, hover-underlined value, nested
-    /// parameter groups, Reset + About links) — with a
+    /// parameter groups, the About link) — with a
     /// switcher to the split compatibility list + tabbed inspector, whose
     /// parameter rows are the simple read (stopwatch, name, value under a
     /// quiet group caption). Both read the same decoded data and share
@@ -282,7 +282,7 @@ namespace FfxTool.Gui
                 }
                 else if (kind == PresetParamKind.Point && !p.IsAnimated && p.StaticValue2.HasValue)
                 {
-                    ValueText = $"({Num(p.StaticValue)}, {Num(p.StaticValue2)})";
+                    ValueText = $"({Num(p.StaticValue ?? 0)}, {Num(p.StaticValue2 ?? 0)})";
                     ValueVisible = Visibility.Visible;
                     TextVisible = Visibility.Visible;
                     ValueTip = "point (X, Y) from the preset · " + Detail;
