@@ -426,6 +426,9 @@ namespace FfxTool.Gui
         // surfaced on the panel and in the log, so a preset that half-decodes
         // never fails in silence
         private List<string> _inspectErrors = new List<string>();
+        // last plugin-table failure reason already logged (null = none) —
+        // so a persistent failure is logged once, not again on every Refresh
+        private string _lastTableError;
         private readonly ObservableCollection<EffectRowVm> _rows = new ObservableCollection<EffectRowVm>();
         private int _filterMode; // 0 all, 1 missing only, 2 compatible only
         private bool _sortDesc;
@@ -657,9 +660,10 @@ namespace FfxTool.Gui
             }
             catch (Exception ex)
             {
-                MessageBox.Show(Window.GetWindow(this),
-                    $"Failed to read '{System.IO.Path.GetFileName(path)}':\n{ex.Message}",
-                    "Load failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                // the full problem report instead of a bare message box:
+                // it names the failing method, is copyable for a bug
+                // report, and lands in both logs (crash.log + session log)
+                App.Report($"reading '{System.IO.Path.GetFileName(path)}' into the Effect Controls panel", ex);
                 FileChipText.Text = "No file loaded";
                 _currentEffects = new List<Pipeline.EffectInfo>();
                 _details = new List<PresetEffectDetails>();
@@ -689,6 +693,15 @@ namespace FfxTool.Gui
         public void Refresh()
         {
             var table = PluginLookup.LoadTable();
+            if (PluginLookup.TableLoadError != _lastTableError)
+            {
+                // each NEW table failure is logged once — statuses degrade
+                // to Unknown plugin, the list itself keeps working
+                _lastTableError = PluginLookup.TableLoadError;
+                if (_lastTableError != null)
+                    LogService.Append("plugin table: " + _lastTableError +
+                                      " \u2014 every effect shows as Unknown plugin until it's fixed");
+            }
             var real = _currentEffects.Where(e => !e.IsSentinel);
 
             // stable position of every effect within the file — rows are
@@ -1062,6 +1075,34 @@ namespace FfxTool.Gui
         /// </summary>
         private void ShowEffect(int effectIndex, string fallbackName)
         {
+            try
+            {
+                ShowEffectCore(effectIndex, fallbackName);
+            }
+            catch (Exception ex)
+            {
+                // the inspector degrades with the reason, like the Effect
+                // Controls panel already does per block — a decode or
+                // drawing surprise never takes the workspace down
+                LogService.Append($"inspector: effect #{effectIndex + 1} couldn't be shown \u2014 {ex.GetType().Name}: {ex.Message}");
+                _inspEffectIndex = effectIndex;
+                InspTitle.Text = fallbackName;
+                InspSub.Text = "\u26a0 couldn't be shown \u2014 " + ex.GetType().Name + ": " + ex.Message;
+                InspEmpty.Visibility = Visibility.Collapsed;
+                InspUnavailable.Visibility = Visibility.Visible;
+                ParamList.ItemsSource = null;
+                KfList.ItemsSource = null;
+                SetComboSource(null);
+                _animParamIndex = -1;
+                _selKf = -1;
+                StatusBarLeft.Text = "";
+                StatusSep.Visibility = Visibility.Collapsed;
+                DrawGraph();
+            }
+        }
+
+        private void ShowEffectCore(int effectIndex, string fallbackName)
+        {
             _inspEffectIndex = effectIndex;
             var d = CurrentDetails();
 
@@ -1346,10 +1387,28 @@ namespace FfxTool.Gui
 
         private void BuildKeyframes()
         {
+            try
+            {
+                BuildKeyframesCore();
+            }
+            catch (Exception ex)
+            {
+                LogService.Append("keyframes: the list couldn't be built \u2014 " + ex.GetType().Name + ": " + ex.Message);
+                KfList.ItemsSource = null;
+                KfDetail.Visibility = Visibility.Collapsed;
+                KfEmpty.Text = "The keyframe list couldn't be built \u2014 " + ex.GetType().Name + ": " + ex.Message + " (details in About \u2192 Logs)";
+                KfEmpty.Visibility = Visibility.Visible;
+                DrawKfTimeline();
+            }
+        }
+
+        private void BuildKeyframesCore()
+        {
             var p = CurrentAnimParam();
             if (p == null || p.Keyframes.Count == 0)
             {
                 KfList.ItemsSource = null;
+                KfEmpty.Text = KfEmptyDefault; // an earlier failure may have left a reason here
                 KfEmpty.Visibility = Visibility.Visible;
                 KfDetail.Visibility = Visibility.Collapsed;
                 DrawKfTimeline();
@@ -1393,6 +1452,12 @@ namespace FfxTool.Gui
 
         // ---------- AE-style graph ----------
         private const double Fps = 30.0; // frame numbers + grid assume 30 fps
+
+        /// <summary>The hint / empty texts the XAML ships with — restored
+        /// whenever a pane falls back to its hint state, so a failure
+        /// reason never sticks around after a successful redraw.</summary>
+        private const string GraphHintDefault = "Pick an animated parameter to plot its curve \u2014 then click any keyframe to inspect its easing.";
+        private const string KfEmptyDefault = "This effect has no animated parameters \u2014 its values are static. Static values are listed under Parameters.";
 
         /// <summary>AE-style timecode h:mm:ss:ff (hours only when needed).</summary>
         private static string Timecode(double sec)
@@ -1439,6 +1504,29 @@ namespace FfxTool.Gui
         private void DrawGraph()
         {
             if (GraphCanvas == null) return;
+            try
+            {
+                DrawGraphCore();
+            }
+            catch (Exception ex)
+            {
+                // a drawing surprise degrades the pane with the reason
+                // instead of riding the global crash dialog; the SizeChanged
+                // redraws keep calling in, so the next pass repaints normal
+                LogService.Append("graph: couldn't be drawn \u2014 " + ex.GetType().Name + ": " + ex.Message);
+                GraphCanvas.Children.Clear();
+                _cursorLine = null;
+                _cursorDot = null;
+                _plot = null;
+                if (GraphReadout != null) GraphReadout.Visibility = Visibility.Collapsed;
+                GraphHint.Text = "The graph couldn't be drawn \u2014 " + ex.GetType().Name + ": " + ex.Message;
+                GraphHint.Visibility = Visibility.Visible;
+            }
+        }
+
+        private void DrawGraphCore()
+        {
+            if (GraphCanvas == null) return;
             GraphCanvas.Children.Clear();
             _cursorLine = null;
             _cursorDot = null;
@@ -1448,6 +1536,7 @@ namespace FfxTool.Gui
             var p = CurrentAnimParam();
             if (p == null || p.Keyframes.Count == 0)
             {
+                GraphHint.Text = GraphHintDefault; // an earlier failure may have left a reason here
                 GraphHint.Visibility = Visibility.Visible;
                 return;
             }
@@ -1846,6 +1935,22 @@ namespace FfxTool.Gui
         /// theme changes.
         /// </summary>
         private void DrawKfTimeline()
+        {
+            if (KfTimeline == null) return;
+            try
+            {
+                DrawKfTimelineCore();
+            }
+            catch (Exception ex)
+            {
+                // the strip degrades to empty; the table and the log
+                // carry the reason
+                LogService.Append("keyframe timeline: couldn't be drawn \u2014 " + ex.GetType().Name + ": " + ex.Message);
+                KfTimeline.Children.Clear();
+            }
+        }
+
+        private void DrawKfTimelineCore()
         {
             if (KfTimeline == null) return;
             KfTimeline.Children.Clear();

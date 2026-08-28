@@ -32,11 +32,31 @@ namespace FfxTool.Core
 
     public static class PluginLookup
     {
+        /// <summary>
+        /// Non-null when the last LoadTable call failed (missing, unreadable
+        /// or corrupt plugin_table.json). The GUI logs each new reason; the
+        /// compatibility list keeps working either way — every match name
+        /// then resolves to "Unknown plugin", which is the honest status
+        /// when no table is available.
+        /// </summary>
+        public static string TableLoadError { get; private set; }
+
         public static List<PluginTableEntry> LoadTable(string path = null)
         {
             path = path ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "plugin_table.json");
-            var json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<List<PluginTableEntry>>(json);
+            try
+            {
+                var json = File.ReadAllText(path);
+                TableLoadError = null;
+                return JsonSerializer.Deserialize<List<PluginTableEntry>>(json) ?? new List<PluginTableEntry>();
+            }
+            catch (Exception ex)
+            {
+                // the shared seed table must never take a preset load down —
+                // degrade to an empty table and say why (no throw, ever)
+                TableLoadError = ex.GetType().Name + ": " + ex.Message;
+                return new List<PluginTableEntry>();
+            }
         }
 
         /// <summary>
@@ -57,12 +77,19 @@ namespace FfxTool.Core
             }
 
             PluginTableEntry best = null;
-            foreach (var entry in table)
+            if (table != null && matchName != null)
             {
-                if (matchName.StartsWith(entry.prefix, StringComparison.Ordinal))
+                foreach (var entry in table)
                 {
-                    if (best == null || entry.prefix.Length > best.prefix.Length)
-                        best = entry;
+                    string prefix = entry?.prefix;
+                    // a malformed row (null/empty prefix) must not throw —
+                    // skip it and keep the longest-prefix rule intact
+                    if (string.IsNullOrEmpty(prefix)) continue;
+                    if (matchName.StartsWith(prefix, StringComparison.Ordinal))
+                    {
+                        if (best == null || prefix.Length > (best.prefix ?? "").Length)
+                            best = entry;
+                    }
                 }
             }
 

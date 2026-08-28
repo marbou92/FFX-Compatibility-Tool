@@ -463,24 +463,36 @@ namespace FfxTool.Core
             for (int r = 0; r < count; r++)
             {
                 int o = r * recSize;
+                // third-party streams can carry garbage doubles; one
+                // non-finite value must never poison the row text, the
+                // stream summary or the graph geometry — the record is
+                // skipped, non-finite tangents clamp to zero below
+                double value = ReadBEDouble(bytes, o + 8);
+                if (double.IsNaN(value) || double.IsInfinity(value)) continue;
+
                 var kf = new PresetKeyframe
                 {
                     Time = (int)ReadBEUInt32(bytes, o),
                     InterpIn = o + 4 < bytes.Length ? bytes[o + 4] : 0,
                     InterpOut = o + 5 < bytes.Length ? bytes[o + 5] : 0,
-                    Value = ReadBEDouble(bytes, o + 8),
+                    Value = value,
                 };
                 if (recSize >= 48 && o + 48 <= bytes.Length)
                 {
-                    kf.InSlope = ReadBEDouble(bytes, o + 16);
-                    kf.InInfluence = ReadBEDouble(bytes, o + 24);
-                    kf.OutSlope = ReadBEDouble(bytes, o + 32);
-                    kf.OutInfluence = ReadBEDouble(bytes, o + 40);
+                    kf.InSlope = FiniteOrZero(ReadBEDouble(bytes, o + 16));
+                    kf.InInfluence = FiniteOrZero(ReadBEDouble(bytes, o + 24));
+                    kf.OutSlope = FiniteOrZero(ReadBEDouble(bytes, o + 32));
+                    kf.OutInfluence = FiniteOrZero(ReadBEDouble(bytes, o + 40));
                 }
                 into.Keyframes.Add(kf);
             }
-            into.IsAnimated = true;
+            into.IsAnimated = into.Keyframes.Count > 0;
         }
+
+        /// <summary>Garbage tangent doubles read as 0 (no handle pull) —
+        /// they must never reach the curve math as NaN.</summary>
+        static double FiniteOrZero(double v) =>
+            double.IsNaN(v) || double.IsInfinity(v) ? 0 : v;
 
         /// <summary>
         /// Effect match name from a tdsp index entry: tdmn[0] is always the

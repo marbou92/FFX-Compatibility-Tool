@@ -300,5 +300,139 @@ namespace FfxTool.Core.Tests
             Assert.Equal("Exposure", details[1].Parameters[0].Name);
             Assert.Equal(-7.25, details[1].Parameters[0].StaticValue ?? double.NaN, 9);
         }
+
+        // --- synthetic animated-parameter builders (keyframe streams) ---
+
+        /// <summary>One keyframe record, exactly the 48-byte ldat layout
+        /// PresetInspector parses: time(i32) + interp(in/out bytes) + value
+        /// + in-slope/influence + out-slope/influence (all BE doubles).</summary>
+        static byte[] MakeKeyframeList(
+            params (int time, byte inI, byte outI, double value,
+                     double inSlope, double inInfl, double outSlope, double outInfl)[] kfs)
+        {
+            var lhd3 = new byte[52]; // 0xD00BEE magic etc. not checked — count + recSize are
+            Array.Copy(UInt32BE((uint)kfs.Length), 0, lhd3, 8, 4);
+            Array.Copy(UInt32BE(48), 0, lhd3, 16, 4);
+
+            var records = new List<byte[]>();
+            foreach (var k in kfs)
+            {
+                records.Add(Concat(
+                    UInt32BE((uint)k.time),
+                    new byte[] { k.inI, k.outI, 0, 0 },
+                    DoubleBE(k.value),
+                    DoubleBE(k.inSlope),
+                    DoubleBE(k.inInfl),
+                    DoubleBE(k.outSlope),
+                    DoubleBE(k.outInfl)));
+            }
+            var ldat = Concat(records.ToArray());
+            return MakeList("list", Concat(MakeLeaf("lhd3", lhd3), MakeLeaf("ldat", ldat)));
+        }
+
+        static byte[] MakeAnimatedParamTdgp(string paramName, byte[] streamList)
+        {
+            var tdmn = MakeLeaf("tdmn", PadTo(paramName, 40));
+            var tdsn = MakeLeaf("tdsn", Utf8Prefixed(paramName));
+            var tdbs = MakeList("tdbs", Concat(tdsn, streamList));
+            return MakeList("tdgp", Concat(tdmn, tdbs));
+        }
+
+        static byte[] SingleAnimatedEffectFile(string matchName, string paramName, byte[] streamList)
+        {
+            var head = MakeLeaf("head", Concat(UInt32BE(3), UInt32BE(93), UInt32BE(0), UInt32BE(0x01000000)));
+            var beso = MakeLeaf("beso", new byte[56]);
+            var tdsp = MakeTdsp(matchName, 0);
+            var tdsn = MakeLeaf("tdsn", Utf8Prefixed(matchName + " display"));
+            var sspc = MakeList("sspc", Concat(
+                MakeLeaf("fnam", Utf8Prefixed(matchName)),
+                MakeAnimatedParamTdgp(paramName, streamList)));
+            var besc = MakeList("besc", Concat(beso, tdsp, tdsn, sspc, SentinelTdsp()));
+            var body = Concat(Ascii("FaFX"), head, besc);
+            return Concat(Ascii("RIFX"), UInt32BE((uint)body.Length), body);
+        }
+
+        // --- PresetInspector garbage-double guards (crash-system round) ---
+        // Third-party streams can carry non-finite doubles; one NaN value
+        // used to escape into the row text and the graph geometry ("NaN →
+        // NaN" summaries, invisible curves). Values are now skipped,
+        // tangents clamp to zero.
+
+        [Fact]
+        public void Inspect_SkipsNonFiniteKeyframeValues()
+        {
+            var stream = MakeKeyframeList(
+                (0, 1, 2, 10.0, 0, 1.0 / 3.0, 0, 1.0 / 3.0),
+                (512, 2, 2, double.NaN, 0, 0, 0, 0),
+                (1024, 2, 1, 30.0, 0, 1.0 / 3.0, 0, 1.0 / 3.0));
+            var data = SingleAnimatedEffectFile("S_Wobble", "Wobble Amount", stream);
+
+            var details = PresetInspector.Inspect(data);
+            Assert.Single(details);
+            var p = Assert.Single(details[0].Parameters);
+            Assert.True(p.IsAnimated);
+            Assert.Equal(2, p.Keyframes.Count); // the NaN record is skipped
+            Assert.Equal(10.0, p.Keyframes[0].Value, 9);
+            Assert.Equal(30.0, p.Keyframes[1].Value, 9);
+        }
+
+        [Fact]
+        public void Inspect_ClampsNonFiniteTangentsToZero()
+        {
+            var stream = MakeKeyframeList(
+                (0, 1, 2, 5.0, double.NaN, double.PositiveInfinity, double.NegativeInfinity, 0.25),
+                (512, 2, 1, 9.0, 0, 0, 0, 0));
+            var data = SingleAnimatedEffectFile("S_Wobble", "Wobble Amount", stream);
+
+            var details = PresetInspector.Inspect(data);
+            var p = Assert.Single(details[0].Parameters);
+            Assert.Equal(2, p.Keyframes.Count); // both values are finite, both survive
+            var kf = p.Keyframes[0];
+            Assert.Equal(5.0, kf.Value, 9);   // the finite value survives
+            Assert.Equal(0.0, kf.InSlope, 9); // NaN/Inf tangents clamp to 0
+            Assert.Equal(0.0, kf.InInfluence, 9);
+            Assert.Equal(0.0, kf.OutSlope, 9);
+            Assert.Equal(0.25, kf.OutInfluence, 9); // finite tangents survive
+        }
+
+        [Fact]
+        public void Inspect_AllNonFiniteStream_IsNotAnimated()
+        {
+            var stream = MakeKeyframeList(
+                (0, 1, 2, double.NaN, 0, 0, 0, 0),
+                (512, 2, 1, double.PositiveInfinity, 0, 0, 0, 0));
+            var data = SingleAnimatedEffectFile("S_Wobble", "Wobble Amount", stream);
+
+            var details = PresetInspector.Inspect(data);
+            var p = Assert.Single(details[0].Parameters);
+            Assert.False(p.IsAnimated); // nothing decodable → honest static row
+            Assert.Empty(p.Keyframes);
+        }
+
+        // --- PluginLookup resilience (the shared table must never throw) ---
+
+        [Fact]
+        public void LoadTable_MissingFile_ReturnsEmptyWithoutThrowing()
+        {
+            var missing = Path.Combine(Path.GetTempPath(),
+                "definitely-missing-table-" + Guid.NewGuid().ToString("N") + ".json");
+            var table = PluginLookup.LoadTable(missing);
+            Assert.NotNull(table);
+            Assert.Empty(table);
+            Assert.NotNull(PluginLookup.TableLoadError); // the reason is surfaced
+        }
+
+        [Fact]
+        public void Resolve_IgnoresMalformedTableRows()
+        {
+            var table = new List<PluginTableEntry>
+            {
+                new PluginTableEntry { prefix = null, vendor = "Sapphire", suite = "Sapphire" },
+                new PluginTableEntry { prefix = "S_", vendor = "Sapphire", suite = "Sapphire", confirmed = true },
+            };
+            var match = PluginLookup.Resolve("S_Sharpen", table);
+            Assert.Equal("Sapphire", match.Vendor);  // the healthy row still matches
+            Assert.Equal("S_", match.PrefixMatched); // and the null-prefix row never threw
+        }
     }
 }

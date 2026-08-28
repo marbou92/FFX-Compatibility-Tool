@@ -96,7 +96,19 @@ namespace FfxTool.Gui
             buttons.Children.Add(logs);
             buttons.Children.Add(close);
 
-            var root = new StackPanel { Margin = new Thickness(16) };
+            // Grid, not a StackPanel: the details box takes the leftover
+            // space (its own box scrolls) and the button row is pinned to
+            // the bottom — a long trace must never push Continue out of
+            // reach, which a fixed-height StackPanel happily did
+            var root = new Grid { Margin = new Thickness(16) };
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            Grid.SetRow(header, 0);
+            Grid.SetRow(sub, 1);
+            Grid.SetRow(details, 2);
+            Grid.SetRow(buttons, 3);
             root.Children.Add(header);
             root.Children.Add(sub);
             root.Children.Add(details);
