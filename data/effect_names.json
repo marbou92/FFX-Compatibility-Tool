@@ -1,0 +1,7415 @@
+{
+ "source": "After Effects Plugin Match Name spreadsheet by David Torno (public, contributor-verified) + curated vendor annotations",
+ "effects": [
+  {
+   "matchName": "ADBE 3D Glasses",
+   "name": "3D Glasses (Obsolete)",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.0.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE 3D Glasses2",
+   "name": "3D Glasses",
+   "category": "Perspective",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.0.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE 3D Tracker",
+   "name": "3D Camera Tracker",
+   "category": "Perspective",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE 4ColorGradient",
+   "name": "4-Color Gradient",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE AIF Perlin Noise 3D",
+   "name": "Turbulent Noise",
+   "category": "Noise & Grain",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE ATG Extract",
+   "name": "Inner/Outer Key",
+   "category": "Keying",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE AUX CHANNEL EXTRACT",
+   "name": "3D Channel Extract",
+   "category": "3D Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.5x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Alpha Levels2",
+   "name": "Alpha Levels",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.4",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Alpha Levels3",
+   "name": "Alpha Levels",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.4",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Angle Control",
+   "name": "Angle Control",
+   "category": "Expression Controls",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Apply Color LUT",
+   "name": "Apply Color LUT",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Apply Color LUT2",
+   "name": "Apply Color LUT",
+   "category": "Utility",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Arithmetic",
+   "name": "Arithmetic",
+   "category": "Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Aud BT",
+   "name": "Bass & Treble",
+   "category": "Audio",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.5x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Aud Delay",
+   "name": "Delay",
+   "category": "Audio",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.11x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Aud HiLo",
+   "name": "High-Low Pass",
+   "category": "Audio",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.5x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Aud Modulator",
+   "name": "Modulator",
+   "category": "Audio",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Aud Reverb",
+   "name": "Reverb",
+   "category": "Audio",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Aud Reverse",
+   "name": "Backwards",
+   "category": "Audio",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.4x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Aud Stereo Mixer",
+   "name": "Stereo Mixer",
+   "category": "Audio",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.2x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Aud Tone",
+   "name": "Tone",
+   "category": "Audio",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.7x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE AudSpect",
+   "name": "Audio Spectrum",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.6x2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE AudWave",
+   "name": "Audio Waveform",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.6x3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Aud_Flange",
+   "name": "Flange & Chorus",
+   "category": "Audio",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.7x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE AutoColor",
+   "name": "Auto Color",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE AutoContrast",
+   "name": "Auto Contrast",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE AutoLevels",
+   "name": "Auto Levels",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE BEZMESH",
+   "name": "Bezier Warp",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Basic 3D",
+   "name": "Basic 3D",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "4",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Basic Text2",
+   "name": "Basic Text",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "5.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Bevel Alpha",
+   "name": "Bevel Alpha",
+   "category": "Perspective",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.7",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Bevel Edges",
+   "name": "Bevel Edges",
+   "category": "Perspective",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Bilateral",
+   "name": "Bilateral Blur",
+   "category": "Blur & Sharpen",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Black&White",
+   "name": "Black & White",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Blend",
+   "name": "Blend",
+   "category": "Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Block Dissolve",
+   "name": "Block Dissolve",
+   "category": "Transition",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Box Blur",
+   "name": "Box Blur",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Box Blur2",
+   "name": "Fast Box Blur",
+   "category": "Blur & Sharpen",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Brightness & Contrast",
+   "name": "Brightness & Contrast",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Brightness & Contrast 2",
+   "name": "Brightness & Contrast",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Broadcast Colors",
+   "name": "Broadcast Colors",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Brush Strokes",
+   "name": "Brush Strokes",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Bulge",
+   "name": "Bulge",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE CHANNEL MIXER",
+   "name": "Channel Mixer",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.0x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Calculations",
+   "name": "Calculations",
+   "category": "Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Camera Lens Blur",
+   "name": "Camera Lens Blur",
+   "category": "Blur & Sharpen",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE CameraShakeDeblur",
+   "name": "Camera-Shake Deblur",
+   "category": "Blur & Sharpen",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Cartoonify",
+   "name": "Cartoon",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Cell Pattern",
+   "name": "Cell Pattern",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Change Color",
+   "name": "Change Color",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Change To Color",
+   "name": "Change to Color",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Channel Blur",
+   "name": "Channel Blur",
+   "category": "Blur & Sharpen",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Channel Combiner",
+   "name": "Channel Combiner",
+   "category": "Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Checkbox Control",
+   "name": "Checkbox Control",
+   "category": "Expression Controls",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Checkerboard",
+   "name": "Checkerboard",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Cineon Converter",
+   "name": "Cineon Converter",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Cineon Converter2",
+   "name": "Cineon Converter",
+   "category": "Utility",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Circle",
+   "name": "Circle",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Color Balance",
+   "name": "Color Balance",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.9",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Color Balance (HLS)",
+   "name": "Color Balance (HLS)",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.4",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Color Balance 2",
+   "name": "Color Balance",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.1x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Color Control",
+   "name": "Color Control",
+   "category": "Expression Controls",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Color Difference Key",
+   "name": "Color Difference Key",
+   "category": "Keying",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.12",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Color Emboss",
+   "name": "Color Emboss",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Color Key",
+   "name": "Color Key",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.4",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Color Link",
+   "name": "Color Link",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Color Range",
+   "name": "Color Range",
+   "category": "Keying",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.13",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Compander",
+   "name": "HDR Compander",
+   "category": "Utility",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Compound Arithmetic",
+   "name": "Compound Arithmetic",
+   "category": "Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Compound Blur",
+   "name": "Compound Blur",
+   "category": "Blur & Sharpen",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Corner Pin",
+   "name": "Corner Pin",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE CurvesCustom",
+   "name": "Curves",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.4",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE DEPTH FIELD",
+   "name": "Depth of Field",
+   "category": "3D Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE DEPTH MATTE",
+   "name": "Depth Matte",
+   "category": "3D Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Deflicker",
+   "name": "Color Stabilizer",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Difference",
+   "name": "Time Difference",
+   "category": "Time",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Difference Matte2",
+   "name": "Difference Matte",
+   "category": "Keying",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE DigitalVideoLimiter",
+   "name": "Video Limiter",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Displacement Map",
+   "name": "Displacement Map",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.6",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Drop Shadow",
+   "name": "Drop Shadow",
+   "category": "Perspective",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Dust & Scratches",
+   "name": "Dust & Scratches",
+   "category": "Noise & Grain",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE ELLIPSE",
+   "name": "Ellipse",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Easy Levels",
+   "name": "Levels",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Easy Levels2",
+   "name": "Levels",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Echo",
+   "name": "Echo",
+   "category": "Time",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Emboss",
+   "name": "Emboss",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Equalize",
+   "name": "Equalize",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Exposure",
+   "name": "Exposure",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Exposure2",
+   "name": "Exposure",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Extract",
+   "name": "Extract",
+   "category": "Keying",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Eyedropper Fill",
+   "name": "Eyedropper Fill",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE FC PRO 2.1",
+   "name": "FilmConvert Pro 2.1",
+   "category": "",
+   "vendor": "Film Emulation",
+   "suite": "Film Emulation",
+   "version": "2.10",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "ADBE FOG_3D",
+   "name": "Fog 3D",
+   "category": "3D Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.5x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Fast Blur",
+   "name": "Fast Blur (Legacy)",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Fill",
+   "name": "Fill",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.8x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Find Edges",
+   "name": "Find Edges",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Fractal",
+   "name": "Fractal",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Fractal Noise",
+   "name": "Fractal Noise",
+   "category": "Noise & Grain",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE FreePin3",
+   "name": "Puppet",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE GROW BOUNDS",
+   "name": "Grow Bounds",
+   "category": "Utility",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Gamma/Pedestal/Gain2",
+   "name": "Gamma/Pedestal/Gain",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Gaussian Blur",
+   "name": "Gaussian Blur (Legacy)",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.7",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Gaussian Blur 2",
+   "name": "Gaussian Blur",
+   "category": "Blur & Sharpen",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Geometry",
+   "name": "Transform",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Geometry2",
+   "name": "Transform",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Glo2",
+   "name": "Glow",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.6",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Gradient Wipe",
+   "name": "Gradient Wipe",
+   "category": "Transition",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Grid",
+   "name": "Grid",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE HDR ToneMap",
+   "name": "HDR Highlight Compression",
+   "category": "Utility",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE HUE SATURATION",
+   "name": "Hue/Saturation",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.0.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE ID MATTE",
+   "name": "ID Matte",
+   "category": "3D Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE IRIS_WIPE",
+   "name": "Iris Wipe",
+   "category": "Transition",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.4x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Invert",
+   "name": "Invert",
+   "category": "Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE JAeToolsRealGlow",
+   "name": "Real Glow",
+   "category": "JAe Tools",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE KeyCleaner",
+   "name": "Key Cleaner",
+   "category": "Keying",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE LIQUIFY",
+   "name": "Liquify",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Laser",
+   "name": "Beam",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.8x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Layer Control",
+   "name": "Layer Control",
+   "category": "Expression Controls",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Leave Color",
+   "name": "Leave Color",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Lens Blur",
+   "name": "Lens Blur",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 13.8 (CC 2015.3)"
+  },
+  {
+   "matchName": "ADBE Lens Flare",
+   "name": "Lens Flare",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Lightning",
+   "name": "Lightning",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.12",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Lightning 2",
+   "name": "Advanced Lightning",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Linear Color Key2",
+   "name": "Linear Color Key",
+   "category": "Keying",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Linear Wipe",
+   "name": "Linear Wipe",
+   "category": "Transition",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Luma Key",
+   "name": "Luma Key",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.4",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Lumetri",
+   "name": "Lumetri Color",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE MESH WARP",
+   "name": "Mesh Warp",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Magnify",
+   "name": "Magnify",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Matte Choker",
+   "name": "Matte Choker",
+   "category": "Matte",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Median",
+   "name": "Median",
+   "category": "Noise & Grain",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Minimax",
+   "name": "Minimax",
+   "category": "Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Mirror",
+   "name": "Mirror",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.4",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Mosaic",
+   "name": "Mosaic",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.7",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Motion Blur",
+   "name": "Directional Blur",
+   "category": "Blur & Sharpen",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.5.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Noise",
+   "name": "Noise",
+   "category": "Noise & Grain",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.6",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Noise Alpha",
+   "name": "Noise Alpha",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Noise Alpha2",
+   "name": "Noise Alpha",
+   "category": "Noise & Grain",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Noise HLS",
+   "name": "Noise HLS",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Noise HLS Auto",
+   "name": "Noise HLS Auto",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Noise HLS Auto2",
+   "name": "Noise HLS Auto",
+   "category": "Noise & Grain",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Noise HLS2",
+   "name": "Noise HLS",
+   "category": "Noise & Grain",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Normality",
+   "name": "Normality",
+   "category": "minning.de Normality",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.0x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Numbers2",
+   "name": "Numbers",
+   "category": "Text",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.15",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE OFMotionBlur",
+   "name": "Pixel Motion Blur",
+   "category": "Time",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Offset",
+   "name": "Offset",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Optics Compensation",
+   "name": "Optics Compensation",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE PS Arbitrary Map",
+   "name": "PS Arbitrary Map",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.7",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE PSL Bevel Emboss",
+   "name": "Photoshop Bevel And Emboss",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE PSL Drop Shadow",
+   "name": "Photoshop Drop Shadow",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE PSL Inner Glow",
+   "name": "Photoshop Inner Glow",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE PSL Inner Shadow",
+   "name": "Photoshop Inner Shadow",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE PSL Outer Glow",
+   "name": "Photoshop Outer Glow",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE PSL Solid Fill",
+   "name": "Photoshop Solid Fill",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Paint",
+   "name": "Paint",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Paint Bucket",
+   "name": "Paint Bucket",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Param EQ",
+   "name": "Parametric EQ",
+   "category": "Audio",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Path Text",
+   "name": "Path Text",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "4.7x13",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Photo Filter",
+   "name": "Photo Filter",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE PhotoFilterPS",
+   "name": "Photo Filter",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Playgnd",
+   "name": "Particle Playground",
+   "category": "Simulation",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.13",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Point Control",
+   "name": "Point Control",
+   "category": "Expression Controls",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Point3D Control",
+   "name": "3D Point Control",
+   "category": "Expression Controls",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Polar Coordinates",
+   "name": "Polar Coordinates",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Posterize",
+   "name": "Posterize",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.0x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Posterize Time",
+   "name": "Posterize Time",
+   "category": "Time",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Pro Levels",
+   "name": "Levels (Individual Controls)",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Pro Levels2",
+   "name": "Levels (Individual Controls)",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE ProfileToProfile",
+   "name": "Color Profile Converter",
+   "category": "Utility",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE RESHAPE",
+   "name": "Reshape",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Radial Blur",
+   "name": "Radial Blur",
+   "category": "Blur & Sharpen",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.11",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Radial Shadow",
+   "name": "Radial Shadow",
+   "category": "Perspective",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Radial Wipe",
+   "name": "Radial Wipe",
+   "category": "Transition",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Ramp",
+   "name": "Gradient Ramp",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Reduce Interlace Flicker",
+   "name": "Reduce Interlace Flicker",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE RefineMatte",
+   "name": "Refine Matte",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE RefineMatte2",
+   "name": "Refine Soft Matte",
+   "category": "Matte",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE RefineRBMatte",
+   "name": "Refine Hard Matte",
+   "category": "Matte",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Remove Color Matting",
+   "name": "Remove Color Matting",
+   "category": "Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Ripple",
+   "name": "Ripple",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.4",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Rolling Shutter",
+   "name": "Rolling Shutter Repair",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Roughen Edges",
+   "name": "Roughen Edges",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE SCHMEAR",
+   "name": "Smear",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Samurai",
+   "name": "Roto Brush & Refine Edge",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Scatter",
+   "name": "Scatter",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Scribble Fill",
+   "name": "Scribble",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE SelectiveColor",
+   "name": "Selective Color",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Set Channels",
+   "name": "Set Channels",
+   "category": "Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.0.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Set Matte2",
+   "name": "Set Matte",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Set Matte3",
+   "name": "Set Matte",
+   "category": "Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE ShadowHighlight",
+   "name": "Shadow/Highlight",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Sharpen",
+   "name": "Sharpen",
+   "category": "Blur & Sharpen",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Shift Channels",
+   "name": "Shift Channels",
+   "category": "Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Simple Choker",
+   "name": "Simple Choker",
+   "category": "Matte",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Slider Control",
+   "name": "Slider Control",
+   "category": "Expression Controls",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Smart Blur",
+   "name": "Smart Blur",
+   "category": "Blur & Sharpen",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Solid Composite",
+   "name": "Solid Composite",
+   "category": "Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Spherize",
+   "name": "Spherize",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Spill Suppressor",
+   "name": "Spill Suppressor",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.4",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Spill2",
+   "name": "Advanced Spill Suppressor",
+   "category": "Keying",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Strobe",
+   "name": "Strobe Light",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Stroke",
+   "name": "Stroke",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE SubspaceStabilizer",
+   "name": "Warp Stabilizer VFX",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Texturize",
+   "name": "Texturize",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Three-Way Color Corrector",
+   "name": "Three-Way Color Corrector",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Threshold",
+   "name": "Threshold",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Threshold2",
+   "name": "Threshold",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Tile",
+   "name": "Motion Tile",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.9",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Time Displacement",
+   "name": "Time Displacement",
+   "category": "Time",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Timecode",
+   "name": "Timecode",
+   "category": "Text",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Timewarp",
+   "name": "Timewarp",
+   "category": "Time",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Tint",
+   "name": "Tint",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.4",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Tritone",
+   "name": "Tritone",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Turbulent Displace",
+   "name": "Turbulent Displace",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Twirl",
+   "name": "Twirl",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.4",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Unsharp Mask",
+   "name": "Unsharp Mask",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Unsharp Mask2",
+   "name": "Unsharp Mask",
+   "category": "Blur & Sharpen",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Upscale",
+   "name": "Detail-preserving Upscale",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Vector Paint",
+   "name": "Vector Paint",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.2.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Venetian Blinds",
+   "name": "Venetian Blinds",
+   "category": "Transition",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Vibrance",
+   "name": "Vibrance",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE WRPMESH",
+   "name": "Warp",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Wave Warp",
+   "name": "Wave Warp",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.7.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE Write-on",
+   "name": "Write-on",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ADBE pixelCloud",
+   "name": "Pixel Cloud",
+   "category": "",
+   "vendor": "Blurrypixel",
+   "suite": "Blurrypixel",
+   "version": "",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "APC CardDanceCam",
+   "name": "Card Dance",
+   "category": "Simulation",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "APC CardWipeCam",
+   "name": "Card Wipe",
+   "category": "Transition",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "APC Caustics",
+   "name": "Caustics",
+   "category": "Simulation",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "APC Colorama",
+   "name": "Colorama",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "APC Foam",
+   "name": "Foam",
+   "category": "Simulation",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "APC Radio Waves",
+   "name": "Radio Waves",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "APC Shatter",
+   "name": "Shatter",
+   "category": "Simulation",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "APC Vegas",
+   "name": "Vegas",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "APC Wave World",
+   "name": "Wave World",
+   "category": "Simulation",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "BCC 3D Extruded Image Shatter",
+   "name": "BCC 3D Extruded Image Shatter",
+   "category": "BCC9 Perspective",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Beat Reactor",
+   "name": "BCC Beat Reactor",
+   "category": "BCC9 Time",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Blobs Wipe",
+   "name": "BCC Blobs Wipe",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Blobs WipePrTr",
+   "name": "BCC Blobs Wipe",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Blur Dissolve",
+   "name": "BCC Blur Dissolve",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Blur DissolvePrTr",
+   "name": "BCC Blur Dissolve",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Burnt FilmPrTr",
+   "name": "BCC Burnt Film",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Card Array",
+   "name": "BCC Wild Cards",
+   "category": "BCC9 Particles",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Chroma Key Studio",
+   "name": "BCC Chroma Key Studio",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Composite Dissolve",
+   "name": "BCC Composite Dissolve",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Composite DissolvePrTr",
+   "name": "BCC Composite Dissolve",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Criss-Cross WipePrTr",
+   "name": "BCC Criss-Cross Wipe",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Damaged TV Dissolve",
+   "name": "BCC Damaged TV Dissolve",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Damaged TV DissolvePrTr",
+   "name": "BCC Damaged TV Dissolve",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Edge Grunge",
+   "name": "BCC Edge Grunge",
+   "category": "BCC9 Stylize",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Fast Film Glow",
+   "name": "BCC Fast Film Glow",
+   "category": "BCC9 Film Style",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Fast Film Glow Dissolve",
+   "name": "BCC Fast Film Glow Dissolve",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Fast Film Glow DissolvePrTr",
+   "name": "BCC Fast Film Glow Dissolve",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Fast Film Process",
+   "name": "BCC Fast Film Process",
+   "category": "BCC9 Film Style",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Film Glow Dissolve",
+   "name": "BCC Film Glow Dissolve",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Film Glow DissolvePrTr",
+   "name": "BCC Film Glow Dissolve",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Grid Wipe",
+   "name": "BCC Grid Wipe",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Grid WipePrTr",
+   "name": "BCC Grid Wipe",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Grunge",
+   "name": "BCC Grunge",
+   "category": "BCC9 Stylize",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Halftone",
+   "name": "BCC Halftone",
+   "category": "BCC9 Art Looks",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Laser Beam",
+   "name": "BCC Laser Beam",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Lens Correction",
+   "name": "BCC Lens Correction",
+   "category": "BCC9 Image Restoration",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Lens Distortion Wipe",
+   "name": "BCC Lens Distortion Wipe",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Lens Distortion WipePrTr",
+   "name": "BCC Lens Distortion Wipe",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Lens Flare Dissolve",
+   "name": "BCC Lens Flare Dissolve",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Lens Flare DissolvePrTr",
+   "name": "BCC Lens Flare Dissolve",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Lens Flare Round",
+   "name": "BCC Lens Flare Round",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Lens Flare RoundPrTr",
+   "name": "BCC Lens Flare Round",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Lens Flare Spiked",
+   "name": "BCC Lens Flare Spiked",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Lens Flare SpikedPrTr",
+   "name": "BCC Lens Flare Spiked",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Lens Flash",
+   "name": "BCC Lens Flash",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Lens FlashPrTr",
+   "name": "BCC Lens Flash",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC LensTransitionPrTr",
+   "name": "BCC Lens Transition",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Light Wipe",
+   "name": "BCC Light Wipe",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Light WipePrTr",
+   "name": "BCC Light Wipe",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Linear WipePrTr",
+   "name": "BCC Linear Wipe",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Magic Sharp",
+   "name": "BCC Magic Sharp",
+   "category": "BCC9 Image Restoration",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Multi Stretch WipePrTr",
+   "name": "BCC Multi Stretch Wipe",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Multi Stripe WipePrTr",
+   "name": "BCC Multi Stripe Wipe",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Organic Strands",
+   "name": "BCC Organic Strands",
+   "category": "BCC9 Particles",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Pan and Zoom",
+   "name": "BCC Pan and Zoom",
+   "category": "BCC9 Perspective",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Particle Array 3D",
+   "name": "BCC Particle Array 3D",
+   "category": "BCC9 Particles",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Particle Emitter 3D",
+   "name": "BCC Particle Emitter 3D",
+   "category": "BCC9 Particles",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Pin Art 3D",
+   "name": "BCC Pin Art 3D",
+   "category": "BCC9 Particles",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Radial WipePrTr",
+   "name": "BCC Radial Wipe",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Rays Dissolve",
+   "name": "BCC Rays Dissolve",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Rays DissolvePrTr",
+   "name": "BCC Rays Dissolve",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Rectangular WipePrTr",
+   "name": "BCC Rectangular Wipe",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Ribbon Wipe",
+   "name": "BCC Ribbon Wipe",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Ribbon WipePrTr",
+   "name": "BCC Ribbon Wipe",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Rings Wipe",
+   "name": "BCC Rings Wipe",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Rings WipePrTr",
+   "name": "BCC Rings Wipe",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Ripple Dissolve",
+   "name": "BCC Ripple Dissolve",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Ripple DissolvePrTr",
+   "name": "BCC Ripple Dissolve",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Swish PanPrTr",
+   "name": "BCC Swish Pan",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Textured WipePrTr",
+   "name": "BCC Textured Wipe",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Tile Wipe",
+   "name": "BCC Tile Wipe",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Tile WipePrTr",
+   "name": "BCC Tile Wipe",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Tritone Dissolve",
+   "name": "BCC Tritone Dissolve",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Tritone DissolvePrTr",
+   "name": "BCC Tritone Dissolve",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Twister",
+   "name": "BCC Twister",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC TwisterPrTr",
+   "name": "BCC Twister",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Two Strip Color",
+   "name": "BCC Two Strip Color",
+   "category": "BCC9 Film Style",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC UpRez",
+   "name": "BCC UpRez",
+   "category": "BCC9 Image Restoration",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Vector Blur Dissolve",
+   "name": "BCC Vector Blur Dissolve",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Vector Blur DissolvePrTr",
+   "name": "BCC Vector Blur Dissolve",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Water Waves Dissolve",
+   "name": "BCC Water Waves Dissolve",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC Water Waves DissolvePrTr",
+   "name": "BCC Water Waves Dissolve",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC32D Particles",
+   "name": "BCC 2D Particles",
+   "category": "BCC9 Particles",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC33D Image Shatter",
+   "name": "BCC 3D Image Shatter",
+   "category": "BCC9 Perspective",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Alpha Pixel Noise",
+   "name": "BCC Alpha Pixel Noise",
+   "category": "BCC9 Stylize",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Alpha Process",
+   "name": "BCC Alpha Process",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Alpha Spotlight",
+   "name": "BCC Alpha Spotlight",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Artists Poster",
+   "name": "BCC Artist's Poster",
+   "category": "BCC9 Art Looks",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Blur",
+   "name": "BCC Blur (Obsolete)",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Boost Blend",
+   "name": "BCC Boost Blend",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Brick",
+   "name": "BCC Brick",
+   "category": "BCC9 Textures",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Brightness-Contrast",
+   "name": "BCC Brightness-Contrast",
+   "category": "BCC9 Color & Tone",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Bulge",
+   "name": "BCC Bulge",
+   "category": "BCC9 Warp",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Bump Map",
+   "name": "BCC Bump Map",
+   "category": "BCC9 Art Looks",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Burnt Film",
+   "name": "BCC Burnt Film",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Cartooner",
+   "name": "BCC Cartooner",
+   "category": "BCC9 Art Looks",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Caustics",
+   "name": "BCC Caustics",
+   "category": "BCC9 Textures",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Chroma Key",
+   "name": "BCC Chroma Key",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Cloth",
+   "name": "BCC Cloth",
+   "category": "BCC9 Textures",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Clouds",
+   "name": "BCC Clouds",
+   "category": "BCC9 Textures",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Color Balance",
+   "name": "BCC Color Balance",
+   "category": "BCC9 Color & Tone",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Color Correction",
+   "name": "BCC Color Correction",
+   "category": "BCC9 Color & Tone",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Color Match",
+   "name": "BCC Color Match",
+   "category": "BCC9 Color & Tone",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Color Palette",
+   "name": "BCC Color Palette",
+   "category": "BCC9 Color & Tone",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Colorize",
+   "name": "BCC Colorize",
+   "category": "BCC9 Color & Tone",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Colorize Glow",
+   "name": "BCC Colorize Glow",
+   "category": "BCC9 Stylize",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Comet",
+   "name": "BCC Comet",
+   "category": "BCC9 Particles",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Composite",
+   "name": "BCC Composite",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Composite Choker",
+   "name": "BCC Composite Choker",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3CornerPin",
+   "name": "BCC Corner Pin",
+   "category": "BCC9 Match Move",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Correct Selected Color",
+   "name": "BCC Correct Selected Color",
+   "category": "BCC9 Color & Tone",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Criss-Cross Wipe",
+   "name": "BCC Criss-Cross Wipe",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Cube",
+   "name": "BCC Cube",
+   "category": "BCC9 Perspective",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Cylinder",
+   "name": "BCC Cylinder",
+   "category": "BCC9 Perspective",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3DVE",
+   "name": "BCC DVE",
+   "category": "BCC9 Perspective",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3DVE Basic",
+   "name": "BCC DVE Basic",
+   "category": "BCC9 Perspective",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3DeGrain",
+   "name": "BCC DeGrain",
+   "category": "BCC9 Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3DeNoise",
+   "name": "BCC DeNoise",
+   "category": "BCC9 Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Deinterlace",
+   "name": "BCC Deinterlace",
+   "category": "BCC9 Film Style",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Directional Blur",
+   "name": "BCC Directional Blur",
+   "category": "BCC9 Blur & Sharpen",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Displacement Map",
+   "name": "BCC Displacement Map",
+   "category": "BCC9 Warp",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Drop Shadow",
+   "name": "BCC Drop Shadow",
+   "category": "BCC9 Stylize",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Dust and Scratches",
+   "name": "BCC Dust and Scratches",
+   "category": "BCC9 Image Restoration",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Edge Lighting",
+   "name": "BCC Edge Lighting",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Emboss",
+   "name": "BCC Emboss",
+   "category": "BCC9 Stylize",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Fast Flipper",
+   "name": "BCC Fast Flipper",
+   "category": "BCC9 Perspective",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Film Damage",
+   "name": "BCC Film Damage",
+   "category": "BCC9 Film Style",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Film Grain",
+   "name": "BCC Film Grain",
+   "category": "BCC9 Film Style",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Film Process",
+   "name": "BCC Film Process",
+   "category": "BCC9 Film Style",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Fire",
+   "name": "BCC Fire",
+   "category": "BCC9 Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Flicker Fixer",
+   "name": "BCC Flicker Fixer",
+   "category": "BCC9 Image Restoration",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Fractal Noise",
+   "name": "BCC Fractal Noise",
+   "category": "BCC9 Textures",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Gaussian Blur",
+   "name": "BCC Gaussian Blur",
+   "category": "BCC9 Blur & Sharpen",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Glare",
+   "name": "BCC Glare",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Glint",
+   "name": "BCC Glint",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Glitter",
+   "name": "BCC Glitter",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Glow",
+   "name": "BCC Glow",
+   "category": "BCC9 Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Glow Alpha Edges",
+   "name": "BCC Glow Alpha Edges",
+   "category": "BCC9 Stylize",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Glow Matte",
+   "name": "BCC Glow Matte",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Granite",
+   "name": "BCC Granite",
+   "category": "BCC9 Textures",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Hue-Sat-Lightness",
+   "name": "BCC Hue-Sat-Lightness",
+   "category": "BCC9 Color & Tone",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Invert Solarize",
+   "name": "BCC Invert Solarize",
+   "category": "BCC9 Color & Tone",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Jitter",
+   "name": "BCC Jitter",
+   "category": "BCC9 Time",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Jitter Basic",
+   "name": "BCC Jitter Basic",
+   "category": "BCC9 Time",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Lens Flare",
+   "name": "BCC Lens Flare",
+   "category": "BCC9 Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Lens Flare 3D",
+   "name": "BCC Lens Flare 3D",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Lens Flare Adv",
+   "name": "BCC Lens Flare Adv",
+   "category": "BCC9 Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Levels Gamma",
+   "name": "BCC Levels Gamma",
+   "category": "BCC9 Color & Tone",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Light Matte",
+   "name": "BCC Light Matte",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Light Sweep",
+   "name": "BCC Light Sweep",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Light Wrap",
+   "name": "BCC Light Wrap",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Light Zoom",
+   "name": "BCC Light Zoom",
+   "category": "BCC9 Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Lightning",
+   "name": "BCC Lightning",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Linear Color Key",
+   "name": "BCC Linear Color Key",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Linear Luma Key",
+   "name": "BCC Linear Luma Key",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Linear Wipe",
+   "name": "BCC Linear Wipe",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Looper",
+   "name": "BCC Looper",
+   "category": "BCC9 Time",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Make Alpha Key",
+   "name": "BCC Make Alpha Key",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Match Grain",
+   "name": "BCC Match Grain",
+   "category": "BCC9 Film Style",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3MatchMove",
+   "name": "BCC Match Move",
+   "category": "BCC9 Match Move",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Matte Choker",
+   "name": "BCC Matte Choker",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Matte Cleanup",
+   "name": "BCC Matte Cleanup",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Median",
+   "name": "BCC Median",
+   "category": "BCC9 Art Looks",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Misalignment",
+   "name": "BCC Misalignment",
+   "category": "BCC9 Stylize",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Mixed Colors",
+   "name": "BCC Mixed Colors",
+   "category": "BCC9 Textures",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Motion Blur",
+   "name": "BCC Motion Blur",
+   "category": "BCC9 Blur & Sharpen",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3MotionKey",
+   "name": "BCC Motion Key",
+   "category": "BCC9 Image Restoration",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Multi Shadow",
+   "name": "BCC Multi Shadow",
+   "category": "BCC9 Stylize",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Multi Stretch Wipe",
+   "name": "BCC Multi Stretch Wipe",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Multi Stripe Wipe",
+   "name": "BCC Multi Stripe Wipe",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3MultiTone Mix",
+   "name": "BCC MultiTone Mix",
+   "category": "BCC9 Color & Tone",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Noise Map",
+   "name": "BCC Noise Map",
+   "category": "BCC9 Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Optical Flow",
+   "name": "BCC Optical Flow",
+   "category": "BCC9 Time",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Page Turn",
+   "name": "BCC Page Turn",
+   "category": "BCC9 Perspective",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Particle System",
+   "name": "BCC Particle System",
+   "category": "BCC9 Particles",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Pixel Chooser",
+   "name": "BCC Pixel Chooser",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Polar Displacement",
+   "name": "BCC Polar Displacement",
+   "category": "BCC9 Warp",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Posterize",
+   "name": "BCC Posterize",
+   "category": "BCC9 Art Looks",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Posterize Time",
+   "name": "BCC Posterize Time",
+   "category": "BCC9 Time",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Premult",
+   "name": "BCC Premult",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Pyramid Blur",
+   "name": "BCC Pyramid Blur",
+   "category": "BCC9 Blur & Sharpen",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3RGB Blend",
+   "name": "BCC RGB Blend",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3RGB Edges",
+   "name": "BCC RGB Edges",
+   "category": "BCC9 Stylize",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3RGB Pixel Noise",
+   "name": "BCC RGB Pixel Noise",
+   "category": "BCC9 Stylize",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Radial Blur",
+   "name": "BCC Radial Blur",
+   "category": "BCC9 Blur & Sharpen",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Radial Wipe",
+   "name": "BCC Radial Wipe",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Rain",
+   "name": "BCC Rain",
+   "category": "BCC9 Particles",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Rays",
+   "name": "BCC Rays",
+   "category": "BCC9 Textures",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Rays Cartoon",
+   "name": "BCC Rays Cartoon",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Rays Puffy",
+   "name": "BCC Rays Puffy",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Rays Radiant Edges",
+   "name": "BCC Rays Radiant Edges",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Rays Radiant Spotlight",
+   "name": "BCC Rays Radiant Spotlight",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Rays Ring",
+   "name": "BCC Rays Ring",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Rays Ripply",
+   "name": "BCC Rays Ripply",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Rays Streaky",
+   "name": "BCC Rays Streaky",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Rays Textured",
+   "name": "BCC Rays Textured",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Rays Wedge",
+   "name": "BCC Rays Wedge",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Rectangular Wipe",
+   "name": "BCC Rectangular Wipe",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Reptilian",
+   "name": "BCC Reptilian",
+   "category": "BCC9 Textures",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Reverse Spotlight",
+   "name": "BCC Reverse Spotlight",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Ripple",
+   "name": "BCC Ripple",
+   "category": "BCC9 Warp",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Rock",
+   "name": "BCC Rock",
+   "category": "BCC9 Textures",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Rough Glow",
+   "name": "BCC Rough Glow",
+   "category": "BCC9 Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Safe Colors",
+   "name": "BCC Safe Colors",
+   "category": "BCC9 Color & Tone",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Scatterize",
+   "name": "BCC Scatterize",
+   "category": "BCC9 Stylize",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Sequencer",
+   "name": "BCC Sequencer",
+   "category": "BCC9 Time",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Snow",
+   "name": "BCC Snow",
+   "category": "BCC9 Particles",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Sparks",
+   "name": "BCC Sparks",
+   "category": "BCC9 Particles",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Sphere",
+   "name": "BCC Sphere",
+   "category": "BCC9 Perspective",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Sphere Transition",
+   "name": "BCC Sphere Transition",
+   "category": "BCC9 Perspective",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Spiral Blur",
+   "name": "BCC Spiral Blur",
+   "category": "BCC9 Blur & Sharpen",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Spotlight",
+   "name": "BCC Spotlight",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Spray Paint Noise",
+   "name": "BCC Spray Paint Noise",
+   "category": "BCC9 Art Looks",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Stabilizer",
+   "name": "BCC Optical Stabilizer",
+   "category": "BCC9 Image Restoration",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Stage Light",
+   "name": "BCC Stage Light",
+   "category": "BCC9 Lights",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Star Matte",
+   "name": "BCC Star Matte",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Stars",
+   "name": "BCC Stars",
+   "category": "BCC9 Textures",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Steel Plate",
+   "name": "BCC Steel Plate",
+   "category": "BCC9 Textures",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Super Blend",
+   "name": "BCC Super Blend",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Temporal Blur",
+   "name": "BCC Temporal Blur",
+   "category": "BCC9 Time",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Textured Wipe",
+   "name": "BCC Textured Wipe",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Time Displacement",
+   "name": "BCC Time Displacement",
+   "category": "BCC9 Time",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Trails",
+   "name": "BCC Trails",
+   "category": "BCC9 Time",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Trails Basic",
+   "name": "BCC Trails Basic",
+   "category": "BCC9 Time",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Tritone",
+   "name": "BCC Tritone",
+   "category": "BCC9 Color & Tone",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Twirl",
+   "name": "BCC Twirl",
+   "category": "BCC9 Warp",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Two Way Key",
+   "name": "BCC Two Way Key",
+   "category": "BCC9 Key & Blend",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Ultra Glow",
+   "name": "BCC Film Glow",
+   "category": "BCC9 Film Style",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Unsharp Mask",
+   "name": "BCC Unsharp Mask",
+   "category": "BCC9 Blur & Sharpen",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Vector Displacement",
+   "name": "BCC Vector Displacement",
+   "category": "BCC9 Warp",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Veined Marble",
+   "name": "BCC Veined Marble",
+   "category": "BCC9 Textures",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Velocity Remap",
+   "name": "BCC Velocity Remap",
+   "category": "BCC9 Time",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Wave",
+   "name": "BCC Wave",
+   "category": "BCC9 Warp",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Weave",
+   "name": "BCC Weave",
+   "category": "BCC9 Textures",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Wire Remover",
+   "name": "BCC Wire Remover",
+   "category": "BCC9 Image Restoration",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Wood Grain",
+   "name": "BCC Wood Grain",
+   "category": "BCC9 Textures",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Wooden Planks",
+   "name": "BCC Wooden Planks",
+   "category": "BCC9 Textures",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Z Space I",
+   "name": "BCC Z Space I",
+   "category": "BCC9 Perspective",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Z Space II",
+   "name": "BCC Z Space II",
+   "category": "BCC9 Perspective",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Z Space III",
+   "name": "BCC Z Space III",
+   "category": "BCC9 Perspective",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC3Z-Blur",
+   "name": "BCC Z-Blur",
+   "category": "BCC9 Blur & Sharpen",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC4Color Choker",
+   "name": "BCC Color Choker",
+   "category": "BCC9 Stylize",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC4Damaged TV",
+   "name": "BCC Damaged TV",
+   "category": "BCC9 Stylize",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC4LED",
+   "name": "BCC LED",
+   "category": "BCC9 Stylize",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC4Morph",
+   "name": "BCC Morph",
+   "category": "BCC9 Warp",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC4Noise Map 2",
+   "name": "BCC Noise Map 2",
+   "category": "BCC9 Textures",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC4Prism",
+   "name": "BCC Prism",
+   "category": "BCC9 Stylize",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC4Scanline",
+   "name": "BCC Scanline",
+   "category": "BCC9 Stylize",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC4Tile Mosaic",
+   "name": "BCC Tile Mosaic",
+   "category": "BCC9 Art Looks",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC4Turbulence",
+   "name": "BCC Turbulence",
+   "category": "BCC9 Warp",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC4Video Morph",
+   "name": "BCC Video Morph",
+   "category": "BCC9 Warp",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC4Warp",
+   "name": "BCC Warp",
+   "category": "BCC9 Warp",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC6Cartoon2Look",
+   "name": "BCC Cartoon Look",
+   "category": "BCC9 Art Looks",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC6Charcoal Sketch",
+   "name": "BCC Charcoal Sketch",
+   "category": "BCC9 Art Looks",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC6DV Fixer",
+   "name": "BCC DV Fixer",
+   "category": "BCC9 Image Restoration",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC6LensBlur",
+   "name": "BCC Lens Blur",
+   "category": "BCC9 Blur & Sharpen",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC6LensShape",
+   "name": "BCC Lens Shape",
+   "category": "BCC9 Blur & Sharpen",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC6LensTransition",
+   "name": "BCC Lens Transition",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC6Noise Reduction",
+   "name": "BCC Noise Reduction",
+   "category": "BCC9 Image Restoration",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC6Pencil Sketch",
+   "name": "BCC Pencil Sketch",
+   "category": "BCC9 Art Looks",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC6PencilSketch",
+   "name": "BCC Pencil Sketch (Obsolete)",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC6Pixel Fixer",
+   "name": "BCC Pixel Fixer",
+   "category": "BCC9 Image Restoration",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC6Smooth Tone",
+   "name": "BCC Smooth Tone",
+   "category": "BCC9 Image Restoration",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC6Swish Pan",
+   "name": "BCC Swish Pan",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC6ThreeWayCC",
+   "name": "BCC 3 Way Color Grade",
+   "category": "BCC9 Color & Tone",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC6Videoscope",
+   "name": "BCC Videoscope",
+   "category": "BCC9 Color & Tone",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCC6Water Color",
+   "name": "BCC Water Color",
+   "category": "BCC9 Art Looks",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCCChecker Wipe",
+   "name": "BCC Checker Wipe",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCCChecker WipePrTr",
+   "name": "BCC Checker Wipe",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCCFXBrowser",
+   "name": "BCC FX Browser",
+   "category": "BCC Browser",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCCFlutter",
+   "name": "BCC Flutter Cut",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCCFlutterPrTr",
+   "name": "BCC Flutter Cut",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCCVignette",
+   "name": "BCC Vignette",
+   "category": "BCC9 Film Style",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCCVignette Wipe",
+   "name": "BCC Vignette Wipe",
+   "category": "BCC9 Transitions",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "BCCVignette WipePrTr",
+   "name": "BCC Vignette Wipe",
+   "category": "Obsolete",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "Boris3Pixelate",
+   "name": "BCC Mosaic",
+   "category": "BCC9 Stylize",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "Boris3WitnessProtection",
+   "name": "BCC WitnessProtection",
+   "category": "BCC9 Match Move",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "7.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "CC Ball Action",
+   "name": "CC Ball Action",
+   "category": "Simulation",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Bend It",
+   "name": "CC Bend It",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.4",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Bender",
+   "name": "CC Bender",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.4",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Blobbylize",
+   "name": "CC Blobbylize",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.7",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Bubbles",
+   "name": "CC Bubbles",
+   "category": "Simulation",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Burn Film",
+   "name": "CC Burn Film",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Color Offset",
+   "name": "CC Color Offset",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.7",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Composite",
+   "name": "CC Composite",
+   "category": "Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.7",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Cylinder",
+   "name": "CC Cylinder",
+   "category": "Perspective",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Drizzle",
+   "name": "CC Drizzle",
+   "category": "Simulation",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Environment",
+   "name": "CC Environment",
+   "category": "Perspective",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.4",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Flo Motion",
+   "name": "CC Flo Motion",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Force Motion Blur",
+   "name": "CC Force Motion Blur",
+   "category": "Time",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Glass",
+   "name": "CC Glass",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.7",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Glass Wipe",
+   "name": "CC Glass Wipe",
+   "category": "Transition",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.9",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Glue Gun",
+   "name": "CC Glue Gun",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.7",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Grid Wipe",
+   "name": "CC Grid Wipe",
+   "category": "Transition",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Griddler",
+   "name": "CC Griddler",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Hair",
+   "name": "CC Hair",
+   "category": "Simulation",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Image Wipe",
+   "name": "CC Image Wipe",
+   "category": "Transition",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Jaws",
+   "name": "CC Jaws",
+   "category": "Transition",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Kaleida",
+   "name": "CC Kaleida",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Lens",
+   "name": "CC Lens",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Light Burst 2.5",
+   "name": "CC Light Burst 2.5",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Light Rays",
+   "name": "CC Light Rays",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Light Sweep",
+   "name": "CC Light Sweep",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Light Wipe",
+   "name": "CC Light Wipe",
+   "category": "Transition",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Mr. Mercury",
+   "name": "CC Mr. Mercury",
+   "category": "Simulation",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.9",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Mr. Smoothie",
+   "name": "CC Mr. Smoothie",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.4",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Overbrights",
+   "name": "CC Overbrights",
+   "category": "Utility",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC PS Classic",
+   "name": "CC PS Classic (obsolete)",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC PS LE Classic",
+   "name": "CC PS LE Classic (obsolete)",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Page Turn",
+   "name": "CC Page Turn",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Particle Systems II",
+   "name": "CC Particle Systems II",
+   "category": "Simulation",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Particle World",
+   "name": "CC Particle World",
+   "category": "Simulation",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.9.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Pixel Polly",
+   "name": "CC Pixel Polly",
+   "category": "Simulation",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Plastic",
+   "name": "CC Plastic",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Power Pin",
+   "name": "CC Power Pin",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.9",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Radial Blur",
+   "name": "CC Radial Blur",
+   "category": "Blur & Sharpen",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Radial Fast Blur",
+   "name": "CC Radial Fast Blur",
+   "category": "Blur & Sharpen",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Radial ScaleWipe",
+   "name": "CC Radial ScaleWipe",
+   "category": "Transition",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Rain",
+   "name": "CC Rain",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC RepeTile",
+   "name": "CC RepeTile",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Ripple Pulse",
+   "name": "CC Ripple Pulse",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Scale Wipe",
+   "name": "CC Scale Wipe",
+   "category": "Transition",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Scatterize",
+   "name": "CC Scatterize",
+   "category": "Simulation",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Simple Wire Removal",
+   "name": "CC Simple Wire Removal",
+   "category": "Keying",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Slant",
+   "name": "CC Slant",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Smear",
+   "name": "CC Smear",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Snow",
+   "name": "CC Snow",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Sphere",
+   "name": "CC Sphere",
+   "category": "Perspective",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Split",
+   "name": "CC Split",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.4",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Split 2",
+   "name": "CC Split 2",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Spotlight",
+   "name": "CC Spotlight",
+   "category": "Perspective",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Star Burst",
+   "name": "CC Star Burst",
+   "category": "Simulation",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Threshold",
+   "name": "CC Threshold",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Threshold RGB",
+   "name": "CC Threshold RGB",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Tiler",
+   "name": "CC Tiler",
+   "category": "Distort",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.7",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Time Blend",
+   "name": "CC Time Blend",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Time Blend FX",
+   "name": "CC Time Blend FX",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Toner",
+   "name": "CC Toner",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Twister",
+   "name": "CC Twister",
+   "category": "Transition",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.6",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Vector Blur",
+   "name": "CC Vector Blur",
+   "category": "Blur & Sharpen",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.5",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC WarpoMatic",
+   "name": "CC WarpoMatic",
+   "category": "Transition",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CC Wide Time",
+   "name": "CC Wide Time",
+   "category": "Time",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.7",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CINEMA 4D Effect",
+   "name": "CINEWARE",
+   "category": "CINEMA 4D",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CROSSPHERE_PBAccelerator",
+   "name": "PBAccelerator",
+   "category": "",
+   "vendor": "CROSSPHERE",
+   "suite": "CROSSPHERE",
+   "version": "1.0x1",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "CS BlockLoad",
+   "name": "CC Block Load",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CS Color Neutralizer",
+   "name": "CC Color Neutralizer",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CS CrossBlur",
+   "name": "CC Cross Blur",
+   "category": "Blur & Sharpen",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CS HexTile",
+   "name": "CC HexTile",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CS Kernel",
+   "name": "CC Kernel",
+   "category": "Color Correction",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CS LineSweep",
+   "name": "CC Line Sweep",
+   "category": "Transition",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CS Threads",
+   "name": "CC Threads",
+   "category": "Generate",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CS Vignette",
+   "name": "CC Vignette",
+   "category": "Stylize",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CSRainfall",
+   "name": "CC Rainfall",
+   "category": "Simulation",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "CSSnowfall",
+   "name": "CC Snowfall",
+   "category": "Simulation",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ColorStereoMatch",
+   "name": "RE:Match Stereo",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "1.3.6x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "ColorUnmanaged",
+   "name": "RE:Match Color",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "1.3.6x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "Create Motion Vectors 3.x",
+   "name": "Motion Vectors: Create",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "6.2x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "DE:Flicker",
+   "name": "DE:Flicker High Speed",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "1.3x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "DE:Fluctuate",
+   "name": "DE:Flicker Auto Levels",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "1.3x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "DE:Noise",
+   "name": "DE:Noise",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "2.3x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "DE:Noise_FrameAverage",
+   "name": "DE:Noise Frame Average",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "2.3x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "DEFlickerTimeLapse",
+   "name": "DE:Flicker Time Lapse",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "1.3x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "DRFL Absolute Curves",
+   "name": "FL Curves - Absolute",
+   "category": "",
+   "vendor": "Frischluft",
+   "suite": "Frischluft",
+   "version": "1.0.4",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "DRFL Amiga Rulez",
+   "name": "FL Amiga Rulez",
+   "category": "",
+   "vendor": "Frischluft",
+   "suite": "Frischluft",
+   "version": "1.2.7",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "DRFL BoxBlur",
+   "name": "FL Box Blur",
+   "category": "",
+   "vendor": "Frischluft",
+   "suite": "Frischluft",
+   "version": "1.2.7",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "DRFL Depth of Field",
+   "name": "FL Depth Of Field",
+   "category": "Frischluft",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.4.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "DRFL Glassphere",
+   "name": "FL Glas Sphere",
+   "category": "",
+   "vendor": "Frischluft",
+   "suite": "Frischluft",
+   "version": "1.2.7",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "DRFL Glow",
+   "name": "FL Glow",
+   "category": "",
+   "vendor": "Frischluft",
+   "suite": "Frischluft",
+   "version": "1.2.7",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "DRFL Highlight",
+   "name": "FL Highlight",
+   "category": "",
+   "vendor": "Frischluft",
+   "suite": "Frischluft",
+   "version": "1.2.7",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "DRFL Mosaic Plane",
+   "name": "FL Mosaic Plane",
+   "category": "",
+   "vendor": "Frischluft",
+   "suite": "Frischluft",
+   "version": "1.2.7",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "DRFL Out of Focus",
+   "name": "FL Out Of Focus",
+   "category": "Frischluft",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.4.8",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "DRFL RadialBlur",
+   "name": "FL Radial Blur",
+   "category": "",
+   "vendor": "Frischluft",
+   "suite": "Frischluft",
+   "version": "1.2.7",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "DRFL Relative Curves",
+   "name": "FL Curves - Relative",
+   "category": "",
+   "vendor": "Frischluft",
+   "suite": "Frischluft",
+   "version": "1.0.4",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "DRFL Volumetrics",
+   "name": "FL Volumetrics",
+   "category": "",
+   "vendor": "Frischluft",
+   "suite": "Frischluft",
+   "version": "1.2.7",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "EXtractoR",
+   "name": "EXtractoR",
+   "category": "3D Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.9",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "FTTF LensDistortion",
+   "name": "ft-Lens Distortion",
+   "category": "",
+   "vendor": "francois-tarlier.com",
+   "suite": "francois-tarlier.com",
+   "version": "7.1x4",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "GUTS BadTV",
+   "name": "Bad TV",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "Rowbyte",
+   "version": "2.10",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "GUTS SEPRGB",
+   "name": "Separate RGB",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "Rowbyte",
+   "version": "3.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "IDentifier",
+   "name": "IDentifier",
+   "category": "3D Channel",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.9",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ISL MochaShapeImporter",
+   "name": "mocha shape",
+   "category": "Matte",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "KNSW Custom Flare",
+   "name": "Light Factory",
+   "category": "",
+   "vendor": "Knoll Light Factory",
+   "suite": "Knoll Light Factory",
+   "version": "3.0.3",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "KNSW Custom Flare EZ",
+   "name": "Light Factory EZ",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW Custom Flare LE",
+   "name": "Light Factory LE",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW LF ApertureRefl",
+   "name": "LF Aperture Reflection",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW LF ChromaFan",
+   "name": "LF ChromaFan",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW LF ChromaHoop",
+   "name": "LF Chroma Hoop",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW LF CircleSpread",
+   "name": "LF Circle Spread",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW LF Disc",
+   "name": "LF Disc",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW LF Ellipse",
+   "name": "LF Ellipse",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW LF EllipticalCaustic",
+   "name": "LF Elliptical Caustic",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW LF Fadedring",
+   "name": "LF Fadedring",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW LF Glow",
+   "name": "LF Glow",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW LF PhotonSpikeball",
+   "name": "LF Photon Spikeball",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW LF PolySpikeball",
+   "name": "LF Poly Spikeball",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW LF PolySpread",
+   "name": "LF Poly Spread",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW LF RandomFan",
+   "name": "LF RandomFan",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW LF Single Poly",
+   "name": "LF Single Poly",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW LF Sparkle",
+   "name": "LF Sparkle",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW LF Spikeball",
+   "name": "LF Spikeball",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW LF StarFilter",
+   "name": "LF Star Filter",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW LF Starcaustic",
+   "name": "LF Star Caustic",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW LF Stripe",
+   "name": "LF Stripe",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW Spectacular",
+   "name": "Light Factory Spectacular",
+   "category": "Obsolete",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.00",
+   "stock": true,
+   "aeVersion": "AE 13.0 (CC 2014)"
+  },
+  {
+   "matchName": "KNSW Unmult",
+   "name": "UnMult",
+   "category": "Knoll",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1.1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "Keylight 906",
+   "name": "Keylight (1.2)",
+   "category": "Keying",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.2",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "Mettle 3D Mesh Warp",
+   "name": "FreeForm",
+   "category": "",
+   "vendor": "Mettle",
+   "suite": "Mettle",
+   "version": "1.0x1",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "Mettle FreeForm Pro",
+   "name": "Mettle FreeForm Pro",
+   "category": "",
+   "vendor": "Mettle",
+   "suite": "Mettle",
+   "version": "1.0x1",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "Mettle ShapeShifter",
+   "name": "Mettle ShapeShifter",
+   "category": "",
+   "vendor": "Mettle",
+   "suite": "Mettle",
+   "version": "1.0x1",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "Mettle SkyBox Blur",
+   "name": "VR Blur",
+   "category": "Immersive Video",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "Mettle SkyBox Chromatic Aberrat",
+   "name": "VR Chromatic Aberrations",
+   "category": "Immersive Video",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "Mettle SkyBox Color Gradients",
+   "name": "VR Color Gradients",
+   "category": "Immersive Video",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "Mettle SkyBox Converter",
+   "name": "VR Converter",
+   "category": "Immersive Video",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "Mettle SkyBox Denoise",
+   "name": "VR De-Noise",
+   "category": "Immersive Video",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "Mettle SkyBox Digital Glitch",
+   "name": "VR Digital Glitch",
+   "category": "Immersive Video",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "Mettle SkyBox Fractal Noise",
+   "name": "VR Fractal Noise",
+   "category": "Immersive Video",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "Mettle SkyBox Glow",
+   "name": "VR Glow",
+   "category": "Immersive Video",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "Mettle SkyBox Project 2D",
+   "name": "VR Plane to Sphere",
+   "category": "Immersive Video",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "Mettle SkyBox Rotate Sphere",
+   "name": "VR Rotate Sphere",
+   "category": "Immersive Video",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "Mettle SkyBox Sharpen",
+   "name": "VR Sharpen",
+   "category": "Immersive Video",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "Mettle SkyBox Viewer",
+   "name": "VR Sphere to Plane",
+   "category": "Immersive Video",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "NeatVideo4A",
+   "name": "Reduce Noise v4",
+   "category": "Neat Video",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "4.0x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "NeatVideoA",
+   "name": "Reduce Noise",
+   "category": "",
+   "vendor": "Neat Video",
+   "suite": "Neat Video",
+   "version": "2.0x1",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RE:FILL Choke",
+   "name": "RE:FILL Choke",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "2.2x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RE:FILL GrowShrink",
+   "name": "RE:FILL GrowShrink",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "2.2x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RE:Fill FrameBorder",
+   "name": "RE:FILL Frame Borders",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "2.2x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RE:Fill Offset",
+   "name": "RE:FILL Offset",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "2.2x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RE:Map Displace",
+   "name": "RE:Map Displace",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "2.3x0-3.0.2x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RE:Map Distort",
+   "name": "RE:Map Distort",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "2.3x0-3.0.2x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RE:Map Planar",
+   "name": "RE:Map Planar",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "2.3x0-3.0.2x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "REFill Alpha",
+   "name": "RE:FILL Alpha",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "2.2x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RFX Soft Edge Mask",
+   "name": "PV Feather",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "1.7x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RS Motion Blur Pro A 3.x",
+   "name": "RSMB Pro",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "5.1.9x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "RS Motion Blur Pro Vectors 3.x",
+   "name": "RSMB Pro Vectors",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "5.1.9x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "RWB DATA GLITCH",
+   "name": "Data Glitch",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "Rowbyte",
+   "version": "2.0.3",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB DOT PIXELS",
+   "name": "Dot Pixels",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "Rowbyte",
+   "version": "2.50",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB PLEXEFF Color Map",
+   "name": "Plexus Color Map",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "_Obsolete",
+   "version": "2.0.6",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB PLEXEFF Container",
+   "name": "Plexus Container",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "_Obsolete",
+   "version": "2.0.6",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB PLEXEFF Noise",
+   "name": "Plexus Noise Effector",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "_Obsolete",
+   "version": "2.0.6",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB PLEXEFF Shade Effector",
+   "name": "Plexus Shade Effector",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "_Obsolete",
+   "version": "2.0.6",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB PLEXEFF Spherical Field",
+   "name": "Plexus Spherical Field",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "_Obsolete",
+   "version": "2.0.6",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB PLEXEFF Transform",
+   "name": "Plexus Transform",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "_Obsolete",
+   "version": "2.0.6",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB PLEXKIT",
+   "name": "Plexus Toolkit",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "_Obsolete",
+   "version": "2.0.6",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB PLEXREN Beams",
+   "name": "Plexus Beams Renderer",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "_Obsolete",
+   "version": "2.0.6",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB PLEXREN Facets",
+   "name": "Plexus Facets Renderer",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "_Obsolete",
+   "version": "2.0.6",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB PLEXREN Lines",
+   "name": "Plexus Lines Renderer",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "_Obsolete",
+   "version": "2.0.6",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB PLEXREN Points",
+   "name": "Plexus Points Renderer",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "_Obsolete",
+   "version": "2.0.6",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB PLEXREN Triangles",
+   "name": "Plexus Triangulation Renderer",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "_Obsolete",
+   "version": "2.0.6",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB PLEXSRC Instances",
+   "name": "Plexus Instances Object",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "_Obsolete",
+   "version": "2.0.6",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB PLEXSRC Lights",
+   "name": "Plexus Layers Object",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "_Obsolete",
+   "version": "2.0.6",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB PLEXSRC OBJ",
+   "name": "Plexus OBJ Object",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "_Obsolete",
+   "version": "2.0.6",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB PLEXSRC Paths",
+   "name": "Plexus Path Object",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "_Obsolete",
+   "version": "2.0.6",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB PLEXSRC Primitives",
+   "name": "Plexus Primitives Object",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "_Obsolete",
+   "version": "2.0.6",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB PLEXUS",
+   "name": "Plexus Legacy Renderer",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "_Obsolete",
+   "version": "2.0.6",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB PLEXUS TWO",
+   "name": "Plexus",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "Rowbyte",
+   "version": "2.0.6",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "RWB TV PIXEL",
+   "name": "TVPixel",
+   "category": "",
+   "vendor": "Rowbyte",
+   "suite": "Rowbyte",
+   "version": "1.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "ReFill AreaFill",
+   "name": "RE:FILL Area Fill",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "2.2x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "ReelSmart Deinterlacer",
+   "name": "FieldsKit Deinterlacer",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "3.3x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "ReelSmart Morph",
+   "name": "RE:Flex Warp",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "4.1.1x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "ReelSmart Morph2",
+   "name": "RE:Flex Morph",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "4.1.1x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "ReelSmart Moving Morph",
+   "name": "RE:Flex Motion Morph",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "4.1.1x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "ReelSmart Pulldown",
+   "name": "FieldsKit Pulldown",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "3.3x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "ReelSmart Reinterlacer",
+   "name": "FieldsKit Reinterlacer",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "3.3x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "SHAdE SHApE",
+   "name": "Shade Shape",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "4.2.1x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "SK Directional Splines",
+   "name": "SK Directional With Splines",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "3.3x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "SKDirectional",
+   "name": "SK Directional Per Pixel",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "3.3x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "SKFrameAccumulate",
+   "name": "SK Frame Accumulate",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "3.3x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "SKGaussian",
+   "name": "SK Gaussian",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "3.3x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "SKGaussianPerPixel",
+   "name": "SK Gaussian Per Pixel",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "3.3x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "SKSharpen",
+   "name": "SK Sharpen",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "3.3x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "SKSmoothAliasing",
+   "name": "SK Staircase Suppress",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "3.3x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "SKSmoother",
+   "name": "SK Diffusion",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "3.3x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "SKZBlur",
+   "name": "SK ZBlur",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "3.3x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "SSONTECH SyAFXCube",
+   "name": "SynthEyes Cubemapper",
+   "category": "SynthEyes",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "SSONTECH SyAFXLens",
+   "name": "SynthEyes Distortion",
+   "category": "SynthEyes",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.2x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "SSONTECH SyAFXMapper",
+   "name": "SynthEyes Image Mapper",
+   "category": "SynthEyes",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "SSONTECH SyAFXVRS",
+   "name": "SynthEyes 360VR Stabilization",
+   "category": "SynthEyes",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1x1",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "SYNTHAP CF Color Finesse 2",
+   "name": "SA Color Finesse 3",
+   "category": "Synthetic Aperture",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3.0.15",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "ScriptEP",
+   "name": "BCC Extruded EPS",
+   "category": "BCC9 3D Objects",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "1.0.3",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "ScriptET",
+   "name": "BCC Extruded Text",
+   "category": "BCC9 3D Objects",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "1.0.3",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "ScriptLD",
+   "name": "BCC Layer Deformer",
+   "category": "BCC9 3D Objects",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "1.0.3",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "ScriptSP",
+   "name": "BCC Extruded Spline",
+   "category": "BCC9 3D Objects",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "1.0.3",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "ScriptTO",
+   "name": "BCC Type On Text",
+   "category": "BCC9 3D Objects",
+   "vendor": "Boris FX",
+   "suite": "Continuum Complete",
+   "version": "1.0.3",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "Shade Normals",
+   "name": "Shade Normals",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "4.2.1x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "Smart Motion Blur 3.x",
+   "name": "RSMB",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "5.1.9x0",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "TARONITE ZBTOY",
+   "name": "ZbornToy",
+   "category": "",
+   "vendor": "Taronites",
+   "suite": "Taronites",
+   "version": "",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "Twixtor 4 Vectors In",
+   "name": "Twixtor Pro, Vectors In",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "6.2x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "Twixtor 45",
+   "name": "Twixtor Pro",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "6.2x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "Twixtor 45 Lite",
+   "name": "Twixtor",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "6.2x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "UV Inverse Mapper",
+   "name": "RE:Map Inverse UV",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "2.3x0-3.0.2x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "UV Mapper Pete",
+   "name": "RE:Map UV",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "2.3x0-3.0.2x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "VIDEOCOPILOT 3DArray",
+   "name": "Element",
+   "category": "Video Copilot",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.2.1x120",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "VIDEOCOPILOT HeatDistortion",
+   "name": "Heat Distortion",
+   "category": "",
+   "vendor": "Video Copilot",
+   "suite": "Video Copilot",
+   "version": "1.0x30",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "VIDEOCOPILOT LightSaber",
+   "name": "Saber",
+   "category": "",
+   "vendor": "Video Copilot",
+   "suite": "Video Copilot",
+   "version": "1.0x39",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "VIDEOCOPILOT OpticalFlares",
+   "name": "Optical Flares",
+   "category": "",
+   "vendor": "Video Copilot",
+   "suite": "Video Copilot",
+   "version": "1.20",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "VIDEOCOPILOT VIBRANCE",
+   "name": "VC Color Vibrance",
+   "category": "",
+   "vendor": "Video Copilot",
+   "suite": "Video Copilot",
+   "version": "",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "VISINF Grain Duplication",
+   "name": "Match Grain",
+   "category": "Noise & Grain",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "VISINF Grain Implant",
+   "name": "Add Grain",
+   "category": "Noise & Grain",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "VISINF Grain Removal",
+   "name": "Remove Grain",
+   "category": "Noise & Grain",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "3",
+   "stock": true,
+   "aeVersion": "AE 15.1.2 (CC 2018)"
+  },
+  {
+   "matchName": "Video Gogh",
+   "name": "Video Gogh",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "3.7x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "Video Gogh 3",
+   "name": "Video Gogh Pro",
+   "category": "RE:Vision Plug-ins",
+   "vendor": "RE:Vision Effects",
+   "suite": "",
+   "version": "3.7x0",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "Videocopilot Twitch",
+   "name": "Twitch",
+   "category": "",
+   "vendor": "Video Copilot",
+   "suite": "Video Copilot",
+   "version": "1.10",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "YY_HexTex/1/AndrewYY's_6287ED9",
+   "name": "YY_HexTex",
+   "category": "",
+   "vendor": "AndrewYY",
+   "suite": "AndrewYY",
+   "version": "1.20",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "YY_MagicKey/1/AndrewYY_9715BE2",
+   "name": "YY_MagicKey",
+   "category": "",
+   "vendor": "AndrewYY",
+   "suite": "AndrewYY",
+   "version": "1.10",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "YY_Ramp+/2/AndrewYY's _3ECF151",
+   "name": "YY_Ramp+",
+   "category": "",
+   "vendor": "AndrewYY",
+   "suite": "AndrewYY",
+   "version": "2.70",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "YY_ShockRing/1/AndrewY_678FCDA",
+   "name": "YY_ShockRing",
+   "category": "",
+   "vendor": "AndrewYY",
+   "suite": "AndrewYY",
+   "version": "2.00",
+   "stock": false,
+   "aeVersion": null
+  },
+  {
+   "matchName": "tc 3DStrokePath",
+   "name": "3D Stroke",
+   "category": "Trapcode",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.6.7",
+   "stock": true,
+   "aeVersion": "AE 13.5 (CC 2015)"
+  },
+  {
+   "matchName": "tc Echospace",
+   "name": "Echospace",
+   "category": "Trapcode",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1.6",
+   "stock": true,
+   "aeVersion": "AE 13.5 (CC 2015)"
+  },
+  {
+   "matchName": "tc Form",
+   "name": "Form",
+   "category": "Trapcode",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.10",
+   "stock": true,
+   "aeVersion": "AE 13.5 (CC 2015)"
+  },
+  {
+   "matchName": "tc Lux",
+   "name": "Lux",
+   "category": "Trapcode",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.3.5",
+   "stock": true,
+   "aeVersion": "AE 13.5 (CC 2015)"
+  },
+  {
+   "matchName": "tc Mir",
+   "name": "Mir",
+   "category": "Trapcode",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.00",
+   "stock": true,
+   "aeVersion": "AE 13.5 (CC 2015)"
+  },
+  {
+   "matchName": "tc Particular",
+   "name": "Particular",
+   "category": "Trapcode",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.5.1",
+   "stock": true,
+   "aeVersion": "AE 13.5 (CC 2015)"
+  },
+  {
+   "matchName": "tc Shine",
+   "name": "Shine",
+   "category": "Trapcode",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "2.00",
+   "stock": true,
+   "aeVersion": "AE 13.5 (CC 2015)"
+  },
+  {
+   "matchName": "tc Sound Keys",
+   "name": "Sound Keys",
+   "category": "Trapcode",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.30",
+   "stock": true,
+   "aeVersion": "AE 13.5 (CC 2015)"
+  },
+  {
+   "matchName": "tc Starglow",
+   "name": "Starglow",
+   "category": "Trapcode",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.70",
+   "stock": true,
+   "aeVersion": "AE 13.5 (CC 2015)"
+  },
+  {
+   "matchName": "tc Tao",
+   "name": "Tao",
+   "category": "Trapcode",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.0.1",
+   "stock": true,
+   "aeVersion": "AE 13.5 (CC 2015)"
+  },
+  {
+   "matchName": "tc Trapcode Horizon",
+   "name": "Horizon",
+   "category": "Trapcode",
+   "vendor": "Adobe",
+   "suite": "Native",
+   "version": "1.1.7",
+   "stock": true,
+   "aeVersion": "AE 13.5 (CC 2015)"
+  }
+ ]
+}

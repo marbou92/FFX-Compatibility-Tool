@@ -54,5 +54,103 @@
     "suite": "Twixtor",
     "confirmed": true,
     "note": "Uses plain display name rather than a coded prefix (e.g. 'Twixtor 45'). 'Twixtor 45'/'Twixtor Pro' and 'Twixtor 45 Lite' both refer to the same standard plugin per user."
+  },
+  {
+    "prefix": "Particular",
+    "vendor": "Red Giant / Maxon",
+    "suite": "Trapcode",
+    "confirmed": false,
+    "note": "Common Trapcode match-name convention (trapcode-registered effects use the product name as match name). Not file-verified."
+  },
+  {
+    "prefix": "Form",
+    "vendor": "Red Giant / Maxon",
+    "suite": "Trapcode",
+    "confirmed": false,
+    "note": "Trapcode match-name convention; not file-verified."
+  },
+  {
+    "prefix": "Shine",
+    "vendor": "Red Giant / Maxon",
+    "suite": "Trapcode",
+    "confirmed": false,
+    "note": "Trapcode match-name convention; not file-verified."
+  },
+  {
+    "prefix": "Starglow",
+    "vendor": "Red Giant / Maxon",
+    "suite": "Trapcode",
+    "confirmed": false,
+    "note": "Trapcode match-name convention; not file-verified."
+  },
+  {
+    "prefix": "3D Stroke",
+    "vendor": "Red Giant / Maxon",
+    "suite": "Trapcode",
+    "confirmed": false,
+    "note": "Trapcode match-name convention; not file-verified."
+  },
+  {
+    "prefix": "Mir",
+    "vendor": "Red Giant / Maxon",
+    "suite": "Trapcode",
+    "confirmed": false,
+    "note": "Trapcode match-name convention; not file-verified."
+  },
+  {
+    "prefix": "Sound Keys",
+    "vendor": "Red Giant / Maxon",
+    "suite": "Trapcode",
+    "confirmed": false,
+    "note": "Trapcode match-name convention; not file-verified."
+  },
+  {
+    "prefix": "Horizon",
+    "vendor": "Red Giant / Maxon",
+    "suite": "Trapcode",
+    "confirmed": false,
+    "note": "Trapcode match-name convention; not file-verified."
+  },
+  {
+    "prefix": "Tao",
+    "vendor": "Red Giant / Maxon",
+    "suite": "Trapcode",
+    "confirmed": false,
+    "note": "Trapcode match-name convention; not file-verified."
+  },
+  {
+    "prefix": "Echospace",
+    "vendor": "Red Giant / Maxon",
+    "suite": "Trapcode",
+    "confirmed": false,
+    "note": "Trapcode match-name convention; not file-verified."
+  },
+  {
+    "prefix": "Lux",
+    "vendor": "Red Giant / Maxon",
+    "suite": "Trapcode",
+    "confirmed": false,
+    "note": "Trapcode match-name convention; not file-verified."
+  },
+  {
+    "prefix": "Optical Flares",
+    "vendor": "Video Copilot",
+    "suite": "Optical Flares",
+    "confirmed": false,
+    "note": "Widely documented match name; not file-verified."
+  },
+  {
+    "prefix": "Deep Glow",
+    "vendor": "aescripts (Plugin Everything)",
+    "suite": "Deep Glow",
+    "confirmed": false,
+    "note": "Product-name match-name convention; not file-verified."
+  },
+  {
+    "prefix": "RSMB",
+    "vendor": "RE:Vision Effects",
+    "suite": "ReelSmart Motion Blur",
+    "confirmed": false,
+    "note": "Well-documented match-name prefix; not file-verified."
   }
 ]

@@ -460,7 +460,8 @@
                                Foreground="{DynamicResource B.OnSurface}" VerticalAlignment="Center"
                                Margin="4,0,8,0" TextTrimming="CharacterEllipsis"/>
                     <TextBlock Grid.Column="2" Text="About" FontSize="11.5" FontWeight="Medium"
-                               VerticalAlignment="Center" ToolTip="{Binding Sub}">
+                               VerticalAlignment="Center" ToolTip="What this effect is, its AE menu group and compatibility"
+                               Cursor="Hand" MouseLeftButtonUp="EcAbout_Click">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
                                 <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
@@ -584,7 +585,8 @@
                                  SelectionChanged="EffectList_SelectionChanged">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="{Binding RowBrush}" CornerRadius="10" Padding="14,9" Margin="0,1">
+                                    <Border Background="{Binding RowBrush}" CornerRadius="10" Padding="14,9" Margin="0,1"
+                                            ToolTip="{Binding MatchTip}">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="2*"/>
@@ -912,5 +914,37 @@
                            Foreground="{DynamicResource B.Outline}"/>
             </StackPanel>
         </Grid>
+
+        <!-- About popover: what the effect is, the AE menu group it belongs
+             to, vendor/suite, the raw match name and the compatibility
+             status — AE's About line, made useful for a downgrade call -->
+        <Popup x:Name="EcAboutPop" AllowsTransparency="True" StaysOpen="False"
+               Placement="Mouse" PopupAnimation="Fade">
+            <Border Background="{DynamicResource B.Surface}" CornerRadius="14"
+                    BorderBrush="{DynamicResource B.Outline}" BorderThickness="1"
+                    Padding="14,12" Width="280">
+                <StackPanel>
+                    <TextBlock x:Name="AboutTitle" FontSize="14" FontWeight="SemiBold"
+                               Foreground="{DynamicResource B.OnSurface}" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="AboutGroup" FontSize="11.5" FontWeight="Medium"
+                               Foreground="{DynamicResource B.Primary}"
+                               Margin="0,4,0,0" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="AboutVendor" FontSize="11.5"
+                               Foreground="{DynamicResource B.OnSurfaceVariant}"
+                               Margin="0,6,0,0" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="AboutOrigin" FontSize="11"
+                               Foreground="{DynamicResource B.OnSurfaceVariant}"
+                               Margin="0,2,0,0" TextWrapping="Wrap"/>
+                    <Border Height="1" Background="{DynamicResource B.OutlineVariant}" Opacity="0.55"
+                            Margin="0,8" IsHitTestVisible="False"/>
+                    <TextBlock x:Name="AboutMatch" FontSize="11"
+                               Foreground="{DynamicResource B.OnSurfaceVariant}"
+                               TextWrapping="Wrap"/>
+                    <TextBlock x:Name="AboutStatus" FontSize="11.5"
+                               Foreground="{DynamicResource B.OnSurface}"
+                               Margin="0,6,0,0" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+        </Popup>
     </Grid>
 </UserControl>

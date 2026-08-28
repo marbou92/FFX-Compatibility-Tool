@@ -46,6 +46,9 @@ namespace FfxTool.Gui
         public class EffectRowVm
         {
             public string Name { get; set; }
+            /// <summary>Raw match name for the row tooltip when the visible
+            /// name is the human display name (null when they are equal).</summary>
+            public string MatchTip { get; set; }
             public string VendorLabel { get; set; }
             public string Status { get; set; }
             public Brush RowBrush { get; set; }
@@ -429,6 +432,11 @@ namespace FfxTool.Gui
         // last plugin-table failure reason already logged (null = none) —
         // so a persistent failure is logged once, not again on every Refresh
         private string _lastTableError;
+        // match-name → display name/category table (data/effect_names.json,
+        // built from David Torno's public AE match-name spreadsheet) —
+        // loaded lazily once; display-only, compatibility never uses it
+        private List<EffectNameEntry> _names;
+        private string _namesError;
         private readonly ObservableCollection<EffectRowVm> _rows = new ObservableCollection<EffectRowVm>();
         private int _filterMode; // 0 all, 1 missing only, 2 compatible only
         private bool _sortDesc;
@@ -708,6 +716,16 @@ namespace FfxTool.Gui
                     LogService.Append("plugin table: " + _lastTableError +
                                       " \u2014 every effect shows as Unknown plugin until it's fixed");
             }
+            if (_names == null)
+            {
+                _names = EffectNameLookup.Load();
+                if (EffectNameLookup.LoadError != null && EffectNameLookup.LoadError != _namesError)
+                {
+                    _namesError = EffectNameLookup.LoadError;
+                    LogService.Append("effect names table: " + _namesError +
+                                      " \u2014 effect titles fall back to their match names");
+                }
+            }
             var real = _currentEffects.Where(e => !e.IsSentinel);
 
             // stable position of every effect within the file — rows are
@@ -754,9 +772,11 @@ namespace FfxTool.Gui
                     status = "Native";
                 }
 
+                string disp = DisplayNameFor(eff.MatchName);
                 _rows.Add(new EffectRowVm
                 {
-                    Name = eff.MatchName,
+                    Name = disp,
+                    MatchTip = disp == eff.MatchName ? null : eff.MatchName,
                     VendorLabel = $"{match.Vendor ?? "?"} — {match.Suite ?? "?"}",
                     Status = status,
                     RowBrush = row,
@@ -832,12 +852,33 @@ namespace FfxTool.Gui
             }
         }
 
+        /// <summary>
+        /// Human effect title for a match name: the reference table's display
+        /// name when known (AE never shows match names), else the match name.
+        /// </summary>
+        private string DisplayNameFor(string matchName)
+        {
+            var e = EffectNameLookup.Resolve(matchName, _names);
+            if (!string.IsNullOrEmpty(e?.name) && e.name != matchName) return e.name;
+            return matchName;
+        }
+
+        /// <summary>Effect Controls block title: display name, ShortName, match name.</summary>
+        private string EcDisplayName(PresetEffectDetails d)
+        {
+            var e = EffectNameLookup.Resolve(d.MatchName, _names);
+            if (!string.IsNullOrEmpty(e?.name) && e.name != d.MatchName) return e.name;
+            return string.IsNullOrEmpty(d.ShortName) ? d.MatchName : d.ShortName;
+        }
+
         /// <summary>Vendor/status line under one Effect Controls block title.</summary>
         private string EcSubFor(int effectIndex, PresetEffectDetails d)
         {
             string vendor = _ecVendor.TryGetValue(effectIndex, out string v) ? v : "unknown plugin";
             string status = _ecStatus.TryGetValue(effectIndex, out string s) ? s : "";
-            return $"{vendor}  ·  {d.Parameters.Count} parameter{(d.Parameters.Count == 1 ? "" : "s")}" +
+            var e = EffectNameLookup.Resolve(d.MatchName, _names);
+            string cat = string.IsNullOrEmpty(e?.category) ? "" : e.category + "  ·  ";
+            return $"{cat}{vendor}  ·  {d.Parameters.Count} parameter{(d.Parameters.Count == 1 ? "" : "s")}" +
                    $"  ·  {d.AnimatedCount} animated  ·  {status}";
         }
 
@@ -862,7 +903,7 @@ namespace FfxTool.Gui
                                       $"couldn't be decoded \u2014 {d.Error}");
                     groups.Add(new EcGroupVm
                     {
-                        Title = string.IsNullOrEmpty(d.ShortName) ? d.MatchName : d.ShortName,
+                        Title = EcDisplayName(d),
                         Sub = "\u26a0 couldn't be decoded \u2014 " + d.Error,
                         Open = false,
                         Items = new List<object>(),
@@ -877,7 +918,7 @@ namespace FfxTool.Gui
                     // an honest "nothing decoded" beats an invisible effect
                     groups.Add(new EcGroupVm
                     {
-                        Title = string.IsNullOrEmpty(d.ShortName) ? d.MatchName : d.ShortName,
+                        Title = EcDisplayName(d),
                         Sub = EcSubFor(i, d),
                         Open = false,
                         Items = new List<object>(),
@@ -899,7 +940,7 @@ namespace FfxTool.Gui
                     }
                     groups.Add(new EcGroupVm
                     {
-                        Title = string.IsNullOrEmpty(d.ShortName) ? d.MatchName : d.ShortName,
+                        Title = EcDisplayName(d),
                         Sub = EcSubFor(i, d),
                         Open = open,
                         Items = root,
@@ -915,7 +956,7 @@ namespace FfxTool.Gui
                                       $"couldn't be displayed \u2014 {Describe(ex)}");
                     groups.Add(new EcGroupVm
                     {
-                        Title = string.IsNullOrEmpty(d.ShortName) ? d.MatchName : d.ShortName,
+                        Title = EcDisplayName(d),
                         Sub = "\u26a0 parameters couldn't be displayed \u2014 " + Describe(ex),
                         Open = false,
                         Items = new List<object>(),
@@ -1017,6 +1058,51 @@ namespace FfxTool.Gui
                 FlipEcGroup(g.EffectIndex);
                 e.Handled = true;
             }
+        }
+
+        // ---------- About popover: what this effect is and where it lives ----------
+        private void EcAbout_Click(object sender, MouseButtonEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is EcGroupVm g &&
+                g.EffectIndex >= 0 && g.EffectIndex < _details.Count)
+            {
+                ShowEcAbout(_details[g.EffectIndex], g.EffectIndex);
+                e.Handled = true;
+            }
+        }
+
+        /// <summary>
+        /// AE's About line, made useful: the effect's proper name, the AE
+        /// menu group it lives under, vendor/suite, the raw match name and
+        /// the compatibility status — everything a downgrade decision
+        /// needs, in one small card at the cursor. Handled=true keeps the
+        /// header's own toggle from firing on the same click.
+        /// </summary>
+        private void ShowEcAbout(PresetEffectDetails d, int effectIndex)
+        {
+            var nameEntry = EffectNameLookup.Resolve(d.MatchName, _names);
+            var plug = PluginLookup.Resolve(d.MatchName, PluginLookup.LoadTable());
+
+            AboutTitle.Text = EcDisplayName(d);
+            string cat = string.IsNullOrEmpty(nameEntry?.category) ? null : nameEntry.category;
+            AboutGroup.Text = cat != null
+                ? "Effects \u25b8 " + cat
+                : "AE menu group unknown for this match name";
+            string vendorLine = plug.Vendor == null
+                ? "unknown plugin"
+                : plug.Vendor + (string.IsNullOrEmpty(plug.Suite) ? "" : "  \u00b7  " + plug.Suite);
+            if (!string.IsNullOrEmpty(nameEntry?.version))
+                vendorLine += "  \u00b7  v" + nameEntry.version;
+            AboutVendor.Text = vendorLine;
+            AboutMatch.Text = "match name: " + d.MatchName;
+            AboutOrigin.Text = nameEntry == null
+                ? "not in the reference dataset yet"
+                : (nameEntry.stock ? "stock AE table" : "3rd-party listing") +
+                  (string.IsNullOrEmpty(nameEntry.aeVersion) ? "" : " \u00b7 " + nameEntry.aeVersion);
+            AboutStatus.Text = _ecStatus.TryGetValue(effectIndex, out string st) && !string.IsNullOrEmpty(st)
+                ? "compatibility: " + st
+                : "compatibility: unknown";
+            EcAboutPop.IsOpen = true;
         }
 
         // named parameter group disclosure rows
@@ -1604,6 +1690,20 @@ namespace FfxTool.Gui
             if (t1 - t0 < 1e-6) t1 = t0 + 0.5; // single-instant stream still gets an axis
             Func<double, double> xOf = t => L + (t - t0) / (t1 - t0) * (w - L - R);
 
+            // AE's Graph Editor reads as an inset panel — a quiet darker
+            // backdrop so grid, curve and markers sit on a defined surface
+            // instead of floating in the card
+            GraphCanvas.Children.Add(new Rectangle
+            {
+                X = L - 10, Y = T - 10,
+                Width = Math.Max(0, w - L - R + 20),
+                Height = Math.Max(0, h - T - Bot + 20),
+                RadiusX = 10, RadiusY = 10,
+                Fill = (Brush)FindResource("B.SCLowest"),
+                Stroke = (Brush)FindResource("B.OutlineVariant"),
+                StrokeThickness = 1
+            });
+
             DrawTimeGrid(t0, t1, xOf, w, h, T, Bot, L, R, gridBrush, labelBrush);
 
             // AE's plot axes: a solid left (value) and bottom (time) line so
@@ -1722,6 +1822,26 @@ namespace FfxTool.Gui
                     lastLabelX = x;
                 }
             }
+
+            // AE's dense minor frame ticks between the labeled lines — no
+            // labels, just the rhythm of frames under the cursor
+            int minor = Math.Max(1, step / 5);
+            double minorPx = (w - L - R) * (minor / (double)Fps) / Math.Max(t1 - t0, 1e-9);
+            if (minorPx >= 10)
+            {
+                int fStart = (int)Math.Ceiling(t0 * Fps / minor - 1e-9);
+                for (int f = fStart; ; f += minor)
+                {
+                    double t = f / Fps;
+                    if (t > t1 + 1e-9) break;
+                    double x = Math.Round(xOf(t)) + 0.5;
+                    GraphCanvas.Children.Add(new Line
+                    {
+                        X1 = x, X2 = x, Y1 = h - bot - 5, Y2 = h - bot,
+                        Stroke = gridBrush, StrokeThickness = 1
+                    });
+                }
+            }
         }
 
         /// <summary>
@@ -1832,6 +1952,19 @@ namespace FfxTool.Gui
                 }
             }
             geo.Freeze();
+            // soft under-halo: the same geometry, wide and faint — reads
+            // like AE's bright curve on a dark field, no bitmap effects
+            // (Win7-safe)
+            GraphCanvas.Children.Add(new Path
+            {
+                Data = geo,
+                Stroke = accent,
+                StrokeThickness = 6,
+                Opacity = 0.14,
+                StrokeLineJoin = PenLineJoin.Round,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round
+            });
             GraphCanvas.Children.Add(new Path
             {
                 Data = geo,
@@ -1941,6 +2074,16 @@ namespace FfxTool.Gui
                     ctx.LineTo(new Point(XOf(plot, ts[i]), yOf(sp[i])), true, false);
             }
             line.Freeze();
+            GraphCanvas.Children.Add(new Path
+            {
+                Data = line,
+                Stroke = accent,
+                StrokeThickness = 5,
+                Opacity = 0.14,
+                StrokeLineJoin = PenLineJoin.Round,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round
+            });
             GraphCanvas.Children.Add(new Path
             {
                 Data = line,
