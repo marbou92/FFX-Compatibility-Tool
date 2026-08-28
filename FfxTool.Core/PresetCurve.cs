@@ -32,6 +32,14 @@ namespace FfxTool.Core
     /// lines, Hold segments step at the right keyframe. The fixture's
     /// Easy-Ease streams (slope 0, influences 1/3 + 1/6) render as the
     /// familiar S-curve.
+    ///
+    /// EVALUATION: ValueAt/SpeedAt evaluate the TRUE cubic Bezier — the
+    /// very curve WPF's BezierTo draws. (An earlier revision evaluated a
+    /// degenerate 3-point form here, so the hover probe and the speed
+    /// graph silently rode a different curve than the one on screen —
+    /// the probe floated off the line and the speed graph disagreed
+    /// with the value graph.) Control times are order-clamped so the
+    /// time axis never folds back, keeping the x(u) inversion valid.
     /// </summary>
     public static class PresetCurve
     {
@@ -85,6 +93,12 @@ namespace FfxTool.Core
                 seg.C1V = a.Value + a.OutSlope * oi * (t1 - t0);
                 seg.C2T = t1 - ii * (t1 - t0);
                 seg.C2V = b.Value - b.InSlope * ii * (t1 - t0);
+                // display guard: hand-tuned presets may carry influences
+                // summing over 1, which would fold time back on itself —
+                // pin both control times to their midpoint so x(u) stays
+                // monotonic and the inverse solve below remains valid
+                if (seg.C1T > seg.C2T)
+                    seg.C1T = seg.C2T = 0.5 * (seg.C1T + seg.C2T);
 
                 segs.Add(seg);
             }
@@ -116,6 +130,36 @@ namespace FfxTool.Core
         }
 
         /// <summary>
+        /// Analytic speed |dv/dt| of the stream at time t (seconds) — the
+        /// derivative of the same cubic the value graph draws. Linear
+        /// segments carry a constant slope, Hold segments 0, Bezier
+        /// segments the exact tangent magnitude; outside the stream the
+        /// value is held, so the speed is 0.
+        /// </summary>
+        public static double SpeedAt(List<Segment> segs, double t)
+        {
+            if (segs == null || segs.Count == 0) return double.NaN;
+            var first = segs[0];
+            if (t < first.T0) return 0;
+            var last = segs[segs.Count - 1];
+            if (t > last.T1) return 0;
+            foreach (var s in segs)
+            {
+                if (t > s.T1) continue; // first segment whose span reaches t
+                if (s.Mode == InterpHold) return 0;
+                if (s.Mode == InterpLinear)
+                    return Math.Abs((s.V1 - s.V0) / Math.Max(s.T1 - s.T0, 1e-9));
+                double u = SolveBezierT(s, Math.Min(Math.Max(t, s.T0), s.T1));
+                double m = 1 - u;
+                // dP/du of the cubic at u, for value and time separately
+                double dv = 3 * m * m * (s.C1V - s.V0) + 6 * m * u * (s.C2V - s.C1V) + 3 * u * u * (s.V1 - s.C2V);
+                double dt = 3 * m * m * (s.C1T - s.T0) + 6 * m * u * (s.C2T - s.C1T) + 3 * u * u * (s.T1 - s.C2T);
+                return Math.Abs(dt) < 1e-12 ? 0 : Math.Abs(dv / dt);
+            }
+            return 0;
+        }
+
+        /// <summary>
         /// Uniform value samples across the stream — the value graph's
         /// polyline and (by differencing) the speed graph's curve.
         /// </summary>
@@ -136,21 +180,29 @@ namespace FfxTool.Core
 
         static double SolveBezierT(Segment s, double t)
         {
-            // x(t) = t is monotonic (control times sit inside the span);
-            // 18 bisection iterations ≈ 4e-6 s — far below frame duration
+            // x(u) is monotonic (control times sit inside the span and are
+            // order-clamped in BuildSegments); 22 bisection iterations put
+            // the residual far below one frame — and because the drawn
+            // Path evaluates this same cubic, the hover probe and the
+            // speed graph ride exactly on the visible curve
             double lo = 0, hi = 1;
-            for (int i = 0; i < 18; i++)
+            for (int i = 0; i < 22; i++)
             {
-                double mid = (lo + hi) / 2;
-                double x = Lerp(Lerp(s.T0, s.C1T, mid), Lerp(s.C2T, s.T1, mid), mid);
+                double mid = 0.5 * (lo + hi);
+                double x = Cubic(s.T0, s.C1T, s.C2T, s.T1, mid);
                 if (x < t) lo = mid; else hi = mid;
             }
-            return (lo + hi) / 2;
+            return 0.5 * (lo + hi);
         }
 
-        static double Bezier(Segment s, double u)
+        /// <summary>The true cubic Bezier — the curve WPF's BezierTo draws.</summary>
+        static double Bezier(Segment s, double u) =>
+            Cubic(s.V0, s.C1V, s.C2V, s.V1, u);
+
+        static double Cubic(double p0, double p1, double p2, double p3, double u)
         {
-            return Lerp(Lerp(s.V0, s.C1V, u), Lerp(s.C2V, s.V1, u), u);
+            double m = 1 - u;
+            return m * m * m * p0 + 3 * m * m * u * p1 + 3 * m * u * u * p2 + u * u * u * p3;
         }
 
         static double Lerp(double a, double b, double u) => a + (b - a) * u;

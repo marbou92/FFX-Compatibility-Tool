@@ -23,13 +23,13 @@ namespace FfxTool.Gui
     /// friendly empty state, drag-overlay language shared with Convert,
     /// and a recent-files flyout over the full 5-entry history.
     ///
-    /// The workspace switches between two views: the split compatibility
-    /// list + tabbed inspector (the default) and AE's Effect Controls
-    /// panel — every effect as a collapsible block of real AE property
-    /// lines (keyframe-navigator gutter, stopwatch, underlined value
-    /// slot, per-row eye, per-effect eye on the header, nested parameter
-    /// groups). Both read the same decoded data and share lane/eye/
-    /// keyframe selection state.
+    /// The workspace opens into AE's Effect Controls panel — every effect
+    /// as a collapsible block of real AE property lines (keyframe-navigator
+    /// gutter, stopwatch, underlined value slot, nested parameter groups,
+    /// the fx badge as the on/off switch) — with a switcher to the split
+    /// compatibility list + tabbed inspector, whose parameter rows stay
+    /// the simple read (triangle, stopwatch, name, value, eye). Both read
+    /// the same decoded data and share keyframe selection state.
     ///
     /// The right-hand inspector reads like AE's timeline: parameter rows
     /// carry the stopwatch mark (lit = time-varying) and a keyframe
@@ -63,11 +63,14 @@ namespace FfxTool.Gui
         }
 
         /// <summary>
-        /// One row of the Parameters tab, shaped like an AE property line:
-        /// stopwatch state, name + stream summary, the value slot, and the
-        /// keyframe navigator targets. Brushes stay in the template (via
-        /// DynamicResource triggers keyed on IsAnimated) so theme swaps keep
-        /// working — the VM only carries flags, text and counts.
+        /// One row of the Parameters tab / Effect Controls body, shaped
+        /// like an AE property line: stopwatch state, name + stream
+        /// summary, the value slot, and the keyframe navigator targets.
+        /// Brushes stay in the templates (via DynamicResource triggers
+        /// keyed on IsAnimated) so theme swaps keep working — the VM only
+        /// carries flags, text and counts. The Effect Controls template
+        /// renders the navigator gutter; the inspector's simple row drops
+        /// it in favor of a click-through to the Keyframes tab.
         /// </summary>
         public class ParamRowVm
         {
@@ -315,7 +318,7 @@ namespace FfxTool.Gui
             GraphCanvas.SizeChanged += (s, e) => ScheduleGraphRedraw();
             KfTimeline.SizeChanged += (s, e) => DrawKfTimeline();
             SetTab(0);
-            SetView(1); // the Inspector is the default workspace view
+            SetView(0); // the AE Effect Controls panel is the default workspace view
             // row container brushes are captured per Refresh — re-run when the
             // theme changes so status tints match the new palette/mode; the
             // graph and the keyframe strip bake brush colors too
@@ -646,12 +649,13 @@ namespace FfxTool.Gui
                 var created = new Dictionary<string, EcSubGroupVm>();
                 foreach (var p in d.Parameters)
                 {
-                    bool eye = !_eyeState.TryGetValue(p, out bool on) || on;
                     var row = new ParamRowVm(p)
                     {
                         LaneOpen = _laneState.TryGetValue(p, out bool ln) && ln,
-                        EyeOn = eye,
-                        RowOpacity = (eye ? 1.0 : 0.42) * (blockOn ? 1.0 : 0.42)
+                        EyeOn = !_eyeState.TryGetValue(p, out bool on) || on,
+                        // AE keeps per-property eyes out of this panel — the
+                        // block dims as a whole via the fx switch
+                        RowOpacity = blockOn ? 1.0 : 0.42
                     };
                     AddEcRow(root, created, i, p.Group, row);
                 }
@@ -729,9 +733,9 @@ namespace FfxTool.Gui
             }
         }
 
-        // effect on/off eye: AE's effect switch — display-only, dims the
-        // whole block (multiplied with each row's own eye state)
-        private void EcEye_Click(object sender, RoutedEventArgs e)
+        // AE's effect switch: the fx badge toggles the block on/off —
+        // display-only, dims every row of the block
+        private void EcFx_Click(object sender, RoutedEventArgs e)
         {
             if ((sender as FrameworkElement)?.DataContext is EcGroupVm g)
             {
@@ -973,8 +977,7 @@ namespace FfxTool.Gui
             {
                 bool open = _laneState.TryGetValue(vm.ParamRef, out bool cur) && cur;
                 _laneState[vm.ParamRef] = !open;
-                RefreshParamRows();
-                RefreshEcRows(); // the same lane lives in both views
+                RefreshParamRows(); // the keyframe lane lives in the inspector rows
                 e.Handled = true;
             }
         }
@@ -985,8 +988,7 @@ namespace FfxTool.Gui
             {
                 bool on = !_eyeState.TryGetValue(vm.ParamRef, out bool cur) || cur;
                 _eyeState[vm.ParamRef] = !on;
-                RefreshParamRows();
-                RefreshEcRows(); // the same eye lives in both views
+                RefreshParamRows(); // the row eye lives in the inspector rows
                 e.Handled = true;
             }
         }
@@ -1186,8 +1188,9 @@ namespace FfxTool.Gui
         /// Value mode: the value curve (linear segments straight, Hold steps,
         /// Bezier segments with AE tangent handles from PresetCurve) with
         /// interpolation-shaped keyframe markers — square = linear, diamond
-        /// = bezier, left triangle = hold. Speed mode: |Δvalue/Δt| sampled
-        /// from the same curve, drawn as AE's filled speed area. A selected
+        /// = bezier, left triangle = hold. Speed mode: the analytic |dv/dt|
+        /// — the derivative of the very same cubic — drawn as AE's filled
+        /// speed area. A selected
         /// keyframe gets AE's accent ring plus its tangent handles, in both
         /// tabs (graph markers, keyframe rows and the navigator stay in sync).
         /// Curve geometry is deliberately NOT pixel-snapped: rounding every
@@ -1339,18 +1342,28 @@ namespace FfxTool.Gui
             var gridBrush = (Brush)FindResource("B.OutlineVariant");
             var labelBrush = (Brush)FindResource("B.OnSurfaceVariant");
 
-            double vMin = segs.Min(s => Math.Min(s.V0, s.V1));
-            double vMax = segs.Max(s => Math.Max(s.V0, s.V1));
-            // include handle extremes so bezier overshoot stays inside the plot
-            vMin = Math.Min(vMin, segs.Min(s => Math.Min(s.C1V, s.C2V)));
-            vMax = Math.Max(vMax, segs.Max(s => Math.Max(s.C1V, s.C2V)));
+            // AE scales the plot to the CURVE, not to raw handle extremes:
+            // keyframe values plus the path's own samples set the range —
+            // bezier overshoot still lands inside the plot, but wild tangent
+            // handles can no longer squash the curve into a flat band
+            var stream = CurrentAnimParam();
+            if (stream == null) return;
+            double vMin = stream.Keyframes.Min(k => k.Value);
+            double vMax = stream.Keyframes.Max(k => k.Value);
+            PresetCurve.SampleValues(segs, 160, out _, out var sampled);
+            foreach (double v in sampled)
+            {
+                if (v < vMin) vMin = v;
+                if (v > vMax) vMax = v;
+            }
             if (vMax - vMin < 1e-9) { vMin -= 1; vMax += 1; }
             else { double pad = (vMax - vMin) * 0.12; vMin -= pad; vMax += pad; }
             plot.VMin = vMin; plot.VMax = vMax;
 
-            // horizontal value grid at round steps; labels right-aligned in
-            // the left gutter (AE's value ruler) and skipped when they would
-            // collide — 13px is the minimum pitch for the 10px label font
+            // horizontal value grid at round steps; labels sit in the
+            // right gutter, right-aligned against the canvas edge (AE's
+            // value ruler) and skipped when they would collide — 13px is
+            // the minimum pitch for the 10px label font
             double vStep = NiceStep((vMax - vMin) / 3.2);
             double lastLabelY = -1000;
             for (double v = Math.Ceiling(vMin / vStep) * vStep; v <= vMax + 1e-9; v += vStep)
@@ -1369,7 +1382,7 @@ namespace FfxTool.Gui
                         FontSize = 10,
                         Foreground = labelBrush,
                         Width = plot.R - 8,
-                        TextAlignment = TextAlignment.Left
+                        TextAlignment = TextAlignment.Right
                     };
                     Canvas.SetLeft(lbl, plot.W - plot.R + 6);
                     Canvas.SetTop(lbl, y - 6);
@@ -1415,9 +1428,8 @@ namespace FfxTool.Gui
             });
 
             // keyframe markers, shaped by interpolation like AE's icons,
-            // clickable to select (ring + handles + easing numbers)
-            var stream = CurrentAnimParam();
-            if (stream == null) return;
+            // clickable to select (ring + handles + easing numbers);
+            // `stream` was fetched at the top for the value range
             for (int i = 0; i < stream.Keyframes.Count; i++)
             {
                 var k = stream.Keyframes[i];
@@ -1438,14 +1450,18 @@ namespace FfxTool.Gui
             var gridBrush = (Brush)FindResource("B.OutlineVariant");
             var labelBrush = (Brush)FindResource("B.OnSurfaceVariant");
 
-            // sample the value curve, difference it into speed
-            const int N = 260;
-            double[] ts, vs;
-            PresetCurve.SampleValues(segs, N, out ts, out vs);
-            var sp = new double[N];
-            for (int i = 1; i < N; i++)
-                sp[i] = Math.Abs(vs[i] - vs[i - 1]) / Math.Max(ts[i] - ts[i - 1], 1e-9);
-            sp[0] = sp[1];
+            // analytic speed |dv/dt| — the derivative of the SAME cubic the
+            // value graph draws, so the two editors always agree (finite
+            // differences of samples used to trace a different curve)
+            const int N = 320;
+            double[] ts = new double[N], sp = new double[N];
+            double st0 = segs[0].T0, st1 = segs[segs.Count - 1].T1;
+            for (int i = 0; i < N; i++)
+            {
+                ts[i] = st0 + (st1 - st0) * i / (N - 1);
+                double s = PresetCurve.SpeedAt(segs, ts[i]);
+                sp[i] = double.IsNaN(s) ? 0 : s;
+            }
 
             double spMax = sp.Max();
             if (spMax < 1e-9) spMax = 1.0;
@@ -1473,7 +1489,7 @@ namespace FfxTool.Gui
                         FontSize = 10,
                         Foreground = labelBrush,
                         Width = plot.R - 8,
-                        TextAlignment = TextAlignment.Left
+                        TextAlignment = TextAlignment.Right
                     };
                     Canvas.SetLeft(lbl, plot.W - plot.R + 6);
                     Canvas.SetTop(lbl, y - 6);
@@ -1518,15 +1534,15 @@ namespace FfxTool.Gui
                 StrokeEndLineCap = PenLineCap.Round
             });
 
-            // keyframe markers on the speed curve: numeric slope around each
-            // kf, clickable like their value-graph twins
+            // keyframe markers on the speed curve: exact analytic speed at
+            // each kf, clickable like their value-graph twins
             var stream = CurrentAnimParam();
             if (stream == null) return;
             for (int i = 0; i < stream.Keyframes.Count; i++)
             {
                 var k = stream.Keyframes[i];
                 double t = PresetCurve.Seconds(k.Time);
-                double s = SpeedAt(segs, t);
+                double s = PresetCurve.SpeedAt(segs, t);
                 if (double.IsNaN(s)) continue;
                 string tip = $"#{i + 1}  {Timecode(t)}  ·  speed {s.ToString("0.###")} /s  ·  click to select";
                 int idx = i;
@@ -1620,17 +1636,6 @@ namespace FfxTool.Gui
             }
         }
 
-        /// <summary>Numeric |Δvalue/Δt| at t via a tiny centered difference.</summary>
-        private static double SpeedAt(List<PresetCurve.Segment> segs, double t)
-        {
-            if (segs == null || segs.Count == 0) return double.NaN;
-            double span = Math.Max((segs[segs.Count - 1].T1 - segs[0].T0) / 2000.0, 1e-6);
-            double before = PresetCurve.ValueAt(segs, t - span);
-            double after = PresetCurve.ValueAt(segs, t + span);
-            if (double.IsNaN(before) || double.IsNaN(after)) return double.NaN;
-            return Math.Abs(after - before) / (2 * span);
-        }
-
         /// <summary>
         /// The selected keyframe, AE Graph Editor style: an accent ring on
         /// its marker (value or speed position) plus its tangent handles in
@@ -1674,7 +1679,7 @@ namespace FfxTool.Gui
                 }
             }
 
-            double y = plot.Mode == 0 ? yOf(k.Value) : yOf(Math.Min(SpeedAt(plot.Segs, t), plot.SpeedMax));
+            double y = plot.Mode == 0 ? yOf(k.Value) : yOf(Math.Min(PresetCurve.SpeedAt(plot.Segs, t), plot.SpeedMax));
             if (double.IsNaN(y)) return;
             var ring = new Ellipse
             {
@@ -1812,7 +1817,7 @@ namespace FfxTool.Gui
             }
             else
             {
-                double s = SpeedAt(_plot.Segs, t);
+                double s = PresetCurve.SpeedAt(_plot.Segs, t);
                 double y = _plot.T + (1 - Math.Min(Math.Max(s, 0) / Math.Max(_plot.SpeedMax, 1e-9), 1)) * plotH;
                 Canvas.SetLeft(_cursorDot, x - 3.5);
                 Canvas.SetTop(_cursorDot, Math.Round(y) - 3.5);
