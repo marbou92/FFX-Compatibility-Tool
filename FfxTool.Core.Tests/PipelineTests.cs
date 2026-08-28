@@ -69,21 +69,56 @@ namespace FfxTool.Core.Tests
             return MakeList("tdsp", Concat(tdsiA, tdsiB));
         }
 
-        static byte[] MinimalSyntheticFile(string[] matchNames)
+        static byte[] SentinelTdsp()
+        {
+            var tdmnSentinel = MakeLeaf("tdmn", PadTo("ADBE End of path sentinel", 40));
+            var tdixSentinel = MakeLeaf("tdix", UInt32BE(0xFFFFFFFF));
+            return MakeList("tdsp", MakeList("tdsi", Concat(tdmnSentinel, tdixSentinel)));
+        }
+
+        static byte[] DoubleBE(double v)
+        {
+            var bytes = BitConverter.GetBytes(v); // little-endian on x86/x64
+            Array.Reverse(bytes);
+            return bytes;
+        }
+
+        /// <summary>One root tdgp holding a single named parameter with a
+        /// static cdat value — enough for WalkGroup to surface one row.
+        /// The tdmn sits BEFORE its tdbs as a sibling (that pending-match
+        /// rule is how WalkGroup names a parameter), and the tdbs itself
+        /// carries tdsn + cdat.</summary>
+        static byte[] MakeParamTdgp(string paramName, double value)
+        {
+            var tdmn = MakeLeaf("tdmn", PadTo(paramName, 40));
+            var tdsn = MakeLeaf("tdsn", Utf8Prefixed(paramName));
+            var cdat = MakeLeaf("cdat", DoubleBE(value));
+            var tdbs = MakeList("tdbs", Concat(tdsn, cdat));
+            return MakeList("tdgp", Concat(tdmn, tdbs));
+        }
+
+        static byte[] MinimalSyntheticFile(string[] matchNames) => MinimalSyntheticFile(matchNames, sentinelLast: true);
+
+        static byte[] MinimalSyntheticFile(string[] matchNames, bool sentinelLast)
         {
             var head = MakeLeaf("head", Concat(UInt32BE(3), UInt32BE(93), UInt32BE(0), UInt32BE(0x01000000)));
             var beso = MakeLeaf("beso", new byte[56]);
 
             var bescChildren = beso;
+            if (!sentinelLast)
+            {
+                // AE writes the sentinel index entry FIRST in some saves
+                bescChildren = Concat(bescChildren, SentinelTdsp());
+            }
+
             for (uint i = 0; i < matchNames.Length; i++)
             {
                 bescChildren = Concat(bescChildren, MakeTdsp(matchNames[i], i));
                 bescChildren = Concat(bescChildren, MakeLeaf("tdsn", Utf8Prefixed(matchNames[i] + " display")));
             }
 
-            var tdmnSentinel = MakeLeaf("tdmn", PadTo("ADBE End of path sentinel", 40));
-            var tdixSentinel = MakeLeaf("tdix", UInt32BE(0xFFFFFFFF));
-            bescChildren = Concat(bescChildren, MakeList("tdsp", MakeList("tdsi", Concat(tdmnSentinel, tdixSentinel))));
+            if (sentinelLast)
+                bescChildren = Concat(bescChildren, SentinelTdsp());
 
             foreach (var name in matchNames)
             {
@@ -92,6 +127,34 @@ namespace FfxTool.Core.Tests
             }
 
             var besc = MakeList("besc", bescChildren);
+            var body = Concat(Ascii("FaFX"), head, besc);
+            return Concat(Ascii("RIFX"), UInt32BE((uint)body.Length), body);
+        }
+
+        /// <summary>
+        /// Two real effects (sentinel index entry FIRST — the layout that
+        /// exposed the pairing bug), each sspc carrying one parameter whose
+        /// static value is unique per effect, so a shifted pairing is
+        /// detectable by value, not just by count.
+        /// </summary>
+        static byte[] TwoEffectFileSentinelFirst(double v1, double v2)
+        {
+            var head = MakeLeaf("head", Concat(UInt32BE(3), UInt32BE(93), UInt32BE(0), UInt32BE(0x01000000)));
+            var beso = MakeLeaf("beso", new byte[56]);
+
+            var tdsp1 = MakeTdsp("S_Sharpen", 0);
+            var tdsn1 = MakeLeaf("tdsn", Utf8Prefixed("S_Sharpen display"));
+            var tdsp2 = MakeTdsp("ADBE Exposure2", 1);
+            var tdsn2 = MakeLeaf("tdsn", Utf8Prefixed("ADBE Exposure2 display"));
+
+            var sspc1 = MakeList("sspc", Concat(
+                MakeLeaf("fnam", Utf8Prefixed("S_Sharpen")),
+                MakeParamTdgp("Sharpen Amount", v1)));
+            var sspc2 = MakeList("sspc", Concat(
+                MakeLeaf("fnam", Utf8Prefixed("ADBE Exposure2")),
+                MakeParamTdgp("Exposure", v2)));
+
+            var besc = MakeList("besc", Concat(beso, SentinelTdsp(), tdsp1, tdsn1, tdsp2, tdsn2, sspc1, sspc2));
             var body = Concat(Ascii("FaFX"), head, besc);
             return Concat(Ascii("RIFX"), UInt32BE((uint)body.Length), body);
         }
@@ -177,6 +240,65 @@ namespace FfxTool.Core.Tests
             var result = Pipeline.Convert(data, "cs5.5");
             var problems = Pipeline.Verify(data, result.Data);
             Assert.Empty(problems);
+        }
+
+        // --- PresetInspector pairing regression (the "empty Effect Controls" bug) ---
+        // Inspect used to pair the RAW tdsp list (sentinel included) against
+        // the sspc list. The sentinel has no sspc of its own, so whenever it
+        // wasn't the last index entry every effect read the NEXT effect's
+        // parameters and the last effect vanished — a single-effect preset
+        // decoded to nothing at all ("it doesn't show anything").
+
+        [Fact]
+        public void Inspect_SentinelLast_PairsEveryEffect()
+        {
+            var data = MinimalSyntheticFile(new[] { "S_Sharpen", "ADBE Exposure2" });
+            var details = PresetInspector.Inspect(data);
+            Assert.Equal(2, details.Count);
+            Assert.Equal("S_Sharpen", details[0].MatchName);
+            Assert.Equal("ADBE Exposure2", details[1].MatchName);
+        }
+
+        [Fact]
+        public void Inspect_SentinelFirst_StillPairsEveryEffect()
+        {
+            var data = MinimalSyntheticFile(new[] { "S_Sharpen", "ADBE Exposure2" }, sentinelLast: false);
+            var details = PresetInspector.Inspect(data);
+            Assert.Equal(2, details.Count);
+            // the short name proves the sspc pairing didn't shift: each
+            // effect must read its OWN sspc's fnam, not the neighbor's
+            Assert.Equal("S_Sharpen", details[0].MatchName);
+            Assert.Equal("S_Sharpen", details[0].ShortName);
+            Assert.Equal("ADBE Exposure2", details[1].MatchName);
+            Assert.Equal("ADBE Exposure2", details[1].ShortName);
+        }
+
+        [Fact]
+        public void Inspect_SingleEffectSentinelFirst_ReturnsTheEffect()
+        {
+            // the reported "shows nothing" case: one effect, sentinel first
+            var data = MinimalSyntheticFile(new[] { "S_Sharpen" }, sentinelLast: false);
+            var details = PresetInspector.Inspect(data);
+            Assert.Single(details);
+            Assert.Equal("S_Sharpen", details[0].MatchName);
+        }
+
+        [Fact]
+        public void Inspect_ParametersPairWithTheirOwnEffect_SentinelFirst()
+        {
+            var data = TwoEffectFileSentinelFirst(42.5, -7.25);
+            var details = PresetInspector.Inspect(data);
+            Assert.Equal(2, details.Count);
+
+            Assert.Equal("S_Sharpen", details[0].MatchName);
+            Assert.Single(details[0].Parameters);
+            Assert.Equal("Sharpen Amount", details[0].Parameters[0].Name);
+            Assert.Equal(42.5, details[0].Parameters[0].StaticValue ?? double.NaN, 9);
+
+            Assert.Equal("ADBE Exposure2", details[1].MatchName);
+            Assert.Single(details[1].Parameters);
+            Assert.Equal("Exposure", details[1].Parameters[0].Name);
+            Assert.Equal(-7.25, details[1].Parameters[0].StaticValue ?? double.NaN, 9);
         }
     }
 }

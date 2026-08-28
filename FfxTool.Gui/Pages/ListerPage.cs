@@ -100,7 +100,10 @@ namespace FfxTool.Gui
                 IsAnimated = p.IsAnimated;
                 RowCursor = p.IsAnimated ? Cursors.Hand : Cursors.Arrow;
 
-                if (p.IsAnimated)
+                // the Count check is belt-and-braces: the decoder only sets
+                // IsAnimated after storing at least one keyframe, but this
+                // row builder must never be able to throw on any input
+                if (p.IsAnimated && p.Keyframes.Count > 0)
                 {
                     // stream summary: keys · value travel · time span
                     double vMin = p.Keyframes.Min(k => k.Value);
@@ -419,6 +422,10 @@ namespace FfxTool.Gui
         private readonly PluginProfile _profile;
         private List<Pipeline.EffectInfo> _currentEffects = new List<Pipeline.EffectInfo>();
         private List<PresetEffectDetails> _details = new List<PresetEffectDetails>();
+        // human-readable decode problems from the last load ("effect #2 ..."):
+        // surfaced on the panel and in the log, so a preset that half-decodes
+        // never fails in silence
+        private List<string> _inspectErrors = new List<string>();
         private readonly ObservableCollection<EffectRowVm> _rows = new ObservableCollection<EffectRowVm>();
         private int _filterMode; // 0 all, 1 missing only, 2 compatible only
         private bool _sortDesc;
@@ -599,6 +606,13 @@ namespace FfxTool.Gui
                 _inspEffectIndex = -1;
                 _animParamIndex = -1;
                 _selKf = -1;
+                // ...and the panel's own state is per-file too: disclosure
+                // states keyed by effect index belong to the OLD preset and
+                // must not leak into the new one
+                _ecOpen.Clear();
+                _ecGroupOpen.Clear();
+                _ecStatus.Clear();
+                _ecVendor.Clear();
 
                 FileChipText.Text = System.IO.Path.GetFileName(path);
                 byte[] bytes = File.ReadAllBytes(path);
@@ -606,15 +620,36 @@ namespace FfxTool.Gui
 
                 // deep inspection is additive — if a preset carries a
                 // structure the inspector can't decode, the list above still
-                // works and the inspector explains itself
-                try { _details = PresetInspector.Inspect(bytes); }
-                catch { _details = new List<PresetEffectDetails>(); }
+                // works and the panel SAYS what couldn't be read (never
+                // silently)
+                _inspectErrors = new List<string>();
+                try { _details = PresetInspector.Inspect(bytes, _inspectErrors); }
+                catch (Exception ipx)
+                {
+                    _details = new List<PresetEffectDetails>();
+                    _inspectErrors.Add("the preset structure couldn't be read: " +
+                                       ipx.GetType().Name + " — " + ipx.Message);
+                }
+                foreach (var w in _inspectErrors)
+                    LogService.Append("inspect: " + System.IO.Path.GetFileName(path) + " — " + w);
 
                 int ecParams = _details.Sum(x => x.Parameters.Count);
                 int ecAnim = _details.Sum(x => x.AnimatedCount);
                 EcSub.Text = $"{_currentEffects.Count(x => !x.IsSentinel)} effects · " +
                              $"{ecParams} parameter{(ecParams == 1 ? "" : "s")} · " +
                              $"{ecAnim} animated — read-only, like AE's panel";
+                if (_inspectErrors.Count > 0)
+                {
+                    // one-line heads-up on the panel; the full list rides the
+                    // tooltip and the log
+                    EcSub.Text += $"  ⚠ {_inspectErrors.Count} decode " +
+                                  $"warning{(_inspectErrors.Count == 1 ? "" : "s")}";
+                    EcSub.ToolTip = string.Join("\n", _inspectErrors);
+                }
+                else
+                {
+                    EcSub.ToolTip = null;
+                }
 
                 HistoryStore.Push(path, _currentEffects.Count(e => !e.IsSentinel));
                 Refresh();
@@ -800,7 +835,37 @@ namespace FfxTool.Gui
             for (int i = 0; i < _details.Count; i++)
             {
                 var d = _details[i];
-                if (d.Parameters.Count == 0) continue;
+                if (d.Error != null)
+                {
+                    // the decoder kept this effect's slot but couldn't decode
+                    // its parameter tree — show WHY, never an empty gap
+                    LogService.Append($"effect controls: effect #{i + 1} ({d.MatchName}) " +
+                                      $"couldn't be decoded \u2014 {d.Error}");
+                    groups.Add(new EcGroupVm
+                    {
+                        Title = string.IsNullOrEmpty(d.ShortName) ? d.MatchName : d.ShortName,
+                        Sub = "\u26a0 couldn't be decoded \u2014 " + d.Error,
+                        Open = false,
+                        Items = new List<object>(),
+                        EffectIndex = i
+                    });
+                    continue;
+                }
+                if (d.Parameters.Count == 0)
+                {
+                    // a real effect whose every row was hidden (housekeeping
+                    // markers, no parT tree...) still gets its header line —
+                    // an honest "nothing decoded" beats an invisible effect
+                    groups.Add(new EcGroupVm
+                    {
+                        Title = string.IsNullOrEmpty(d.ShortName) ? d.MatchName : d.ShortName,
+                        Sub = EcSubFor(i, d),
+                        Open = false,
+                        Items = new List<object>(),
+                        EffectIndex = i
+                    });
+                    continue;
+                }
                 try
                 {
                     bool open = !_ecOpen.TryGetValue(i, out bool o) || o;
@@ -822,15 +887,18 @@ namespace FfxTool.Gui
                         EffectIndex = i
                     });
                 }
-                catch
+                catch (Exception ex)
                 {
                     // one malformed effect must never take the panel down —
                     // AE never dies on a preset either: degrade to a closed
-                    // block that still names the effect
+                    // block that still names the effect AND the failure
+                    LogService.Append($"effect controls: effect #{i + 1} ({d.MatchName}) " +
+                                      $"couldn't be displayed \u2014 {ex.GetType().Name}: {ex.Message}");
                     groups.Add(new EcGroupVm
                     {
                         Title = string.IsNullOrEmpty(d.ShortName) ? d.MatchName : d.ShortName,
-                        Sub = "parameters couldn't be displayed — read-only panel",
+                        Sub = "\u26a0 parameters couldn't be displayed \u2014 " +
+                              ex.GetType().Name + ": " + ex.Message,
                         Open = false,
                         Items = new List<object>(),
                         EffectIndex = i
@@ -847,7 +915,11 @@ namespace FfxTool.Gui
                 EcList.UpdateLayout();
                 if (groups.Count == 0)
                 {
-                    EcEmpty.Text = "Parameter data for this preset couldn't be decoded - the compatibility list still works, and the inspector explains what could be read.";
+                    EcEmpty.Text = _inspectErrors.Count > 0
+                        ? "Parameter data for this preset couldn't be decoded:\n" +
+                          string.Join("\n", _inspectErrors) +
+                          "\nThe compatibility list still works."
+                        : "Parameter data for this preset couldn't be decoded - the compatibility list still works, and the inspector explains what could be read.";
                     EcEmpty.Visibility = Visibility.Visible;
                 }
                 else
@@ -855,10 +927,14 @@ namespace FfxTool.Gui
                     EcEmpty.Visibility = Visibility.Collapsed;
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                LogService.Append($"effect controls: the panel couldn't be rendered \u2014 " +
+                                  $"{ex.GetType().Name}: {ex.Message}");
                 EcList.ItemsSource = null;
-                EcEmpty.Text = "This preset's parameter panel couldn't be rendered - the compatibility list still works.";
+                EcEmpty.Text = "This preset's parameter panel couldn't be rendered (" +
+                               ex.GetType().Name + ": " + ex.Message + ")" +
+                               " - the compatibility list still works. Details in About \u2192 Logs.";
                 EcEmpty.Visibility = Visibility.Visible;
             }
         }

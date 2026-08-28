@@ -133,6 +133,13 @@ namespace FfxTool.Core
     {
         public string MatchName;
         public string ShortName;
+        /// <summary>
+        /// Non-null when this effect's parameter tree couldn't be decoded.
+        /// The slot is still emitted (Parameters stays empty) so effect
+        /// indexes stay aligned with the file's real effects — the UI
+        /// surfaces the message instead of silently hiding the block.
+        /// </summary>
+        public string Error;
         public readonly List<PresetParameter> Parameters = new List<PresetParameter>();
 
         public int AnimatedCount
@@ -176,48 +183,78 @@ namespace FfxTool.Core
             public string[] Menu;
         }
 
-        public static List<PresetEffectDetails> Inspect(byte[] data)
+        public static List<PresetEffectDetails> Inspect(byte[] data) => Inspect(data, null);
+
+        /// <summary>
+        /// Same inspection, but every decode problem is appended to
+        /// <paramref name="errors"/> (human-readable, one line each)
+        /// instead of being swallowed — the UI and the log can show the
+        /// user exactly what could and couldn't be read.
+        /// </summary>
+        public static List<PresetEffectDetails> Inspect(byte[] data, List<string> errors)
         {
             var tree = RiffFile.ParseFile(data);
             var besc = FindBesc(tree);
 
-            // tdsp index entries and sspc parameter blocks pair BY POSITION —
-            // the same rule Pipeline.RemoveEffectsByMatchName relies on.
+            // tdsp index entries and sspc parameter blocks pair BY POSITION
+            // among the REAL effects — the sentinel index entry has no sspc
+            // of its own (the invariant Pipeline.RemoveEffectsByMatchName
+            // enforces). The sentinel must therefore be excluded from the
+            // tdsp list BEFORE pairing: pairing the raw list shifted every
+            // effect one sspc down whenever the sentinel wasn't the last
+            // entry — a single-effect preset decoded to nothing at all,
+            // and multi-effect presets showed the wrong effect's parameters.
             var tdsps = besc.Children.Where(c => c.IsContainer && Same(c.Form, TDSP_FORM)).ToList();
             var sspcs = besc.Children.Where(c => c.IsContainer && Same(c.Form, SSPC_FORM)).ToList();
 
-            var result = new List<PresetEffectDetails>();
-            int n = Math.Min(tdsps.Count, sspcs.Count);
+            var realTdsps = new List<RiffNode>();
+            foreach (var t in tdsps)
+                if (TdmnEffectName(t) != null) realTdsps.Add(t);
+
+            if (realTdsps.Count != sspcs.Count)
+                errors?.Add($"{realTdsps.Count} effect index entries but {sspcs.Count} parameter blocks — " +
+                            "unexpected file structure; unpaired entries were skipped");
+
+            var result = new List<PresetEffectDetails>(realTdsps.Count);
+            int n = Math.Min(realTdsps.Count, sspcs.Count);
             for (int i = 0; i < n; i++)
             {
-                string matchName = TdmnEffectName(tdsps[i]);
-                if (matchName == null) continue; // sentinel index entry
-
+                string matchName = TdmnEffectName(realTdsps[i]);
                 var details = new PresetEffectDetails { MatchName = matchName };
-                var fnam = sspcs[i].Children.FirstOrDefault(c => !c.IsContainer && Same(c.Cid, FNAM));
-                if (fnam != null) details.ShortName = DecodeString(fnam.Content);
+                try
+                {
+                    var fnam = sspcs[i].Children.FirstOrDefault(c => !c.IsContainer && Same(c.Cid, FNAM));
+                    if (fnam != null) details.ShortName = DecodeString(fnam.Content);
 
-                // The effect's parT parameter tree: the only place the preset
-                // states WHAT CONTROL each parameter renders as (checkbox,
-                // popup + menu labels, slider, angle, color...). Parsing is
-                // additive and guarded — a preset without parT (or with an
-                // unexpected layout) still inspects, just with Unknown kinds.
-                var meta = ParseParamTree(sspcs[i]);
+                    // The effect's parT parameter tree: the only place the preset
+                    // states WHAT CONTROL each parameter renders as (checkbox,
+                    // popup + menu labels, slider, angle, color...). Parsing is
+                    // additive and guarded — a preset without parT (or with an
+                    // unexpected layout) still inspects, just with Unknown kinds.
+                    var meta = ParseParamTree(sspcs[i]);
 
-                foreach (var child in sspcs[i].Children)
-                    if (child.IsContainer && Same(child.Form, RiffFile.Cid("tdgp")))
-                    {
-                        // the effect's ROOT tdgp: its own tdsn is the effect
-                        // display name, not a parameter group
-                        WalkGroup(child, details, null, meta);
-                        if (string.IsNullOrEmpty(details.ShortName))
+                    foreach (var child in sspcs[i].Children)
+                        if (child.IsContainer && Same(child.Form, RiffFile.Cid("tdgp")))
                         {
-                            var rootName = child.Children.FirstOrDefault(
-                                c => !c.IsContainer && Same(c.Cid, TDSN));
-                            if (rootName != null) details.ShortName = DecodeString(rootName.Content);
+                            // the effect's ROOT tdgp: its own tdsn is the effect
+                            // display name, not a parameter group
+                            WalkGroup(child, details, null, meta);
+                            if (string.IsNullOrEmpty(details.ShortName))
+                            {
+                                var rootName = child.Children.FirstOrDefault(
+                                    c => !c.IsContainer && Same(c.Cid, TDSN));
+                                if (rootName != null) details.ShortName = DecodeString(rootName.Content);
+                            }
                         }
-                    }
-
+                }
+                catch (Exception ex)
+                {
+                    // one malformed effect must never sink the whole
+                    // inspection — keep the slot (indexes stay aligned)
+                    // and say what went wrong
+                    details.Error = ex.GetType().Name + ": " + ex.Message;
+                    errors?.Add($"effect #{i + 1} ({matchName ?? "?"}) couldn't be decoded — {details.Error}");
+                }
                 result.Add(details);
             }
             return result;
