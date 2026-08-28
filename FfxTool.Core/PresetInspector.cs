@@ -65,6 +65,41 @@ namespace FfxTool.Core
             Math.Abs(slope) < 1e-9 && influence > 1e-9 && influence <= 0.5;
     }
 
+    /// <summary>
+    /// Parameter control kinds, reverse-engineered from the `LIST parT`
+    /// block every AE-saved preset carries inside its sspc (one
+    /// tdmn → pard → pdnm triplet per parameter, in declaration order).
+    /// The 148-byte pard descriptor states the control type as a
+    /// big-endian uint32 at offset 12; the values were proven against
+    /// sample_1.ffx, whose 223 parameters cover every kind the UI renders:
+    ///   0 LAYER ("Host Layer", "Matte Layer"), 2 FIXED_SLIDER (min/max
+    ///   ranges), 3 ANGLE ("Angle" = 90.0°), 4 CHECKBOX ("Invert Mocha"),
+    ///   5 COLOR (RGB doubles, 0-255 scale in the fixture), 6 POINT
+    ///   (X/Y doubles), 7 POPUP (cdat = 1-based index into the pdnm menu
+    ///   "No|Tile|Reflect" → 3.0 = "Reflect"), 9/15 BUTTON ("Load Preset",
+    ///   BCC's "Presets"), 11 ARBITRARY_DATA (mocha blobs), 12 PATH
+    ///   ("Select Host Mask"), 13/14 GROUP_START/GROUP_END (named /
+    ///   anonymous markers that flatten into display groups).
+    /// </summary>
+    public static class PresetParamKind
+    {
+        public const int Unknown = -1;
+        public const int Layer = 0;
+        public const int Slider = 1;
+        public const int FixedSlider = 2;
+        public const int Angle = 3;
+        public const int Checkbox = 4;
+        public const int Color = 5;
+        public const int Point = 6;
+        public const int Popup = 7;
+        public const int FloatSlider = 9;     // BCC-style custom control row
+        public const int ArbitraryData = 11;
+        public const int Path = 12;
+        public const int GroupStart = 13;
+        public const int GroupEnd = 14;
+        public const int Button = 15;
+    }
+
     /// <summary>One parameter of one effect: static value or a keyframe stream.</summary>
     public class PresetParameter
     {
@@ -74,10 +109,20 @@ namespace FfxTool.Core
         /// Enclosing display group path ("Compositing Options", or deeper
         /// levels joined with '\u0001'), or null for top-level parameters —
         /// mirrors how AE nests parameters under tdgp disclosure groups.
+        /// Group markers declared the plugin way (parT kinds 13/14) fold
+        /// into the same path, so both AE nesting styles render alike.
         /// </summary>
         public string Group;
+        /// <summary>Control kind from the parT pard descriptor (PresetParamKind).</summary>
+        public int Kind = PresetParamKind.Unknown;
+        /// <summary>Popup menu labels, in order — the '|' split of the parT pdnm chunk.</summary>
+        public string[] MenuItems;
         public bool IsAnimated;
         public double? StaticValue;
+        /// <summary>Extra cdat doubles: POINT's Y (offset 8), COLOR's G/B/A.</summary>
+        public double? StaticValue2;
+        public double? StaticValue3;
+        public double? StaticValue4;
         public double? Min;
         public double? Max;
         public readonly List<PresetKeyframe> Keyframes = new List<PresetKeyframe>();
@@ -121,6 +166,16 @@ namespace FfxTool.Core
             "ADBE Effect Built In Params",
         };
 
+        /// <summary>parT metadata of one parameter: control kind, the pard's
+        /// embedded display name (AE's fallback when the tdbs carries no
+        /// tdsn), and the popup menu labels.</summary>
+        private class ParamMeta
+        {
+            public int Kind = PresetParamKind.Unknown;
+            public string PardName;
+            public string[] Menu;
+        }
+
         public static List<PresetEffectDetails> Inspect(byte[] data)
         {
             var tree = RiffFile.ParseFile(data);
@@ -142,12 +197,19 @@ namespace FfxTool.Core
                 var fnam = sspcs[i].Children.FirstOrDefault(c => !c.IsContainer && Same(c.Cid, FNAM));
                 if (fnam != null) details.ShortName = DecodeString(fnam.Content);
 
+                // The effect's parT parameter tree: the only place the preset
+                // states WHAT CONTROL each parameter renders as (checkbox,
+                // popup + menu labels, slider, angle, color...). Parsing is
+                // additive and guarded — a preset without parT (or with an
+                // unexpected layout) still inspects, just with Unknown kinds.
+                var meta = ParseParamTree(sspcs[i]);
+
                 foreach (var child in sspcs[i].Children)
                     if (child.IsContainer && Same(child.Form, RiffFile.Cid("tdgp")))
                     {
                         // the effect's ROOT tdgp: its own tdsn is the effect
                         // display name, not a parameter group
-                        WalkGroup(child, details, null);
+                        WalkGroup(child, details, null, meta);
                         if (string.IsNullOrEmpty(details.ShortName))
                         {
                             var rootName = child.Children.FirstOrDefault(
@@ -159,6 +221,65 @@ namespace FfxTool.Core
                 result.Add(details);
             }
             return result;
+        }
+
+        /// <summary>
+        /// Reads one effect's LIST parT (direct sspc child): a flat run of
+        /// tdmn (match name) → pard (148-byte descriptor) → pdnm (display
+        /// name, or the popup's '|' menu list). The pard's uint32 at offset
+        /// 12 is the control kind; its byte-16 name field is AE's own
+        /// display-name fallback. Any surprise degrades to "no metadata".
+        /// </summary>
+        static Dictionary<string, ParamMeta> ParseParamTree(RiffNode sspc)
+        {
+            var map = new Dictionary<string, ParamMeta>();
+            try
+            {
+                var parT = sspc.Children.FirstOrDefault(
+                    c => c.IsContainer && Same(c.Form, RiffFile.Cid("parT")));
+                if (parT == null) return map;
+
+                string pending = null;   // tdmn awaiting its pard
+                string lastMatch = null; // match name of the last pard seen (pdnm follows it)
+                foreach (var child in parT.Children)
+                {
+                    if (!child.IsContainer && Same(child.Cid, TDMN))
+                    {
+                        pending = DecodeString(child.Content);
+                        lastMatch = null; // a stray pdnm must never leak into the next entry
+                    }
+                    else if (!child.IsContainer && Same(child.Cid, RiffFile.Cid("pard")))
+                    {
+                        var meta = new ParamMeta();
+                        var p = child.Content;
+                        if (p.Length >= 16) meta.Kind = (int)ReadBEUInt32(p, 12);
+                        // the pard's name field starts at byte 16, null-padded
+                        int room = Math.Min(64, p.Length - 16);
+                        if (room > 0)
+                        {
+                            int end = Array.IndexOf(p, (byte)0, 16, room);
+                            int len = (end < 0 ? room : end) - 16;
+                            if (len < 0) len = 0;
+                            meta.PardName = Encoding.GetEncoding("ISO-8859-1").GetString(p, 16, len);
+                        }
+                        if (!string.IsNullOrEmpty(pending))
+                        {
+                            map[pending] = meta;
+                            lastMatch = pending;
+                        }
+                        pending = null;
+                    }
+                    else if (!child.IsContainer && Same(child.Cid, RiffFile.Cid("pdnm")))
+                    {
+                        // pdnm follows its pard; the '|' split is the popup menu
+                        if (lastMatch == null || !map.ContainsKey(lastMatch)) continue;
+                        string text = DecodeString(child.Content);
+                        if (text != null) map[lastMatch].Menu = text.Split('|');
+                    }
+                }
+            }
+            catch { return new Dictionary<string, ParamMeta>(); }
+            return map;
         }
 
         static RiffNode FindBesc(RiffNode tree)
@@ -175,11 +296,16 @@ namespace FfxTool.Core
         /// them; nested tdgp groups are recursed into as DISPLAY groups —
         /// their first tdsn leaf names them ("Compositing Options") and the
         /// path is stamped on every parameter found inside, which mirrors
-        /// how AE nests groups in the effect controls.
+        /// how AE nests groups in the effect controls. Plugins that declare
+        /// groups the flat way (parT kinds 13 GROUP_START / 14 GROUP_END)
+        /// fold into the same display-group paths, and their marker rows are
+        /// never surfaced as parameters.
         /// </summary>
-        static void WalkGroup(RiffNode group, PresetEffectDetails into, string groupPath)
+        static void WalkGroup(RiffNode group, PresetEffectDetails into, string groupPath,
+                              Dictionary<string, ParamMeta> meta)
         {
             string pendingMatch = null;
+            var declared = new List<string>(); // open GROUP_START display names
             foreach (var child in group.Children)
             {
                 if (!child.IsContainer && Same(child.Cid, TDMN))
@@ -188,19 +314,43 @@ namespace FfxTool.Core
                 }
                 else if (child.IsContainer && Same(child.Form, RiffFile.Cid("tdgp")))
                 {
-                    WalkGroup(child, into, ChildGroupPath(child, groupPath));
+                    // the tdgp's own tdsn names it ("Compositing Options");
+                    // any open declared groups extend the path beneath it
+                    string nested = ChildGroupPath(child, groupPath);
+                    WalkGroup(child, into, JoinPaths(nested, declared), meta);
                 }
                 else if (child.IsContainer && Same(child.Form, RiffFile.Cid("tdbs")))
                 {
-                    var p = ParseParameter(child, pendingMatch);
+                    var p = ParseParameter(child, pendingMatch, meta);
                     pendingMatch = null;
-                    if (p != null && !SkipMatchNames.Contains(p.MatchName))
+                    if (p.Kind == PresetParamKind.GroupStart)
                     {
-                        p.Group = groupPath;
-                        into.Parameters.Add(p);
+                        declared.Add(string.IsNullOrEmpty(p.Name) ? p.MatchName : p.Name);
+                        continue;
                     }
+                    if (p.Kind == PresetParamKind.GroupEnd)
+                    {
+                        if (declared.Count > 0) declared.RemoveAt(declared.Count - 1);
+                        continue;
+                    }
+                    // Hidden housekeeping rows: AE's per-effect root param and
+                    // plugin group markers carry no display name at all (the
+                    // old parser surfaced them as match-name junk rows).
+                    if (string.IsNullOrEmpty(p.Name)) continue;
+                    if (SkipMatchNames.Contains(p.MatchName)) continue;
+
+                    p.Group = JoinPaths(groupPath, declared);
+                    into.Parameters.Add(p);
                 }
             }
+        }
+
+        /// <summary>groupPath plus the open declared-group names, '\u0001'-joined.</summary>
+        static string JoinPaths(string basePath, List<string> declared)
+        {
+            if (declared == null || declared.Count == 0) return basePath;
+            string tail = string.Join("\u0001", declared);
+            return string.IsNullOrEmpty(basePath) ? tail : basePath + '\u0001' + tail;
         }
 
         /// <summary>Display-group path of a tdgp, appended to the parent path.</summary>
@@ -212,9 +362,17 @@ namespace FfxTool.Core
             return parentPath == null ? name : parentPath + '\u0001' + name;
         }
 
-        static PresetParameter ParseParameter(RiffNode tdbs, string matchName)
+        static PresetParameter ParseParameter(RiffNode tdbs, string matchName,
+                                              Dictionary<string, ParamMeta> meta)
         {
             var p = new PresetParameter { MatchName = matchName };
+            // parT metadata: control kind + AE's display-name fallback
+            if (matchName != null && meta != null && meta.TryGetValue(matchName, out var m))
+            {
+                p.Kind = m.Kind;
+                p.MenuItems = m.Menu;
+                if (!string.IsNullOrEmpty(m.PardName)) p.Name = m.PardName;
+            }
             foreach (var child in tdbs.Children)
             {
                 if (!child.IsContainer && Same(child.Cid, TDSN))
@@ -224,7 +382,13 @@ namespace FfxTool.Core
                 }
                 else if (!child.IsContainer && Same(child.Cid, RiffFile.Cid("cdat")))
                 {
+                    // cdat carries the value as big-endian doubles; POINT
+                    // stores X/Y (48 bytes) and COLOR stores R/G/B(/A)
+                    // (96 bytes) — the extras drive the type-aware rendering
                     if (child.Content.Length >= 8) p.StaticValue = ReadBEDouble(child.Content, 0);
+                    if (child.Content.Length >= 16) p.StaticValue2 = ReadBEDouble(child.Content, 8);
+                    if (child.Content.Length >= 24) p.StaticValue3 = ReadBEDouble(child.Content, 16);
+                    if (child.Content.Length >= 32) p.StaticValue4 = ReadBEDouble(child.Content, 24);
                 }
                 else if (!child.IsContainer && Same(child.Cid, RiffFile.Cid("tdum")))
                 {
@@ -239,7 +403,8 @@ namespace FfxTool.Core
                     ParseKeyframeStream(child, p);
                 }
             }
-            p.Name = p.Name ?? matchName ?? "(unnamed parameter)";
+            // p.Name stays null when neither tdsn nor the pard name existed —
+            // WalkGroup hides those rows (AE never shows them either)
             return p;
         }
 

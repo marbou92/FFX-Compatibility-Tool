@@ -104,37 +104,6 @@
             </Setter>
         </Style>
 
-        <!-- AE's fx badge, wired as the effect on/off switch (display
-             only): lit while the block is on, dimmed when off — the way
-             AE's Effect Controls marks a disabled effect. Opacity lives
-             in the STYLE (no local value) or the dim trigger would lose. -->
-        <Style x:Key="FxBadge" TargetType="Button">
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="FocusVisualStyle" Value="{StaticResource M3FocusVisual}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bg" Width="24" Height="24" CornerRadius="8"
-                                Background="{DynamicResource B.PrimaryContainer}">
-                            <TextBlock Text="fx" FontStyle="Italic" FontWeight="SemiBold" FontSize="12"
-                                       Foreground="{DynamicResource B.OnPrimaryContainer}"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bg" Property="Opacity" Value="0.85"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding EyeOn}" Value="False">
-                    <Setter Property="Opacity" Value="0.35"/>
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-
         <!-- AE keyframe-navigator button: 19px ghost square behind a glyph
              (three of them must fit the reserved left gutter of a row) -->
         <Style x:Key="KfNavBtn" TargetType="Button">
@@ -247,14 +216,15 @@
              keyframe-navigator gutter (‹ ◆ › on animated rows, empty on
              static ones so every NAME column aligns, exactly like AE),
              the stopwatch slot (lit = time-varying), the fixed-width
-             name column, and the value slot: plain grey-black at rest,
-             picking up AE's editable-value underline + accent only on
-             hover. No eye and no keyframe lane here — AE keeps those in
-             the timeline. -->
+             name column, and the value slot rendered per the decoded
+             control kind: right-aligned number, checkbox, popup box or
+             color swatch, grey-black at rest, picking up AE's
+             editable-value underline + accent only on hover. No eye and
+             no keyframe lane here — AE keeps those in the timeline. -->
         <DataTemplate x:Key="EcRow">
             <Border Padding="2,0,6,0" ToolTip="{Binding MatchName}"
                     Cursor="{Binding RowCursor}" MouseLeftButtonUp="ParamRow_Click">
-                <Grid Height="21" Opacity="{Binding RowOpacity}">
+                <Grid Height="21">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="56"/>   <!-- keyframe navigator gutter -->
                         <ColumnDefinition Width="19"/>   <!-- stopwatch slot -->
@@ -302,23 +272,86 @@
                     <TextBlock Grid.Column="2" Text="{Binding Name}" FontSize="12"
                                Foreground="{DynamicResource B.OnSurface}" VerticalAlignment="Center"
                                Margin="2,0,10,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding Detail}"/>
-                    <!-- value slot: plain at rest, AE's editable underline
-                         + accent on hover (the panel never edits) -->
-                    <TextBlock Grid.Column="3" Text="{Binding ValueText}" FontSize="12"
-                               VerticalAlignment="Center" Visibility="{Binding ValueVisible}"
-                               TextTrimming="CharacterEllipsis" ToolTip="{Binding ValueTip}">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Foreground" Value="{DynamicResource B.OnSurface}"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Border, AncestorLevel=1}}" Value="True">
-                                        <Setter Property="Foreground" Value="{DynamicResource B.Primary}"/>
-                                        <Setter Property="TextDecorations" Value="Underline"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
+                    <!-- value slot: the control AE draws for this kind —
+                         the reverse-engineered parT type picks between a
+                         right-aligned number (hover: accent + underline),
+                         a real checkbox, a popup box with the selected
+                         entry, and a color swatch. All read-only; AE's
+                         Effect Controls is the reference. -->
+                    <Grid Grid.Column="3">
+                        <TextBlock Text="{Binding ValueText}" FontSize="12"
+                                   VerticalAlignment="Center" HorizontalAlignment="Right"
+                                   Visibility="{Binding TextVisible}"
+                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding ValueTip}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource B.OnSurface}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Border, AncestorLevel=1}}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource B.Primary}"/>
+                                            <Setter Property="TextDecorations" Value="Underline"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <!-- checkbox: AE's value-column on/off box -->
+                        <Border Width="14" Height="14" CornerRadius="3" BorderThickness="1"
+                                VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,2,0"
+                                Visibility="{Binding CheckboxVisible}" ToolTip="{Binding ValueTip}">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="{DynamicResource B.SCLowest}"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource B.Outline}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Checked}" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource B.Primary}"/>
+                                            <Setter Property="BorderBrush" Value="{DynamicResource B.Primary}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <controls:IconGlyph IconName="Check" Width="11" Height="11">
+                                <controls:IconGlyph.Style>
+                                    <Style TargetType="controls:IconGlyph">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource B.OnPrimary}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Checked}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </controls:IconGlyph.Style>
+                            </controls:IconGlyph>
+                        </Border>
+                        <!-- popup: AE's flat menu box, selected entry + chevron -->
+                        <Border Height="17" MinWidth="70" CornerRadius="4" Padding="7,0,4,0"
+                                VerticalAlignment="Center" HorizontalAlignment="Right"
+                                Background="{DynamicResource B.SCLowest}"
+                                BorderBrush="{DynamicResource B.OutlineVariant}" BorderThickness="1"
+                                Visibility="{Binding PopupVisible}" ToolTip="{Binding ValueTip}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding PopupText}" FontSize="11.5"
+                                           Foreground="{DynamicResource B.OnSurface}"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <controls:IconGlyph Grid.Column="1" IconName="ArrowDrop" Width="13" Height="13"
+                                                    Foreground="{DynamicResource B.OnSurfaceVariant}"
+                                                    VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                        <!-- color: AE's swatch -->
+                        <Border Width="20" Height="13" CornerRadius="3" BorderThickness="1"
+                                VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,2,0"
+                                Background="{Binding ColorBrush}"
+                                BorderBrush="{DynamicResource B.Outline}"
+                                Visibility="{Binding SwatchVisible}" ToolTip="{Binding ValueTip}"/>
+                    </Grid>
                 </Grid>
             </Border>
         </DataTemplate>
@@ -396,11 +429,11 @@
         </DataTemplate>
 
         <!-- one Effect Controls group: AE's block anatomy — ONE flat
-             header line (twirl + effect name at the left; the fx switch,
-             Reset and About parked at the right, the way AE's panel does
-             it; the vendor line lives in the tooltip), then the property
-             tree, then a quiet hairline so blocks read apart without
-             becoming cards. -->
+             header line (twirl + effect name at the left; Reset and About
+             parked at the right the way AE's panel does it — no fx switch,
+             AE doesn't keep one here; the vendor line lives in the
+             tooltip), then the property tree, then a quiet hairline so
+             blocks read apart without becoming cards. -->
         <DataTemplate x:Key="EcEffectGroup">
             <StackPanel>
                 <Grid Background="Transparent" MouseLeftButtonUp="EcHeader_Click" Cursor="Hand"
@@ -408,7 +441,6 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
@@ -420,16 +452,13 @@
                     <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
                                Foreground="{DynamicResource B.OnSurface}" VerticalAlignment="Center"
                                Margin="4,0,8,0" TextTrimming="CharacterEllipsis"/>
-                    <!-- AE's effect switch + Reset + About cluster -->
-                    <Button Grid.Column="2" Style="{StaticResource FxBadge}" Click="EcFx_Click"
-                            VerticalAlignment="Center" Margin="0,0,12,0"
-                            ToolTip="Effect on/off (display only, like AE's fx switch)"/>
-                    <TextBlock Grid.Column="3" Text="Reset" FontSize="11.5" FontWeight="Medium"
-                               VerticalAlignment="Center" Margin="0,0,14,0"
+                    <!-- AE's Reset + About cluster: Reset as the accent link -->
+                    <TextBlock Grid.Column="2" Text="Reset" FontSize="11.5" FontWeight="Medium"
+                               VerticalAlignment="Center" Margin="0,0,14,0" Cursor="Hand"
                                ToolTip="Display only - this inspector never modifies presets">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
-                                <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource B.Primary}"/>
                                 <Style.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
                                         <Setter Property="Foreground" Value="{DynamicResource B.OnSurface}"/>
@@ -438,7 +467,7 @@
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
-                    <TextBlock Grid.Column="4" Text="About" FontSize="11.5" FontWeight="Medium"
+                    <TextBlock Grid.Column="3" Text="About" FontSize="11.5" FontWeight="Medium"
                                VerticalAlignment="Center" ToolTip="{Binding Sub}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">

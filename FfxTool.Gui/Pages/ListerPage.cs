@@ -26,7 +26,7 @@ namespace FfxTool.Gui
     /// The workspace opens into AE's Effect Controls panel — every effect
     /// as a collapsible block of real AE property lines (keyframe-navigator
     /// gutter, stopwatch, fixed name column, hover-underlined value, nested
-    /// parameter groups, the fx badge as the on/off switch) — with a
+    /// parameter groups, Reset + About links) — with a
     /// switcher to the split compatibility list + tabbed inspector, whose
     /// parameter rows are the simple read (stopwatch, name, value under a
     /// quiet group caption). Both read the same decoded data and share
@@ -152,6 +152,212 @@ namespace FfxTool.Gui
             static string Fmt(double? v) => v?.ToString("0.###") ?? "—";
         }
 
+        /// <summary>
+        /// One row of the EFFECT CONTROLS panel — deliberately a separate
+        /// type from the inspector's ParamRowVm so the two parameter UIs
+        /// stay independent: this one carries the control kind decoded from
+        /// the preset's parT tree (checkbox, popup, color, angle, point,
+        /// layer, button...) and the value column renders the matching
+        /// AE-style visual per kind. Read-only, like AE's panel.
+        /// </summary>
+        public class EcParamVm
+        {
+            public string Name { get; set; }
+            public string Detail { get; set; }
+            public string MatchName { get; set; }
+            public bool IsAnimated { get; set; }
+            public double StopwatchOpacity { get; set; }
+            public string StopwatchTip { get; set; }
+            public string ValueText { get; set; }
+            public Visibility ValueVisible { get; set; }
+            public string ValueTip { get; set; }
+            public Visibility NavVisible { get; set; }
+            public string KeyCountTip { get; set; }
+            public Cursor RowCursor { get; set; }
+
+            // --- kind-driven view state (Effect Controls value visuals) ---
+            public bool IsCheckbox { get; set; }
+            public bool IsPopup { get; set; }
+            public bool IsColor { get; set; }
+            public bool Checked { get; set; }
+            public string PopupText { get; set; }
+            public Brush ColorBrush { get; set; }
+            // which value control this row renders — computed here so the
+            // templates bind Visibility straight to the VM (style triggers
+            // could never override a local Visibility binding)
+            public Visibility TextVisible { get; set; } = Visibility.Collapsed;
+            public Visibility CheckboxVisible { get; set; } = Visibility.Collapsed;
+            public Visibility PopupVisible { get; set; } = Visibility.Collapsed;
+            public Visibility SwatchVisible { get; set; } = Visibility.Collapsed;
+            // the decoded parameter behind the row — what the navigator
+            // buttons and the row click resolve to
+            public PresetParameter ParamRef { get; set; }
+
+            public EcParamVm(PresetParameter p)
+            {
+                ParamRef = p;
+                Name = p.Name;
+                MatchName = p.MatchName ?? p.Name;
+                IsAnimated = p.IsAnimated;
+                RowCursor = p.IsAnimated ? Cursors.Hand : Cursors.Arrow;
+                int kind = p.Kind;
+
+                IsCheckbox = kind == PresetParamKind.Checkbox;
+                IsPopup = kind == PresetParamKind.Popup;
+                IsColor = kind == PresetParamKind.Color && !p.IsAnimated;
+
+                // row-level state: the stream summary lives in tooltips, the
+                // stopwatch mark reads ON/OFF, the navigator gutter is
+                // reserved on every row so the NAME columns align like AE's
+                if (p.IsAnimated)
+                {
+                    double vMin = p.Keyframes.Min(k => k.Value);
+                    double vMax = p.Keyframes.Max(k => k.Value);
+                    double span = PresetCurve.Seconds(
+                        p.Keyframes[p.Keyframes.Count - 1].Time - p.Keyframes[0].Time);
+                    string travel = Math.Abs(vMax - vMin) < 1e-9
+                        ? $"flat at {Fmt(vMin)}"
+                        : $"{Fmt(vMin)} → {Fmt(vMax)}";
+                    Detail = $"animated · {travel} · {span.ToString("0.##")} s span";
+                    StopwatchOpacity = 1.0;
+                    StopwatchTip = "Time-varying: ON — this property carries a keyframe stream (read-only panel)";
+                    NavVisible = Visibility.Visible;
+                    KeyCountTip = $"{p.Keyframes.Count} keyframe{(p.Keyframes.Count == 1 ? "" : "s")} · click to open the Keyframes tab";
+                }
+                else
+                {
+                    string range = p.Min.HasValue && p.Max.HasValue
+                        ? $" · range {Fmt(p.Min)} … {Fmt(p.Max)}" : "";
+                    Detail = "static value" + range;
+                    StopwatchOpacity = 0.4;
+                    StopwatchTip = "Time-varying: OFF — static value (read-only panel)";
+                    NavVisible = Visibility.Collapsed;
+                    KeyCountTip = "";
+                }
+
+                // value slot: the control AE draws for this kind. The value
+                // read is the static cdat value, or the first keyframe's the
+                // way AE shows the value at the playhead.
+                double v = 0;
+                bool hasV = p.IsAnimated || p.StaticValue.HasValue;
+                if (hasV) v = p.IsAnimated ? p.Keyframes[0].Value : p.StaticValue.Value;
+
+                if (IsCheckbox)
+                {
+                    // AE draws a real checkbox in the value column
+                    Checked = hasV && v >= 0.5;
+                    CheckboxVisible = Visibility.Visible;
+                    ValueText = "";
+                    ValueVisible = Visibility.Collapsed;
+                    ValueTip = (Checked ? "On" : "Off") + " — from the preset (read-only panel)";
+                }
+                else if (IsPopup)
+                {
+                    // AE draws a popup whose label is the selected entry
+                    PopupText = PopupLabel(p, hasV ? v : 0);
+                    PopupVisible = Visibility.Visible;
+                    ValueText = "";
+                    ValueVisible = Visibility.Collapsed;
+                    var menu = p.MenuItems;
+                    ValueTip = menu != null
+                        ? $"menu selection {Math.Max(1, (int)Math.Round(hasV ? v : 1))} of {menu.Length} · read-only panel"
+                        : "menu selection · read-only panel";
+                }
+                else if (IsColor)
+                {
+                    // AE draws a color swatch in the value column
+                    ColorBrush = ColorOf(p);
+                    SwatchVisible = Visibility.Visible;
+                    ValueText = "";
+                    ValueVisible = Visibility.Collapsed;
+                    ValueTip = "color from the preset (read-only panel)";
+                }
+                else if (kind == PresetParamKind.Button || kind == PresetParamKind.FloatSlider ||
+                         kind == PresetParamKind.ArbitraryData)
+                {
+                    // command rows and plugin data blobs: AE shows no value
+                    ValueText = "";
+                    ValueVisible = Visibility.Collapsed;
+                    ValueTip = "";
+                }
+                else if (kind == PresetParamKind.Point && !p.IsAnimated && p.StaticValue2.HasValue)
+                {
+                    ValueText = $"({Num(p.StaticValue)}, {Num(p.StaticValue2)})";
+                    ValueVisible = Visibility.Visible;
+                    TextVisible = Visibility.Visible;
+                    ValueTip = "point (X, Y) from the preset · " + Detail;
+                }
+                else if ((kind == PresetParamKind.Layer || kind == PresetParamKind.Path))
+                {
+                    ValueText = !hasV || v == 0
+                        ? "None"
+                        : (kind == PresetParamKind.Layer ? $"Layer {v.ToString("0")}" : $"Mask {v.ToString("0")}");
+                    ValueVisible = Visibility.Visible;
+                    TextVisible = Visibility.Visible;
+                    ValueTip = "selection from the preset (read-only panel)";
+                }
+                else if (hasV)
+                {
+                    // sliders, angles, percents — AE's right-aligned number
+                    ValueText = kind == PresetParamKind.Angle ? Num(v) + "°" : Num(v);
+                    ValueVisible = Visibility.Visible;
+                    TextVisible = Visibility.Visible;
+                    if (p.IsAnimated)
+                    {
+                        double vMin = p.Keyframes.Min(k => k.Value);
+                        double vMax = p.Keyframes.Max(k => k.Value);
+                        ValueTip = $"value at the first keyframe · range {Fmt(vMin)} … {Fmt(vMax)} · {p.Keyframes.Count} keyframes";
+                    }
+                    else
+                    {
+                        ValueTip = p.Min.HasValue && p.Max.HasValue
+                            ? $"static value · range {Fmt(p.Min)} … {Fmt(p.Max)}"
+                            : "static value";
+                    }
+                }
+                else
+                {
+                    ValueText = "";
+                    ValueVisible = Visibility.Collapsed;
+                    ValueTip = "";
+                }
+            }
+
+            /// <summary>AE formats values with a fixed decimal read.</summary>
+            static string Num(double v) => v.ToString("0.0##");
+
+            static string Fmt(double? v) => v?.ToString("0.###") ?? "—";
+
+            /// <summary>
+            /// Popup label for a 1-based stored index ("No|Tile|Reflect" with
+            /// 3.0 → "Reflect"); out-of-range presets fall back to Option N.
+            /// </summary>
+            static string PopupLabel(PresetParameter p, double idx)
+            {
+                var menu = p.MenuItems;
+                int i = (int)Math.Round(idx) - 1;
+                if (menu != null && i >= 0 && i < menu.Length && menu[i].Length > 0)
+                    return menu[i];
+                return "Option " + Math.Max(1, i + 1);
+            }
+
+            /// <summary>
+            /// Swatch brush from the stored RGB(A) doubles; presets store
+            /// either the 0-1 or the 0-255 scale, told apart per channel.
+            /// </summary>
+            static Brush ColorOf(PresetParameter p)
+            {
+                double r = p.StaticValue ?? 0, g = p.StaticValue2 ?? 0, b = p.StaticValue3 ?? 0;
+                if (r > 1 || g > 1 || b > 1) { r /= 255.0; g /= 255.0; b /= 255.0; }
+                byte R = (byte)Math.Round(Math.Max(0, Math.Min(1, r)) * 255);
+                byte G = (byte)Math.Round(Math.Max(0, Math.Min(1, g)) * 255);
+                byte B = (byte)Math.Round(Math.Max(0, Math.Min(1, b)) * 255);
+                var br = new SolidColorBrush(Color.FromRgb(R, G, B));
+                br.Freeze();
+                return br;
+            }
+        }
+
         /// <summary>One keyframe row: AE timecode, frame math, easing chip.</summary>
         public class KfRowVm
         {
@@ -202,8 +408,7 @@ namespace FfxTool.Gui
             public string Sub { get; set; }
             public bool Open { get; set; }
             public Visibility BodyVisible => Open ? Visibility.Visible : Visibility.Collapsed;
-            public bool EyeOn { get; set; }
-            // body tree: ParamRowVm property lines and EcSubGroupVm group
+            // body tree: EcParamVm property lines and EcSubGroupVm group
             // nodes, in the preset's document order
             public List<object> Items { get; set; }
             public int EffectIndex { get; set; }
@@ -239,10 +444,8 @@ namespace FfxTool.Gui
         // the dictionaries are keyed by stable effect index.
         private int _viewMode;
         private readonly Dictionary<int, bool> _ecOpen = new Dictionary<int, bool>();
-        // AE anatomy state: the effect block's on/off eye (keyed by effect
-        // index) and each named parameter group's disclosure state (keyed
-        // "effectIndex|groupPath"); both survive every rebuild
-        private readonly Dictionary<int, bool> _ecEyeState = new Dictionary<int, bool>();
+        // AE anatomy state: each named parameter group's disclosure state
+        // (keyed "effectIndex|groupPath"); survives every rebuild
         private readonly Dictionary<string, bool> _ecGroupOpen = new Dictionary<string, bool>();
         private readonly Dictionary<int, string> _ecStatus = new Dictionary<int, string>();
         private readonly Dictionary<int, string> _ecVendor = new Dictionary<int, string>();
@@ -590,17 +793,13 @@ namespace FfxTool.Gui
                 var d = _details[i];
                 if (d.Parameters.Count == 0) continue;
                 bool open = !_ecOpen.TryGetValue(i, out bool o) || o;
-                bool blockOn = !_ecEyeState.TryGetValue(i, out bool bo) || bo;
                 var root = new List<object>();
                 var created = new Dictionary<string, EcSubGroupVm>();
                 foreach (var p in d.Parameters)
                 {
-                    var row = new ParamRowVm(p)
-                    {
-                        // AE keeps per-property eyes out of this panel — the
-                        // block dims as a whole via the fx switch
-                        RowOpacity = blockOn ? 1.0 : 0.42
-                    };
+                    // the Effect Controls' own row VM — kind-aware values,
+                    // separate from the inspector's simpler ParamRowVm
+                    var row = new EcParamVm(p);
                     AddEcRow(root, created, i, p.Group, row);
                 }
                 groups.Add(new EcGroupVm
@@ -608,7 +807,6 @@ namespace FfxTool.Gui
                     Title = string.IsNullOrEmpty(d.ShortName) ? d.MatchName : d.ShortName,
                     Sub = EcSubFor(i, d),
                     Open = open,
-                    EyeOn = blockOn,
                     Items = root,
                     EffectIndex = i
                 });
@@ -624,7 +822,7 @@ namespace FfxTool.Gui
         /// groups and rows (AE's panel order) is preserved.
         /// </summary>
         private void AddEcRow(List<object> root, Dictionary<string, EcSubGroupVm> created,
-                              int effectIndex, string path, ParamRowVm row)
+                              int effectIndex, string path, object row)
         {
             if (string.IsNullOrEmpty(path)) { root.Add(row); return; }
             AddEcNode(root, created, effectIndex, path).Items.Add(row);
@@ -673,19 +871,6 @@ namespace FfxTool.Gui
             if ((sender as FrameworkElement)?.DataContext is EcGroupVm g)
             {
                 FlipEcGroup(g.EffectIndex);
-                e.Handled = true;
-            }
-        }
-
-        // AE's effect switch: the fx badge toggles the block on/off —
-        // display-only, dims every row of the block
-        private void EcFx_Click(object sender, RoutedEventArgs e)
-        {
-            if ((sender as FrameworkElement)?.DataContext is EcGroupVm g)
-            {
-                bool on = !_ecEyeState.TryGetValue(g.EffectIndex, out bool cur) || cur;
-                _ecEyeState[g.EffectIndex] = !on;
-                RefreshEcRows();
                 e.Handled = true;
             }
         }
@@ -923,26 +1108,38 @@ namespace FfxTool.Gui
         }
 
         // ---------- AE parameter rows: click + keyframe navigator ----------
+        // Both parameter UIs funnel here: the inspector's simple ParamRowVm
+        // and the Effect Controls' kind-aware EcParamVm share the decoded
+        // parameter behind the row.
+        private static PresetParameter ParamRefOf(object dc) =>
+            (dc as ParamRowVm)?.ParamRef ?? (dc as EcParamVm)?.ParamRef;
+
+        private static bool IsAnimatedRow(object dc) =>
+            (dc as ParamRowVm)?.IsAnimated ?? ((dc as EcParamVm)?.IsAnimated ?? false);
+
         private void ParamRow_Click(object sender, MouseButtonEventArgs e)
         {
-            if ((sender as FrameworkElement)?.DataContext is ParamRowVm vm && vm.IsAnimated)
-                SelectAnimatedParam(AnimatedIndexOf(vm.ParamRef));
+            var dc = (sender as FrameworkElement)?.DataContext;
+            if (IsAnimatedRow(dc))
+                SelectAnimatedParam(AnimatedIndexOf(ParamRefOf(dc)));
         }
 
         private void KfPrev_Click(object sender, RoutedEventArgs e)
         {
-            if ((sender as FrameworkElement)?.DataContext is ParamRowVm vm && vm.IsAnimated)
+            var dc = (sender as FrameworkElement)?.DataContext;
+            if (IsAnimatedRow(dc))
             {
-                SelectAnimatedParam(AnimatedIndexOf(vm.ParamRef));
+                SelectAnimatedParam(AnimatedIndexOf(ParamRefOf(dc)));
                 SelectKeyframe(_selKf < 0 ? 0 : _selKf - 1);
             }
         }
 
         private void KfNext_Click(object sender, RoutedEventArgs e)
         {
-            if ((sender as FrameworkElement)?.DataContext is ParamRowVm vm && vm.IsAnimated)
+            var dc = (sender as FrameworkElement)?.DataContext;
+            if (IsAnimatedRow(dc))
             {
-                SelectAnimatedParam(AnimatedIndexOf(vm.ParamRef));
+                SelectAnimatedParam(AnimatedIndexOf(ParamRefOf(dc)));
                 SelectKeyframe(_selKf < 0 ? 0 : _selKf + 1);
             }
         }
@@ -950,9 +1147,10 @@ namespace FfxTool.Gui
         /// <summary>The diamond button: jump to the Keyframes tab for that stream.</summary>
         private void KfShow_Click(object sender, RoutedEventArgs e)
         {
-            if ((sender as FrameworkElement)?.DataContext is ParamRowVm vm && vm.IsAnimated)
+            var dc = (sender as FrameworkElement)?.DataContext;
+            if (IsAnimatedRow(dc))
             {
-                SelectAnimatedParam(AnimatedIndexOf(vm.ParamRef));
+                SelectAnimatedParam(AnimatedIndexOf(ParamRefOf(dc)));
                 if (_viewMode == 0) SetView(1); // the Keyframes tab lives in the inspector
                 SetTab(1);
             }
