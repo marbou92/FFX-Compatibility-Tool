@@ -25,11 +25,12 @@ namespace FfxTool.Gui
     ///
     /// The workspace opens into AE's Effect Controls panel — every effect
     /// as a collapsible block of real AE property lines (keyframe-navigator
-    /// gutter, stopwatch, underlined value slot, nested parameter groups,
-    /// the fx badge as the on/off switch) — with a switcher to the split
-    /// compatibility list + tabbed inspector, whose parameter rows stay
-    /// the simple read (triangle, stopwatch, name, value, eye). Both read
-    /// the same decoded data and share keyframe selection state.
+    /// gutter, stopwatch, fixed name column, hover-underlined value, nested
+    /// parameter groups, the fx badge as the on/off switch) — with a
+    /// switcher to the split compatibility list + tabbed inspector, whose
+    /// parameter rows are the simple read (stopwatch, name, value under a
+    /// quiet group caption). Both read the same decoded data and share
+    /// keyframe selection state.
     ///
     /// The right-hand inspector reads like AE's timeline: parameter rows
     /// carry the stopwatch mark (lit = time-varying) and a keyframe
@@ -77,7 +78,6 @@ namespace FfxTool.Gui
             public string Name { get; set; }
             public string Detail { get; set; }
             public string MatchName { get; set; }
-            public Visibility AccentVisible { get; set; }
             public bool IsAnimated { get; set; }
             public double StopwatchOpacity { get; set; }
             public string StopwatchTip { get; set; }
@@ -87,26 +87,16 @@ namespace FfxTool.Gui
             public Visibility NavVisible { get; set; }
             public string KeyCountTip { get; set; }
             public Cursor RowCursor { get; set; }
-            public Visibility TriangleVisible { get; set; }
-            public bool LaneOpen { get; set; }
-            public Visibility LaneVisible => LaneOpen ? Visibility.Visible : Visibility.Collapsed;
             public double RowOpacity { get; set; }
-            public bool EyeOn { get; set; }
-            public List<KfChipVm> Chips { get; set; }
             // the decoded parameter behind the row — what the navigator
             // buttons and the row click resolve to
             public PresetParameter ParamRef { get; set; }
-            // nesting depth of this row's AE parameter group (0 = top
-            // level); the Effect Controls body indents grouped rows by it
-            public int GroupDepth { get; set; }
-            public Thickness RowMargin => new Thickness(GroupDepth * 14, 1, 0, 1);
 
             public ParamRowVm(PresetParameter p)
             {
                 ParamRef = p;
                 Name = p.Name;
                 MatchName = p.MatchName ?? p.Name;
-                GroupDepth = p.Group == null ? 0 : p.Group.Split('\u0001').Length;
                 IsAnimated = p.IsAnimated;
                 RowCursor = p.IsAnimated ? Cursors.Hand : Cursors.Arrow;
 
@@ -121,7 +111,6 @@ namespace FfxTool.Gui
                         ? $"flat at {Fmt(vMin)}"
                         : $"{Fmt(vMin)} → {Fmt(vMax)}";
                     Detail = $"animated · {travel} · {span.ToString("0.##")} s span";
-                    AccentVisible = Visibility.Visible;
                     StopwatchOpacity = 1.0;
                     StopwatchTip = "Time-varying: ON — this property carries a keyframe stream (read-only inspector)";
 
@@ -132,15 +121,12 @@ namespace FfxTool.Gui
                     ValueTip = $"value at the first keyframe · range {Fmt(vMin)} … {Fmt(vMax)} · {p.Keyframes.Count} keyframes";
                     NavVisible = Visibility.Visible;
                     KeyCountTip = $"{p.Keyframes.Count} keyframe{(p.Keyframes.Count == 1 ? "" : "s")} · click to open the Keyframes tab";
-                    TriangleVisible = Visibility.Visible;
-                    Chips = BuildChips(p);
                 }
                 else
                 {
                     string range = p.Min.HasValue && p.Max.HasValue
                         ? $" · range {Fmt(p.Min)} … {Fmt(p.Max)}" : "";
                     Detail = "static value" + range;
-                    AccentVisible = Visibility.Collapsed;
                     StopwatchOpacity = 0.4;
                     StopwatchTip = "Time-varying: OFF — static value (read-only inspector)";
 
@@ -160,44 +146,10 @@ namespace FfxTool.Gui
                     }
                     NavVisible = Visibility.Collapsed;
                     KeyCountTip = "";
-                    TriangleVisible = Visibility.Collapsed;
                 }
             }
 
             static string Fmt(double? v) => v?.ToString("0.###") ?? "—";
-
-            /// <summary>
-            /// The inline keyframe lane's chips: one per keyframe, frame
-            /// number as the label, timecode + value in the tooltip.
-            /// </summary>
-            static List<KfChipVm> BuildChips(PresetParameter p)
-            {
-                var chips = new List<KfChipVm>();
-                for (int i = 0; i < p.Keyframes.Count; i++)
-                {
-                    var k = p.Keyframes[i];
-                    double sec = PresetCurve.Seconds(k.Time);
-                    int frame = (int)Math.Round(sec * Fps);
-                    chips.Add(new KfChipVm
-                    {
-                        Param = p,
-                        KfIndex = i,
-                        Label = $"#{i + 1} · f{frame}",
-                        Tip = $"{Timecode(sec)} · value {k.Value.ToString("0.###")} · {k.InterpLabel} · click to select"
-                    });
-                }
-                return chips;
-            }
-        }
-
-        /// <summary>One inline keyframe chip of the Parameters-tab lane.</summary>
-        public class KfChipVm
-        {
-            public string Label { get; set; }
-            public string Tip { get; set; }
-            public int KfIndex { get; set; }
-            public bool Selected { get; set; }
-            public PresetParameter Param { get; set; }
         }
 
         /// <summary>One keyframe row: AE timecode, frame math, easing chip.</summary>
@@ -242,7 +194,7 @@ namespace FfxTool.Gui
         /// <summary>
         /// One effect block of the Effect Controls view: header data plus
         /// the AE property rows (the same ParamRowVm anatomy the inspector
-        /// uses, so lane/eye/navigator behavior is identical in both views).
+        /// uses, so stopwatch/navigator behavior is identical in both views).
         /// </summary>
         public class EcGroupVm
         {
@@ -275,12 +227,6 @@ namespace FfxTool.Gui
         private int _graphMode;
         private int _selKf = -1;
         private bool _syncingCombo;
-
-        // AE-toggle state per parameter: the disclosure triangle's inline
-        // keyframe lane and the eye's display dimming survive every row
-        // rebuild (the VMs are rebuilt on each refresh, these are not)
-        private readonly Dictionary<PresetParameter, bool> _laneState = new Dictionary<PresetParameter, bool>();
-        private readonly Dictionary<PresetParameter, bool> _eyeState = new Dictionary<PresetParameter, bool>();
 
         // DragEnter/DragLeave fire on every child boundary crossing; a depth
         // counter is the only flicker-free way to know the drag truly left.
@@ -631,9 +577,9 @@ namespace FfxTool.Gui
 
         /// <summary>
         /// Rebuilds the Effect Controls groups from the decoded preset. The
-        /// rows share the inspector's ParamRowVm/template and the same
-        /// lane/eye dictionaries, so toggles stay consistent across both
-        /// views. Cheap — runs only on load, theme change, or a toggle.
+        /// rows share the inspector's ParamRowVm/template, so the property
+        /// lines read identically in both views. Cheap — runs only on load,
+        /// theme change, or a toggle.
         /// </summary>
         private void RefreshEcRows()
         {
@@ -651,8 +597,6 @@ namespace FfxTool.Gui
                 {
                     var row = new ParamRowVm(p)
                     {
-                        LaneOpen = _laneState.TryGetValue(p, out bool ln) && ln,
-                        EyeOn = !_eyeState.TryGetValue(p, out bool on) || on,
                         // AE keeps per-property eyes out of this panel — the
                         // block dims as a whole via the fx switch
                         RowOpacity = blockOn ? 1.0 : 0.42
@@ -810,8 +754,6 @@ namespace FfxTool.Gui
         private void ShowEffect(int effectIndex, string fallbackName)
         {
             _inspEffectIndex = effectIndex;
-            _laneState.Clear();
-            _eyeState.Clear();
             var d = CurrentDetails();
 
             if (d == null)
@@ -856,8 +798,6 @@ namespace FfxTool.Gui
 
         private void SetInspectorEmpty()
         {
-            _laneState.Clear();
-            _eyeState.Clear();
             InspTitle.Text = "Inspector";
             InspSub.Text = "Select an effect to inspect it";
             InspEmpty.Visibility = Visibility.Visible;
@@ -938,10 +878,10 @@ namespace FfxTool.Gui
         }
 
         /// <summary>
-        /// Rebuilds the Parameters tab rows from the current effect while
-        /// preserving the AE-toggle state (inline lane open/closed, eye
-        /// dimming) and syncing the inline keyframe chips' selection to the
-        /// graph ring. Cheap — the list is at most a few dozen rows.
+        /// Rebuilds the Parameters tab as one calm read: plain property
+        /// lines under quiet, always-expanded group captions. No toggles
+        /// and no chips — the Keyframes and Graph tabs carry the motion
+        /// data. Cheap — the list is at most a few dozen rows.
         /// </summary>
         private void RefreshParamRows()
         {
@@ -951,56 +891,35 @@ namespace FfxTool.Gui
                 ParamList.ItemsSource = null;
                 return;
             }
-            var cur = CurrentAnimParam();
-            var rows = new List<ParamRowVm>();
+            var root = new List<object>();
+            var created = new Dictionary<string, EcSubGroupVm>();
             foreach (var p in d.Parameters)
             {
-                bool eye = !_eyeState.TryGetValue(p, out bool eyeOn) || eyeOn;
-                var vm = new ParamRowVm(p)
-                {
-                    LaneOpen = _laneState.TryGetValue(p, out bool open) && open,
-                    EyeOn = eye,
-                    RowOpacity = eye ? 1.0 : 0.42
-                };
-                if (cur != null && ReferenceEquals(cur, p) && _selKf >= 0)
-                    foreach (var c in vm.Chips) c.Selected = c.KfIndex == _selKf;
-                rows.Add(vm);
+                var row = new ParamRowVm(p) { RowOpacity = 1.0 };
+                if (string.IsNullOrEmpty(p.Group)) root.Add(row);
+                else AddInspNode(root, created, p.Group).Items.Add(row);
             }
-            ParamList.ItemsSource = rows;
-            ParamEmpty.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            ParamList.ItemsSource = root;
+            ParamEmpty.Visibility = root.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        // ---------- AE toggles: lane triangle + row eye + inline chips ----------
-        private void LaneToggle_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Inspector group caption for a group path, created on first
+        /// encounter. Always expanded — the inspector's simple read never
+        /// hides rows; the Effect Controls panel owns disclosure behavior.
+        /// </summary>
+        private static EcSubGroupVm AddInspNode(List<object> root,
+            Dictionary<string, EcSubGroupVm> created, string path)
         {
-            if ((sender as FrameworkElement)?.DataContext is ParamRowVm vm && vm.ParamRef != null)
-            {
-                bool open = _laneState.TryGetValue(vm.ParamRef, out bool cur) && cur;
-                _laneState[vm.ParamRef] = !open;
-                RefreshParamRows(); // the keyframe lane lives in the inspector rows
-                e.Handled = true;
-            }
-        }
-
-        private void EyeToggle_Click(object sender, RoutedEventArgs e)
-        {
-            if ((sender as FrameworkElement)?.DataContext is ParamRowVm vm && vm.ParamRef != null)
-            {
-                bool on = !_eyeState.TryGetValue(vm.ParamRef, out bool cur) || cur;
-                _eyeState[vm.ParamRef] = !on;
-                RefreshParamRows(); // the row eye lives in the inspector rows
-                e.Handled = true;
-            }
-        }
-
-        private void KfChip_Click(object sender, MouseButtonEventArgs e)
-        {
-            if ((sender as FrameworkElement)?.DataContext is KfChipVm chip && chip.Param != null)
-            {
-                SelectAnimatedParam(AnimatedIndexOf(chip.Param));
-                SelectKeyframe(chip.KfIndex);
-                e.Handled = true;
-            }
+            if (created.TryGetValue(path, out var g)) return g;
+            string name = path, parent = null;
+            int sep = path.LastIndexOf('\u0001');
+            if (sep >= 0) { name = path.Substring(sep + 1); parent = path.Substring(0, sep); }
+            g = new EcSubGroupVm { Title = name, GroupKey = path, EffectIndex = -1, Open = true };
+            created[path] = g;
+            if (parent == null) root.Add(g);
+            else AddInspNode(root, created, parent).Items.Add(g);
+            return g;
         }
 
         // ---------- AE parameter rows: click + keyframe navigator ----------
@@ -1061,9 +980,7 @@ namespace FfxTool.Gui
                 _selKf = Math.Max(0, Math.Min(p.Keyframes.Count - 1, i));
             }
             BuildKeyframes();
-            if (_tab == 0) RefreshParamRows(); // chip highlight follows the ring
-            if (_viewMode == 0) RefreshEcRows(); // and so do the panel's chips
-            if (_tab == 2) DrawGraph();
+            if (_tab == 2) DrawGraph(); // ring + handles follow the pick
         }
 
         private void TabBtn_Click(object sender, RoutedEventArgs e)
@@ -1218,11 +1135,8 @@ namespace FfxTool.Gui
             if (w < 60 || h < 60) return; // not laid out yet — SizeChanged redraws
 
             var segs = PresetCurve.BuildSegments(p.Keyframes);
-            if (segs.Count == 0)
-            {
-                GraphHint.Visibility = Visibility.Visible;
-                return;
-            }
+            // a one-keyframe stream has no spans but still plots — the value
+            // branch draws it as AE does: a constant. No hint fallback here.
 
             var gridBrush = (Brush)FindResource("B.OutlineVariant");
             var labelBrush = (Brush)FindResource("B.OnSurfaceVariant");
@@ -1231,7 +1145,10 @@ namespace FfxTool.Gui
             var outline = (Brush)FindResource("B.Outline");
 
             const double L = 14, R = 48, T = 14, Bot = 24;
-            double t0 = segs[0].T0, t1 = segs[segs.Count - 1].T1;
+            // span from the KEYFRAMES, not the segments — a one-keyframe
+            // stream has zero segments yet still plots as a constant
+            double t0 = PresetCurve.Seconds(p.Keyframes[0].Time);
+            double t1 = PresetCurve.Seconds(p.Keyframes[p.Keyframes.Count - 1].Time);
             if (t1 - t0 < 1e-6) t1 = t0 + 0.5; // single-instant stream still gets an axis
             Func<double, double> xOf = t => L + (t - t0) / (t1 - t0) * (w - L - R);
 
@@ -1268,8 +1185,27 @@ namespace FfxTool.Gui
             double plotH = h - T - Bot;
             if (_graphMode == 0)
             {
+                // AE scales the plot to the CURVE: keyframe values plus the
+                // path's own samples set the range BEFORE the y mapping is
+                // built, so the scale can never depend on draw order
+                double vMin = p.Keyframes.Min(k => k.Value);
+                double vMax = p.Keyframes.Max(k => k.Value);
+                PresetCurve.SampleValues(segs, 240, out _, out var sampled);
+                foreach (double v in sampled)
+                {
+                    if (v < vMin) vMin = v;
+                    if (v > vMax) vMax = v;
+                }
+                if (vMax - vMin < 1e-9) { vMin -= 1; vMax += 1; }
+                else { double pad = (vMax - vMin) * 0.12; vMin -= pad; vMax += pad; }
+                plot.VMin = vMin; plot.VMax = vMax;
+
                 Func<double, double> yOf = v => T + (plot.VMax - v) / Math.Max(plot.VMax - plot.VMin, 1e-9) * plotH;
-                DrawValueCurve(plot, accent, surface, yOf);
+                DrawValueGrid(plot, yOf);
+                if (segs.Count == 0)
+                    DrawSingleKeyframePlot(plot, p.Keyframes[0], accent, surface, yOf);
+                else
+                    DrawValueCurve(plot, p, accent, surface, yOf);
                 DrawSelection(plot, yOf, accent, surface);
             }
             else
@@ -1336,37 +1272,19 @@ namespace FfxTool.Gui
             }
         }
 
-        private void DrawValueCurve(PlotState plot, Brush accent, Brush surface, Func<double, double> yOf)
+        /// <summary>
+        /// Horizontal value grid + right-gutter labels — AE's value ruler.
+        /// Labels format to their step (AxisNum): the old "0.##" collapsed
+        /// every small-magnitude gridline to "0", which read as a broken
+        /// axis on presets whose values live below 0.01.
+        /// </summary>
+        private void DrawValueGrid(PlotState plot, Func<double, double> yOf)
         {
-            var segs = plot.Segs;
             var gridBrush = (Brush)FindResource("B.OutlineVariant");
             var labelBrush = (Brush)FindResource("B.OnSurfaceVariant");
-
-            // AE scales the plot to the CURVE, not to raw handle extremes:
-            // keyframe values plus the path's own samples set the range —
-            // bezier overshoot still lands inside the plot, but wild tangent
-            // handles can no longer squash the curve into a flat band
-            var stream = CurrentAnimParam();
-            if (stream == null) return;
-            double vMin = stream.Keyframes.Min(k => k.Value);
-            double vMax = stream.Keyframes.Max(k => k.Value);
-            PresetCurve.SampleValues(segs, 160, out _, out var sampled);
-            foreach (double v in sampled)
-            {
-                if (v < vMin) vMin = v;
-                if (v > vMax) vMax = v;
-            }
-            if (vMax - vMin < 1e-9) { vMin -= 1; vMax += 1; }
-            else { double pad = (vMax - vMin) * 0.12; vMin -= pad; vMax += pad; }
-            plot.VMin = vMin; plot.VMax = vMax;
-
-            // horizontal value grid at round steps; labels sit in the
-            // right gutter, right-aligned against the canvas edge (AE's
-            // value ruler) and skipped when they would collide — 13px is
-            // the minimum pitch for the 10px label font
-            double vStep = NiceStep((vMax - vMin) / 3.2);
+            double vStep = NiceStep((plot.VMax - plot.VMin) / 3.2);
             double lastLabelY = -1000;
-            for (double v = Math.Ceiling(vMin / vStep) * vStep; v <= vMax + 1e-9; v += vStep)
+            for (double v = Math.Ceiling(plot.VMin / vStep) * vStep; v <= plot.VMax + 1e-9; v += vStep)
             {
                 double y = Math.Round(yOf(v)) + 0.5;
                 GraphCanvas.Children.Add(new Line
@@ -1378,7 +1296,7 @@ namespace FfxTool.Gui
                 {
                     var lbl = new TextBlock
                     {
-                        Text = v.ToString("0.##"),
+                        Text = AxisNum(v, vStep),
                         FontSize = 10,
                         Foreground = labelBrush,
                         Width = plot.R - 8,
@@ -1390,6 +1308,51 @@ namespace FfxTool.Gui
                     lastLabelY = y;
                 }
             }
+        }
+
+        /// <summary>
+        /// A one-keyframe stream is animated but has no spans: AE shows a
+        /// constant. Draw the flat value line plus its keyframe marker —
+        /// the old code fell back to the "pick a parameter" hint here,
+        /// which read as a broken graph.
+        /// </summary>
+        private void DrawSingleKeyframePlot(PlotState plot, PresetKeyframe kf,
+            Brush accent, Brush surface, Func<double, double> yOf)
+        {
+            double y = yOf(kf.Value);
+            GraphCanvas.Children.Add(new Line
+            {
+                X1 = plot.L, Y1 = y, X2 = plot.W - plot.R, Y2 = y,
+                Stroke = accent, StrokeThickness = 2, Opacity = 0.9
+            });
+            string tip = $"{Timecode(PresetCurve.Seconds(kf.Time))}  ·  constant value {kf.Value.ToString("0.###")}  ·  click to select";
+            GraphCanvas.Children.Add(MakeMarker(PresetCurve.InterpLinear,
+                XOf(plot, plot.T0), y, accent, surface, tip, 0));
+        }
+
+        /// <summary>
+        /// Axis number format that adapts to the step size: whole steps get
+        /// "0.#", fractional steps get exactly as many decimals as the step
+        /// needs, and extreme magnitudes fall back to significant digits.
+        /// </summary>
+        private static string AxisNum(double v, double step)
+        {
+            if (Math.Abs(v) < 1e-12) return "0";
+            if (Math.Abs(v) >= 100000 || Math.Abs(v) < 0.0005) return v.ToString("G4");
+            int dec = 6;
+            for (int d = 0; d <= 6; d++)
+            {
+                double scaled = step * Math.Pow(10, d);
+                if (Math.Abs(scaled - Math.Round(scaled)) < 1e-6) { dec = d; break; }
+            }
+            string s = v.ToString("F" + dec);
+            if (dec > 0) s = s.TrimEnd('0').TrimEnd('.');
+            return s;
+        }
+
+        private void DrawValueCurve(PlotState plot, PresetParameter stream, Brush accent, Brush surface, Func<double, double> yOf)
+        {
+            var segs = plot.Segs;
 
             // the curve itself — smooth coordinates, no pixel snapping
             var geo = new StreamGeometry();
@@ -1428,8 +1391,7 @@ namespace FfxTool.Gui
             });
 
             // keyframe markers, shaped by interpolation like AE's icons,
-            // clickable to select (ring + handles + easing numbers);
-            // `stream` was fetched at the top for the value range
+            // clickable to select (ring + handles + easing numbers)
             for (int i = 0; i < stream.Keyframes.Count; i++)
             {
                 var k = stream.Keyframes[i];
@@ -1455,7 +1417,10 @@ namespace FfxTool.Gui
             // differences of samples used to trace a different curve)
             const int N = 320;
             double[] ts = new double[N], sp = new double[N];
-            double st0 = segs[0].T0, st1 = segs[segs.Count - 1].T1;
+            // span from the plot (keyframe-derived), so a one-keyframe
+            // stream — zero segments, constant value, zero speed — still
+            // draws its flat baseline instead of crashing on segs[0]
+            double st0 = plot.T0, st1 = plot.T1;
             for (int i = 0; i < N; i++)
             {
                 ts[i] = st0 + (st1 - st0) * i / (N - 1);
@@ -1485,7 +1450,7 @@ namespace FfxTool.Gui
                 {
                     var lbl = new TextBlock
                     {
-                        Text = v.ToString("0.##") + "/s",
+                        Text = AxisNum(v, vStep) + "/s",
                         FontSize = 10,
                         Foreground = labelBrush,
                         Width = plot.R - 8,
@@ -1543,7 +1508,7 @@ namespace FfxTool.Gui
                 var k = stream.Keyframes[i];
                 double t = PresetCurve.Seconds(k.Time);
                 double s = PresetCurve.SpeedAt(segs, t);
-                if (double.IsNaN(s)) continue;
+                if (double.IsNaN(s)) s = 0; // one-keyframe stream: constant = zero speed
                 string tip = $"#{i + 1}  {Timecode(t)}  ·  speed {s.ToString("0.###")} /s  ·  click to select";
                 int idx = i;
                 GraphCanvas.Children.Add(MakeMarker(PresetCurve.InterpBezier,
@@ -1805,15 +1770,22 @@ namespace FfxTool.Gui
             _cursorLine.Y2 = _plot.H - _plot.Bot;
 
             string readout;
+            string easing = SegmentEasingAt(t);
             double plotH = _plot.H - _plot.T - _plot.Bot;
             if (_plot.Mode == 0)
             {
                 double v = PresetCurve.ValueAt(_plot.Segs, t);
+                if (double.IsNaN(v))
+                {
+                    // one-keyframe stream: no spans, the constant holds
+                    var pp = CurrentAnimParam();
+                    if (pp != null && pp.Keyframes.Count > 0) v = pp.Keyframes[0].Value;
+                }
                 double y = _plot.T + (_plot.VMax - v) / Math.Max(_plot.VMax - _plot.VMin, 1e-9) * plotH;
                 Canvas.SetLeft(_cursorDot, x - 3.5);
                 Canvas.SetTop(_cursorDot, Math.Round(y) - 3.5);
                 _cursorDot.Visibility = Visibility.Visible;
-                readout = $"{t.ToString("0.##")} s · f{frame} · value {v.ToString("0.###")}";
+                readout = $"{t.ToString("0.##")} s · f{frame} · value {v.ToString("0.###")}{easing}";
             }
             else
             {
@@ -1824,7 +1796,7 @@ namespace FfxTool.Gui
                 _cursorDot.Visibility = Visibility.Visible;
                 readout = double.IsNaN(s)
                     ? $"{t.ToString("0.##")} s · f{frame}"
-                    : $"{t.ToString("0.##")} s · f{frame} · speed {s.ToString("0.###")} /s";
+                    : $"{t.ToString("0.##")} s · f{frame} · speed {s.ToString("0.###")} /s{easing}";
             }
 
             GraphReadoutText.Text = readout;
@@ -1832,6 +1804,20 @@ namespace FfxTool.Gui
         }
 
         private void GraphCanvas_MouseLeave(object sender, MouseEventArgs e) => ClearCursor();
+
+        /// <summary>The interpolation of the span under time t ("" outside).</summary>
+        private string SegmentEasingAt(double t)
+        {
+            if (_plot == null) return "";
+            foreach (var s in _plot.Segs)
+            {
+                if (t < s.T0 || t > s.T1) continue;
+                return s.Mode == PresetCurve.InterpLinear ? " · linear"
+                     : s.Mode == PresetCurve.InterpHold ? " · hold"
+                     : " · bezier";
+            }
+            return "";
+        }
 
         private void EnsureCursor()
         {
