@@ -144,10 +144,13 @@ namespace FfxTool.Gui
         private void RefreshEffects()
         {
             var table = PluginLookup.LoadTable();
+            var names = EffectNameLookup.Load();
             _rows.Clear();
             foreach (var eff in _currentEffects.Where(e => !e.IsSentinel))
             {
-                var match = PluginLookup.Resolve(eff.MatchName, table);
+                // same recognition chain as the lister — one match name can
+                // never carry two different vendors across the two flows
+                var match = PluginLookup.Resolve(eff.MatchName, table, names);
                 bool missing = _profile.Owns(match.Vendor) == false;
                 _rows.Add(new EffectRow
                 {

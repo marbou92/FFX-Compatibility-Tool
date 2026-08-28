@@ -737,17 +737,26 @@ namespace FfxTool.Gui
                 ? real.OrderByDescending(e => e.MatchName, StringComparer.OrdinalIgnoreCase)
                 : real.OrderBy(e => e.MatchName, StringComparer.OrdinalIgnoreCase);
 
+            // one recognized match per match name — the filter, the rows
+            // and the Effect Controls headers must never disagree about a
+            // vendor: prefix table first, then the fallback chain
+            var matches = new Dictionary<string, PluginMatch>(StringComparer.Ordinal);
+            foreach (var e in real)
+                string key = e.MatchName ?? "";
+                if (!matches.ContainsKey(key))
+                    matches[key] = PluginLookup.Resolve(e.MatchName, table, _names);
+
             if (_filterMode == 1)
-                ordered = ordered.Where(e => _profile.Owns(PluginLookup.Resolve(e.MatchName, table).Vendor) == false);
+                ordered = ordered.Where(e => _profile.Owns(matches[e.MatchName ?? ""].Vendor) == false);
             else if (_filterMode == 2)
-                ordered = ordered.Where(e => _profile.Owns(PluginLookup.Resolve(e.MatchName, table).Vendor) != false);
+                ordered = ordered.Where(e => _profile.Owns(matches[e.MatchName ?? ""].Vendor) != false);
 
             int shown = 0, missing = 0;
             _rows.Clear();
             foreach (var eff in ordered)
             {
                 shown++;
-                var match = PluginLookup.Resolve(eff.MatchName, table);
+                var match = matches[eff.MatchName ?? ""];
                 var owned = _profile.Owns(match.Vendor);
 
                 string status;
@@ -777,7 +786,7 @@ namespace FfxTool.Gui
                 {
                     Name = disp,
                     MatchTip = disp == eff.MatchName ? null : eff.MatchName,
-                    VendorLabel = $"{match.Vendor ?? "?"} — {match.Suite ?? "?"}",
+                    VendorLabel = VendorLine(match),
                     Status = status,
                     RowBrush = row,
                     EffectIndex = fileOrder[eff]
@@ -786,7 +795,7 @@ namespace FfxTool.Gui
                 // header data for the Effect Controls block, keyed by the
                 // same stable effect index the rows carry
                 _ecStatus[fileOrder[eff]] = status;
-                _ecVendor[fileOrder[eff]] = $"{match.Vendor ?? "?"} — {match.Suite ?? "?"}";
+                _ecVendor[fileOrder[eff]] = VendorLine(match);
             }
 
             bool hasContent = _currentEffects.Any(e => !e.IsSentinel);
@@ -850,6 +859,16 @@ namespace FfxTool.Gui
                 // pass — repaint after layout instead of 70ms later
                 Dispatcher.BeginInvoke(new Action(DrawGraph), DispatcherPriority.Loaded);
             }
+        }
+
+        /// <summary>
+        /// Vendor line for the list row and the Effect Controls header —
+        /// an honest "unrecognized" when no rule knows the match name.
+        /// </summary>
+        private static string VendorLine(PluginMatch m)
+        {
+            if (m == null || m.Vendor == null) return "unrecognized — not in any reference table";
+            return m.Vendor + (string.IsNullOrEmpty(m.Suite) ? "" : " — " + m.Suite);
         }
 
         /// <summary>
@@ -1081,7 +1100,7 @@ namespace FfxTool.Gui
         private void ShowEcAbout(PresetEffectDetails d, int effectIndex)
         {
             var nameEntry = EffectNameLookup.Resolve(d.MatchName, _names);
-            var plug = PluginLookup.Resolve(d.MatchName, PluginLookup.LoadTable());
+            var plug = PluginLookup.Resolve(d.MatchName, PluginLookup.LoadTable(), _names);
 
             AboutTitle.Text = EcDisplayName(d);
             string cat = string.IsNullOrEmpty(nameEntry?.category) ? null : nameEntry.category;
@@ -1089,14 +1108,16 @@ namespace FfxTool.Gui
                 ? "Effects \u25b8 " + cat
                 : "AE menu group unknown for this match name";
             string vendorLine = plug.Vendor == null
-                ? "unknown plugin"
+                ? "unrecognized plugin — not in any reference table"
                 : plug.Vendor + (string.IsNullOrEmpty(plug.Suite) ? "" : "  \u00b7  " + plug.Suite);
             if (!string.IsNullOrEmpty(nameEntry?.version))
                 vendorLine += "  \u00b7  v" + nameEntry.version;
             AboutVendor.Text = vendorLine;
             AboutMatch.Text = "match name: " + d.MatchName;
             AboutOrigin.Text = nameEntry == null
-                ? "not in the reference dataset yet"
+                ? (plug.Inferred
+                    ? "recognized by rule — CC* plug-ins ship with AE"
+                    : "not in the reference dataset yet")
                 : (nameEntry.stock ? "stock AE table" : "3rd-party listing") +
                   (string.IsNullOrEmpty(nameEntry.aeVersion) ? "" : " \u00b7 " + nameEntry.aeVersion);
             AboutStatus.Text = _ecStatus.TryGetValue(effectIndex, out string st) && !string.IsNullOrEmpty(st)
@@ -1693,16 +1714,20 @@ namespace FfxTool.Gui
             // AE's Graph Editor reads as an inset panel — a quiet darker
             // backdrop so grid, curve and markers sit on a defined surface
             // instead of floating in the card
-            GraphCanvas.Children.Add(new Rectangle
+            // WPF Shapes.Rectangle has no X/Y — a Canvas child is placed
+            // with Canvas.SetLeft/SetTop, not object-initializer coordinates
+            var backdrop = new Rectangle
             {
-                X = L - 10, Y = T - 10,
                 Width = Math.Max(0, w - L - R + 20),
                 Height = Math.Max(0, h - T - Bot + 20),
                 RadiusX = 10, RadiusY = 10,
                 Fill = (Brush)FindResource("B.SCLowest"),
                 Stroke = (Brush)FindResource("B.OutlineVariant"),
                 StrokeThickness = 1
-            });
+            };
+            Canvas.SetLeft(backdrop, L - 10);
+            Canvas.SetTop(backdrop, T - 10);
+            GraphCanvas.Children.Add(backdrop);
 
             DrawTimeGrid(t0, t1, xOf, w, h, T, Bot, L, R, gridBrush, labelBrush);
 
@@ -1825,7 +1850,7 @@ namespace FfxTool.Gui
 
             // AE's dense minor frame ticks between the labeled lines — no
             // labels, just the rhythm of frames under the cursor
-            int minor = Math.Max(1, step / 5);
+            int minor = Math.Max(1, (int)(step / 5));
             double minorPx = (w - L - R) * (minor / (double)Fps) / Math.Max(t1 - t0, 1e-9);
             if (minorPx >= 10)
             {

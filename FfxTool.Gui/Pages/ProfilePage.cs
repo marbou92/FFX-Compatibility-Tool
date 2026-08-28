@@ -23,6 +23,7 @@ namespace FfxTool.Gui
         private readonly PluginProfile _profile;
         private readonly Action _onChange;
         private readonly Dictionary<string, ToggleButtonSwitchPair> _switches = new Dictionary<string, ToggleButtonSwitchPair>();
+        private TextBlock _scanStatus; // live result line inside the discovery card
 
         private class ToggleButtonSwitchPair
         {
@@ -40,16 +41,26 @@ namespace FfxTool.Gui
                 { "RE:Vision Effects", ("Eye", "Twixtor, ReelSmart Motion Blur") },
                 { "Red Giant / Maxon", ("AutoAwesome", "Trapcode, Magic Bullet, VFX") },
                 { "Video Copilot", ("Flare", "Optical Flares, Element 3D, Saber") },
+                { "Rowbyte", ("Plugin", "Plexus, TV Distortion") },
+                { "Frischluft", ("Plugin", "Lenscare depth of field") },
+                { "Mettle", ("Plugin", "FreeForm, Shape Shifter, SkyBox") },
+                { "Neat Video", ("Plugin", "Temporal noise reduction") },
+                { "Knoll Light Factory", ("Flare", "Lens flares by John Knoll") },
             };
 
         private static readonly Dictionary<string, string[]> VendorFileHints =
             new Dictionary<string, string[]>
             {
                 { "Boris FX", new[] { "sapphire", "continuum", "bcc" } },
-                { "Red Giant / Maxon", new[] { "magic bullet", "trapcode", "red giant" } },
-                { "Video Copilot", new[] { "element", "optical flares", "saber", "twitch" } },
-                { "Plugin Everything", new[] { "deep glow", "shadow studio" } },
-                { "RE:Vision Effects", new[] { "twixtor", "reelsmart" } },
+                { "Red Giant / Maxon", new[] { "magic bullet", "magicbullet", "trapcode", "red giant", "redgiant", "universe" } },
+                { "Video Copilot", new[] { "element", "optical flares", "opticalflares", "saber", "twitch", "video copilot", "videocopilot" } },
+                { "Plugin Everything", new[] { "deep glow", "deepglow", "shadow studio", "shadowstudio", "autofill", "plugin everything" } },
+                { "RE:Vision Effects", new[] { "twixtor", "reelsmart", "re:vision", "revision", "re_vision", "rsmb" } },
+                { "Rowbyte", new[] { "plexus", "rowbyte", "tv distortion", "tvdistortion", "bad tv", "badtv" } },
+                { "Frischluft", new[] { "lenscare", "frischluft", "depth of field", "depthoffield" } },
+                { "Mettle", new[] { "mettle", "freeform", "shape shifter", "shapeshifter", "skybox" } },
+                { "Neat Video", new[] { "neat video", "neatvideo" } },
+                { "Knoll Light Factory", new[] { "knoll", "light factory", "lightfactory" } },
             };
 
         public ProfilePage(PluginProfile profile, Action onChange)
@@ -63,7 +74,9 @@ namespace FfxTool.Gui
         private void Build()
         {
             var table = PluginLookup.LoadTable();
-            foreach (var vendor in _profile.AllKnownVendors(table))
+            // dataset vendors join the prefix table's — every third-party
+            // maker the AE reference knows gets a profile switch
+            foreach (var vendor in _profile.AllKnownVendors(table, EffectNameLookup.Load()))
                 Cards.Children.Add(BuildVendorCard(vendor));
             Cards.Children.Add(BuildAddCustomCard());
             Cards.Children.Add(BuildDiscoveryCard());
@@ -281,40 +294,148 @@ namespace FfxTool.Gui
             grid.Children.Add(textStack);
             grid.Children.Add(scanBtn);
 
+            // live result line — the old scan reported nothing at all, so a
+            // scan that found nothing was indistinguishable from a broken one
+            var status = new TextBlock
+            {
+                FontSize = 11.5,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 10, 0, 0),
+                Visibility = Visibility.Collapsed
+            };
+            status.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
+            _scanStatus = status;
+
+            var host = new StackPanel();
+            host.Children.Add(grid);
+            host.Children.Add(status);
+
             return new Border
             {
                 Style = (Style)FindResource("Card"),
                 Width = CardW * 2 + 16,
                 MinHeight = 100,
                 Margin = new Thickness(0, 0, 16, 16),
-                Child = grid
+                Child = host
             };
         }
 
         private void ScanFolder()
         {
-            using (var dlg = new System.Windows.Forms.FolderBrowserDialog { Description = "Select your AE plugins folder" })
+            using (var dlg = new System.Windows.Forms.FolderBrowserDialog
             {
+                Description = "Select your After Effects 'Plug-ins' folder",
+                ShowNewFolderButton = false
+            })
+            {
+                // open the dialog inside the newest AE install's Plug-ins
+                // folder when one exists — no hunting through Program Files
+                string suggested = SuggestAePluginsFolder();
+                if (suggested != null) dlg.SelectedPath = suggested;
                 if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
-                string[] files;
+                ScanPath(dlg.SelectedPath);
+            }
+        }
+
+        /// <summary>Newest Adobe After Effects install's Plug-ins dir, or null.</summary>
+        private static string SuggestAePluginsFolder()
+        {
+            try
+            {
+                string root = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Adobe");
+                if (!Directory.Exists(root)) return null;
+                return Directory.GetDirectories(root, "Adobe After Effects *")
+                    .OrderByDescending(Directory.GetLastWriteTime)
+                    .Select(inst => Path.Combine(inst, "Support Files", "Plug-ins"))
+                    .FirstOrDefault(Directory.Exists);
+            }
+            catch { return null; }
+        }
+
+        /// <summary>
+        /// Recursive, access-tolerant scan of an AE Plug-ins folder. Every
+        /// .aex below the root counts; vendor identity is matched over the
+        /// path RELATIVE to the root, so vendor subfolders ("Trapcode\\",
+        /// "Video Copilot\\") carry the hit the way real installs nest.
+        /// Matches flip their vendor switch on (Checked → SaveVendor) and
+        /// the card reports exactly what was found — the old top-level-only
+        /// scan silently found nothing on real machines, because every
+        /// vendor nests in subfolders and one locked folder aborted it.
+        /// </summary>
+        private void ScanPath(string root)
+        {
+            var files = new List<string>();
+            var pending = new Stack<string>();
+            pending.Push(root);
+            while (pending.Count > 0)
+            {
+                string dir = pending.Pop();
                 try
                 {
-                    files = Directory.GetFiles(dlg.SelectedPath)
-                        .Select(fn => Path.GetFileName(fn).ToLowerInvariant())
-                        .ToArray();
+                    files.AddRange(Directory.EnumerateFiles(dir, "*.aex", SearchOption.TopDirectoryOnly));
+                    foreach (string sub in Directory.EnumerateDirectories(dir))
+                        pending.Push(sub);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // unreadable folder (locked/no access) — scan is best-effort
-                    return;
-                }
-                foreach (var kv in VendorFileHints)
-                {
-                    if (!_switches.ContainsKey(kv.Key)) continue;
-                    if (files.Any(fn => kv.Value.Any(h => fn.Contains(h))) && _switches[kv.Key].Toggle.IsChecked != true)
-                        _switches[kv.Key].Toggle.IsChecked = true; // fires Checked → SaveVendor
+                    // one locked/odd subfolder must not abort the whole scan
+                    LogService.Append("plugin scan: skipped \"" + dir + "\" — " +
+                                      ex.GetType().Name + ": " + ex.Message);
                 }
             }
+
+            int flipped = 0;
+            var found = new List<string>();
+            foreach (var kv in VendorFileHints)
+            {
+                if (!files.Any(f => HintHit(root, f, kv.Value))) continue;
+                found.Add(kv.Key);
+                if (_switches.TryGetValue(kv.Key, out var pair))
+                {
+                    if (pair.Toggle.IsChecked != true)
+                    {
+                        pair.Toggle.IsChecked = true; // fires Checked → SaveVendor
+                        flipped++;
+                    }
+                }
+                else
+                {
+                    _profile.SetOwned(kv.Key, true);
+                    flipped++;
+                }
+            }
+            if (flipped > 0) _profile.Save();
+
+            string result;
+            if (files.Count == 0)
+                result = "no .aex plugin files found there — that doesn't look like an AE Plug-ins folder";
+            else if (found.Count == 0)
+                result = files.Count + " plugin files scanned — none match a profile vendor";
+            else
+                result = files.Count + " plugin files scanned — recognized: " +
+                         string.Join(", ", found) +
+                         (flipped > 0 ? " (" + flipped + " linked now)" : " (already in profile)");
+            ShowScanStatus(result);
+            LogService.Append("plugin scan: " + files.Count + " .aex files under \"" + root + "\" — " + result);
+        }
+
+        private void ShowScanStatus(string text)
+        {
+            if (_scanStatus == null) return;
+            _scanStatus.Text = text;
+            _scanStatus.Visibility = Visibility.Visible;
+        }
+
+        /// <summary>Hint match over the path RELATIVE to the scan root —
+        /// vendor subfolders ("Trapcode\\Particular.aex") carry the identity.</summary>
+        private static bool HintHit(string root, string file, string[] hints)
+        {
+            string rel = file.Length > root.Length
+                ? file.Substring(root.Length).TrimStart('\\', '/')
+                : Path.GetFileName(file);
+            rel = rel.ToLowerInvariant();
+            return hints.Any(h => rel.Contains(h));
         }
     }
 }

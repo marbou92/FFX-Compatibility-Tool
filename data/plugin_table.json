@@ -7,6 +7,13 @@
     "note": "Always available — never a compatibility risk on its own."
   },
   {
+    "prefix": "CC ",
+    "vendor": "Cycore",
+    "suite": "Bundled with AE",
+    "confirmed": true,
+    "note": "Cycore FX (CC*) effects have shipped with After Effects since 5.0 — stock, never a missing-plugin risk."
+  },
+  {
     "prefix": "S_",
     "vendor": "Boris FX",
     "suite": "Sapphire",

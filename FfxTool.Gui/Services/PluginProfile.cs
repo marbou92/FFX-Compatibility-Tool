@@ -72,17 +72,34 @@ namespace FfxTool.Gui
             catch { /* best-effort — don't crash on a locked file */ }
         }
 
-        public List<string> AllKnownVendors(List<PluginTableEntry> table)
+        /// <summary>
+        /// Every vendor the UI offers a profile switch for: the prefix
+        /// table's vendors plus the AE reference dataset's third-party
+        /// vendors (so a preset using e.g. Rowbyte Plexus is recognized and
+        /// can be marked owned instead of stuck on "Unknown plugin").
+        /// Bundled vendors (Adobe stock, Cycore CC*) never get a switch —
+        /// they ship with AE and can't be missing.
+        /// </summary>
+        public List<string> AllKnownVendors(List<PluginTableEntry> table, List<EffectNameEntry> names = null)
         {
-            return table.Where(e => e.vendor != "Adobe").Select(e => e.vendor).Distinct().OrderBy(v => v).ToList();
+            var vendors = new SortedSet<string>(StringComparer.Ordinal);
+            if (table != null)
+                foreach (var v in table.Select(e => e?.vendor))
+                    if (!string.IsNullOrEmpty(v) && !PluginLookup.IsBundledVendor(v))
+                        vendors.Add(v);
+            if (names != null)
+                foreach (var v in names.Select(e => e?.vendor))
+                    if (!string.IsNullOrEmpty(v) && !PluginLookup.IsBundledVendor(v))
+                        vendors.Add(v);
+            return vendors.ToList();
         }
 
         /// <summary>True/False if we have an opinion, null when the vendor is
-        /// unknown (Adobe native or unmatched) — null means "no missing-plugin
-        /// warning applies", not "confirmed missing".</summary>
+        /// bundled with AE (Adobe stock, Cycore CC*) or unmatched — null means
+        /// "no missing-plugin warning applies", not "confirmed missing".</summary>
         public bool? Owns(string vendor)
         {
-            if (vendor == null || vendor == "Adobe") return null;
+            if (string.IsNullOrEmpty(vendor) || PluginLookup.IsBundledVendor(vendor)) return null;
             return OwnedVendors.Contains(vendor);
         }
 

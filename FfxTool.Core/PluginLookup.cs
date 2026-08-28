@@ -28,6 +28,12 @@ namespace FfxTool.Core
         public string Suite;
         public string PrefixMatched;
         public bool Confirmed;
+
+        /// <summary>True when the identity came from a fallback rule (the
+        /// CC* namespace or the AE reference dataset) instead of a verified
+        /// table prefix — the UI marks the origin so nothing looks more
+        /// certain than it is.</summary>
+        public bool Inferred;
     }
 
     public static class PluginLookup
@@ -104,6 +110,58 @@ namespace FfxTool.Core
                 PrefixMatched = best.prefix,
                 Confirmed = best.confirmed,
             };
+        }
+
+        /// <summary>
+        /// Vendors whose plug-ins ship inside After Effects itself — they
+        /// can never be "missing" and never get a profile switch. Adobe
+        /// builds the stock set; Cycore's CC* effects have shipped with AE
+        /// since version 5.0.
+        /// </summary>
+        public static bool IsBundledVendor(string vendor)
+        {
+            return vendor == "Adobe" || vendor == "Cycore";
+        }
+
+        /// <summary>
+        /// Recognition fallback for match names no table prefix claims: the
+        /// CC* namespace first (Cycore FX ships with AE), then the AE
+        /// reference dataset's vendor field. Returns null when nothing can
+        /// be derived — the caller keeps its honest "unrecognized" wording.
+        /// Inferred hits carry Inferred=true so the UI can say where the
+        /// identity came from.
+        /// </summary>
+        public static PluginMatch Infer(string matchName, EffectNameEntry nameEntry)
+        {
+            if (string.IsNullOrEmpty(matchName)) return null;
+            if (matchName.StartsWith("CC ", StringComparison.Ordinal) ||
+                matchName.StartsWith("CCF", StringComparison.Ordinal))
+                return new PluginMatch
+                {
+                    MatchName = matchName, Vendor = "Cycore", Suite = "Bundled with AE",
+                    PrefixMatched = null, Confirmed = true, Inferred = true
+                };
+            string vendor = nameEntry?.vendor;
+            if (string.IsNullOrEmpty(vendor)) return null;
+            return new PluginMatch
+            {
+                MatchName = matchName, Vendor = vendor,
+                Suite = !string.IsNullOrEmpty(nameEntry.suite) ? nameEntry.suite : nameEntry.category,
+                PrefixMatched = null, Confirmed = false, Inferred = true
+            };
+        }
+
+        /// <summary>
+        /// Full recognition chain — prefix table first, then the fallback
+        /// for names no prefix claims. The compatibility list and the
+        /// convert flow both resolve through this overload so one match
+        /// name can never carry two different vendors.
+        /// </summary>
+        public static PluginMatch Resolve(string matchName, List<PluginTableEntry> table, List<EffectNameEntry> names)
+        {
+            var m = Resolve(matchName, table);
+            if (m.Vendor != null) return m;
+            return Infer(matchName, EffectNameLookup.Resolve(matchName, names)) ?? m;
         }
 
         public static List<PluginMatch> ResolveMany(IEnumerable<string> matchNames, List<PluginTableEntry> table)
