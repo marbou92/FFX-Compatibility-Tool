@@ -209,7 +209,7 @@ namespace FfxTool.Gui
                 // row-level state: the stream summary lives in tooltips, the
                 // stopwatch mark reads ON/OFF, the navigator gutter is
                 // reserved on every row so the NAME columns align like AE's
-                if (p.IsAnimated)
+                if (p.IsAnimated && p.Keyframes.Count > 0)
                 {
                     double vMin = p.Keyframes.Min(k => k.Value);
                     double vMax = p.Keyframes.Max(k => k.Value);
@@ -239,8 +239,10 @@ namespace FfxTool.Gui
                 // read is the static cdat value, or the first keyframe's the
                 // way AE shows the value at the playhead.
                 double v = 0;
-                bool hasV = p.IsAnimated || p.StaticValue.HasValue;
-                if (hasV) v = p.IsAnimated ? p.Keyframes[0].Value : p.StaticValue.Value;
+                bool hasV = (p.IsAnimated && p.Keyframes.Count > 0) || p.StaticValue.HasValue;
+                if (hasV)
+                    v = p.IsAnimated && p.Keyframes.Count > 0
+                        ? p.Keyframes[0].Value : p.StaticValue.Value;
 
                 if (IsCheckbox)
                 {
@@ -591,6 +593,13 @@ namespace FfxTool.Gui
         {
             try
             {
+                // a fresh file invalidates every index the inspector holds —
+                // effect, animated-parameter and keyframe selections are all
+                // positions in the PREVIOUS file's decoded data
+                _inspEffectIndex = -1;
+                _animParamIndex = -1;
+                _selKf = -1;
+
                 FileChipText.Text = System.IO.Path.GetFileName(path);
                 byte[] bytes = File.ReadAllBytes(path);
                 _currentEffects = Pipeline.ListEffects(bytes);
@@ -792,27 +801,66 @@ namespace FfxTool.Gui
             {
                 var d = _details[i];
                 if (d.Parameters.Count == 0) continue;
-                bool open = !_ecOpen.TryGetValue(i, out bool o) || o;
-                var root = new List<object>();
-                var created = new Dictionary<string, EcSubGroupVm>();
-                foreach (var p in d.Parameters)
+                try
                 {
-                    // the Effect Controls' own row VM — kind-aware values,
-                    // separate from the inspector's simpler ParamRowVm
-                    var row = new EcParamVm(p);
-                    AddEcRow(root, created, i, p.Group, row);
+                    bool open = !_ecOpen.TryGetValue(i, out bool o) || o;
+                    var root = new List<object>();
+                    var created = new Dictionary<string, EcSubGroupVm>();
+                    foreach (var p in d.Parameters)
+                    {
+                        // the Effect Controls' own row VM — kind-aware values,
+                        // separate from the inspector's simpler ParamRowVm
+                        var row = new EcParamVm(p);
+                        AddEcRow(root, created, i, p.Group, row);
+                    }
+                    groups.Add(new EcGroupVm
+                    {
+                        Title = string.IsNullOrEmpty(d.ShortName) ? d.MatchName : d.ShortName,
+                        Sub = EcSubFor(i, d),
+                        Open = open,
+                        Items = root,
+                        EffectIndex = i
+                    });
                 }
-                groups.Add(new EcGroupVm
+                catch
                 {
-                    Title = string.IsNullOrEmpty(d.ShortName) ? d.MatchName : d.ShortName,
-                    Sub = EcSubFor(i, d),
-                    Open = open,
-                    Items = root,
-                    EffectIndex = i
-                });
+                    // one malformed effect must never take the panel down —
+                    // AE never dies on a preset either: degrade to a closed
+                    // block that still names the effect
+                    groups.Add(new EcGroupVm
+                    {
+                        Title = string.IsNullOrEmpty(d.ShortName) ? d.MatchName : d.ShortName,
+                        Sub = "parameters couldn't be displayed — read-only panel",
+                        Open = false,
+                        Items = new List<object>(),
+                        EffectIndex = i
+                    });
+                }
             }
-            EcList.ItemsSource = groups;
-            EcEmpty.Visibility = groups.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            try
+            {
+                EcList.ItemsSource = groups;
+                // realize the row templates HERE, inside the guard: without
+                // this the realization happens in the layout pass — past
+                // every try/catch in the load path — where one bad row
+                // crashed the whole window (the reported preset-load crash)
+                EcList.UpdateLayout();
+                if (groups.Count == 0)
+                {
+                    EcEmpty.Text = "Parameter data for this preset couldn't be decoded - the compatibility list still works, and the inspector explains what could be read.";
+                    EcEmpty.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    EcEmpty.Visibility = Visibility.Collapsed;
+                }
+            }
+            catch
+            {
+                EcList.ItemsSource = null;
+                EcEmpty.Text = "This preset's parameter panel couldn't be rendered - the compatibility list still works.";
+                EcEmpty.Visibility = Visibility.Visible;
+            }
         }
 
         /// <summary>
