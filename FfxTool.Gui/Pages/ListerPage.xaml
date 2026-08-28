@@ -217,7 +217,7 @@
         </DataTemplate>
 
         <!-- EFFECT CONTROLS property row: AE's Effect Controls line at
-             AE's weight — a flat 21px property line, the reserved
+             AE's weight — a flat 19px property line, the reserved
              keyframe-navigator gutter (‹ ◆ › on animated rows, empty on
              static ones so every NAME column aligns, exactly like AE),
              the stopwatch slot (lit = time-varying), the fixed-width
@@ -229,7 +229,7 @@
         <DataTemplate x:Key="EcRow">
             <Border Padding="2,0,6,0" ToolTip="{Binding MatchName}"
                     Cursor="{Binding RowCursor}" MouseLeftButtonUp="ParamRow_Click">
-                <Grid Height="21">
+                <Grid Height="19">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="56"/>   <!-- keyframe navigator gutter -->
                         <ColumnDefinition Width="19"/>   <!-- stopwatch slot -->
@@ -411,7 +411,7 @@
         <DataTemplate x:Key="EcSubGroupTpl">
             <StackPanel>
                 <Grid Background="Transparent" MouseLeftButtonUp="EcSub_Click" Cursor="Hand"
-                      Height="20" Margin="0,1,0,1" ToolTip="Show / hide this parameter group">
+                      Height="19" Margin="0,1,0,1" ToolTip="Show / hide this parameter group">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
@@ -445,7 +445,7 @@
         <DataTemplate x:Key="EcEffectGroup">
             <StackPanel>
                 <Grid Background="Transparent" MouseLeftButtonUp="EcHeader_Click" Cursor="Hand"
-                      Height="26" ToolTip="{Binding Sub}">
+                      Height="24" ToolTip="{Binding Sub}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
@@ -456,7 +456,7 @@
                                   ToolTip="Show / hide this effect's parameters">
                         <controls:IconGlyph IconName="ArrowDrop" Width="14" Height="14"/>
                     </ToggleButton>
-                    <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                    <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="12.5" FontWeight="Medium"
                                Foreground="{DynamicResource B.OnSurface}" VerticalAlignment="Center"
                                Margin="4,0,8,0" TextTrimming="CharacterEllipsis"/>
                     <TextBlock Grid.Column="2" Text="About" FontSize="11.5" FontWeight="Medium"
@@ -499,17 +499,17 @@
 
         <Grid Grid.Row="0" Margin="0,0,0,20">
             <TextBlock Text="Effect Lister" Style="{StaticResource TitlePage}"/>
-            <!-- view switcher: AE's Effect Controls panel (the default)
-                 vs. the split workspace (compatibility list + tabbed
-                 inspector) -->
+            <!-- view switcher: the split workspace (compatibility list +
+                 tabbed inspector, the default — a fresh preset opens it)
+                 vs. AE's Effect Controls panel -->
             <StackPanel x:Name="ViewSwitcher" Orientation="Horizontal" HorizontalAlignment="Right"
                         VerticalAlignment="Center">
                 <Border Background="{DynamicResource B.SCLowest}" CornerRadius="12" Padding="3">
                     <StackPanel Orientation="Horizontal">
                         <ToggleButton x:Name="ViewEcBtn" Content="Effect Controls" Style="{StaticResource InspTab}"
-                                      IsChecked="True" Click="ViewBtn_Click"/>
-                        <ToggleButton x:Name="ViewInspectorBtn" Content="Inspector" Style="{StaticResource InspTab}"
                                       Click="ViewBtn_Click"/>
+                        <ToggleButton x:Name="ViewInspectorBtn" Content="Inspector" Style="{StaticResource InspTab}"
+                                      IsChecked="True" Click="ViewBtn_Click"/>
                     </StackPanel>
                 </Border>
             </StackPanel>

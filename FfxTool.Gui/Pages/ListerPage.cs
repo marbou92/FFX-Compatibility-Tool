@@ -454,7 +454,10 @@ namespace FfxTool.Gui
         // compatibility list + tabbed inspector. Group open/closed state and
         // the per-effect status/vendor header lines survive every rebuild;
         // the dictionaries are keyed by stable effect index.
-        private int _viewMode;
+        // the Inspector is the default section: a freshly loaded preset
+        // opens the split workspace (compatibility list + inspector), the
+        // way AE opens its Inspector rather than Effect Controls
+        private int _viewMode = 1;
         private readonly Dictionary<int, bool> _ecOpen = new Dictionary<int, bool>();
         // AE anatomy state: each named parameter group's disclosure state
         // (keyed "effectIndex|groupPath"); survives every rebuild
@@ -616,6 +619,9 @@ namespace FfxTool.Gui
                 _ecGroupOpen.Clear();
                 _ecStatus.Clear();
                 _ecVendor.Clear();
+                // a fresh preset opens the Inspector section (the split
+                // workspace), regardless of the view the old file was in
+                _viewMode = 1;
 
                 FileChipText.Text = System.IO.Path.GetFileName(path);
                 byte[] bytes = File.ReadAllBytes(path);
@@ -804,8 +810,8 @@ namespace FfxTool.Gui
 
         /// <summary>
         /// Switches the workspace between the AE Effect Controls panel
-        /// (mode 0, the default) and the split compatibility list +
-        /// inspector (mode 1). Hidden while no preset is loaded.
+        /// (mode 0) and the split compatibility list + inspector
+        /// (mode 1, the default). Hidden while no preset is loaded.
         /// </summary>
         private void SetView(int mode)
         {
@@ -976,7 +982,10 @@ namespace FfxTool.Gui
                 Title = name,
                 GroupKey = path,
                 EffectIndex = effectIndex,
-                Open = !_ecGroupOpen.TryGetValue(effectIndex + "|" + path, out bool stored) || stored
+                // AE's Effect Controls starts named sub-settings collapsed —
+                // only the user's explicit disclosure (persisted in
+                // _ecGroupOpen) opens them
+                Open = _ecGroupOpen.TryGetValue(effectIndex + "|" + path, out bool stored) && stored
             };
             created[path] = g;
             if (parent == null) root.Add(g);
@@ -1032,7 +1041,10 @@ namespace FfxTool.Gui
         private void FlipEcSub(EcSubGroupVm g)
         {
             string key = g.EffectIndex + "|" + g.GroupKey;
-            bool open = !_ecGroupOpen.TryGetValue(key, out bool cur) || cur;
+            // the default here must mirror AddEcNode's (collapsed): the row
+            // the user clicked renders from THAT default, so the flip has
+            // to read the same base state or the first click does nothing
+            bool open = _ecGroupOpen.TryGetValue(key, out bool cur) && cur;
             _ecGroupOpen[key] = !open;
             RefreshEcRows();
         }
