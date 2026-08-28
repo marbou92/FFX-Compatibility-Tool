@@ -196,7 +196,12 @@
              the inspector's groups are always expanded (nothing to click,
              nothing to misread); the Effect Controls panel owns the
              disclosure behavior. Reuses EcSubGroupVm with Open=true, so
-             the body binds through the same BodyVisible property. -->
+             the body binds through the same BodyVisible property. The
+             nested body asks for this template by KEY, not by
+             {StaticResource}: a template cannot resolve a StaticResource
+             to itself — WPF expands template content off-tree, where the
+             template's own key is unreachable ("Cannot find resource
+             named 'InspGroupTpl'"). -->
         <DataTemplate x:Key="InspGroupTpl">
             <StackPanel>
                 <TextBlock Text="{Binding Title}" FontSize="11" FontWeight="SemiBold"
@@ -204,7 +209,7 @@
                            TextTrimming="CharacterEllipsis"/>
                 <ItemsControl ItemsSource="{Binding Items}" Margin="16,0,0,0">
                     <ItemsControl.ItemTemplateSelector>
-                        <controls:EcBodySelector GroupTemplate="{StaticResource InspGroupTpl}"
+                        <controls:EcBodySelector GroupTemplateKey="InspGroupTpl"
                                                  RowTemplate="{StaticResource InspRow}"/>
                     </ItemsControl.ItemTemplateSelector>
                 </ItemsControl>
@@ -399,7 +404,10 @@
              sub-group row ("Compositing Options" and friends). The nested
              body reuses the same template selector, so deeper nesting
              keeps working; templates come from the selector because WPF
-             XAML cannot target the page's nested VM classes with x:Type. -->
+             XAML cannot target the page's nested VM classes with x:Type,
+             and the recursion asks for this template by KEY — a template
+             cannot resolve a StaticResource to itself (off-tree expansion
+             makes its own key unreachable). -->
         <DataTemplate x:Key="EcSubGroupTpl">
             <StackPanel>
                 <Grid Background="Transparent" MouseLeftButtonUp="EcSub_Click" Cursor="Hand"
@@ -421,7 +429,7 @@
                 <ItemsControl ItemsSource="{Binding Items}" Margin="14,0,0,0"
                               Visibility="{Binding BodyVisible}">
                     <ItemsControl.ItemTemplateSelector>
-                        <controls:EcBodySelector GroupTemplate="{StaticResource EcSubGroupTpl}"
+                        <controls:EcBodySelector GroupTemplateKey="EcSubGroupTpl"
                                                  RowTemplate="{StaticResource EcRow}"/>
                     </ItemsControl.ItemTemplateSelector>
                 </ItemsControl>

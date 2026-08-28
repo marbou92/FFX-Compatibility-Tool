@@ -906,12 +906,11 @@ namespace FfxTool.Gui
                     // AE never dies on a preset either: degrade to a closed
                     // block that still names the effect AND the failure
                     LogService.Append($"effect controls: effect #{i + 1} ({d.MatchName}) " +
-                                      $"couldn't be displayed \u2014 {ex.GetType().Name}: {ex.Message}");
+                                      $"couldn't be displayed \u2014 {Describe(ex)}");
                     groups.Add(new EcGroupVm
                     {
                         Title = string.IsNullOrEmpty(d.ShortName) ? d.MatchName : d.ShortName,
-                        Sub = "\u26a0 parameters couldn't be displayed \u2014 " +
-                              ex.GetType().Name + ": " + ex.Message,
+                        Sub = "\u26a0 parameters couldn't be displayed \u2014 " + Describe(ex),
                         Open = false,
                         Items = new List<object>(),
                         EffectIndex = i
@@ -942,11 +941,10 @@ namespace FfxTool.Gui
             }
             catch (Exception ex)
             {
-                LogService.Append($"effect controls: the panel couldn't be rendered \u2014 " +
-                                  $"{ex.GetType().Name}: {ex.Message}");
+                string chain = Describe(ex);
+                LogService.Append($"effect controls: the panel couldn't be rendered \u2014 {chain}");
                 EcList.ItemsSource = null;
-                EcEmpty.Text = "This preset's parameter panel couldn't be rendered (" +
-                               ex.GetType().Name + ": " + ex.Message + ")" +
+                EcEmpty.Text = "This preset's parameter panel couldn't be rendered \u2014 " + chain +
                                " - the compatibility list still works. Details in About \u2192 Logs.";
                 EcEmpty.Visibility = Visibility.Visible;
             }
@@ -1228,6 +1226,21 @@ namespace FfxTool.Gui
         }
 
         /// <summary>
+        /// Flattens an exception chain into one line — "Type: message ←
+        /// caused by Type: message". The inner exception usually names the
+        /// real fault (a XamlParseException's cause hides in its
+        /// InnerException), so panel messages and log lines must carry the
+        /// whole chain, not just the wrapper.
+        /// </summary>
+        private static string Describe(Exception ex)
+        {
+            var parts = new List<string>();
+            for (var e = ex; e != null; e = e.InnerException)
+                parts.Add(e.GetType().Name + ": " + e.Message);
+            return string.Join(" \u2190 caused by ", parts);
+        }
+
+        /// <summary>
         /// Rebuilds the Parameters tab as one calm read: plain property
         /// lines under quiet, always-expanded group captions. No toggles
         /// and no chips — the Keyframes and Graph tabs carry the motion
@@ -1249,8 +1262,24 @@ namespace FfxTool.Gui
                 if (string.IsNullOrEmpty(p.Group)) root.Add(row);
                 else AddInspNode(root, created, p.Group).Items.Add(row);
             }
-            ParamList.ItemsSource = root;
-            ParamEmpty.Visibility = root.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            try
+            {
+                ParamList.ItemsSource = root;
+                // realize the row templates HERE, inside the guard: a
+                // template fault would otherwise surface in the layout
+                // pass, past every catch in this path, as an app-level
+                // crash dialog instead of a named inline reason
+                ParamList.UpdateLayout();
+                ParamEmpty.Text = "No decodable parameters in this effect block.";
+                ParamEmpty.Visibility = root.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            }
+            catch (Exception ex)
+            {
+                LogService.Append($"inspector: the parameter panel couldn't be rendered \u2014 {Describe(ex)}");
+                ParamList.ItemsSource = null;
+                ParamEmpty.Text = "Parameter data for this effect couldn't be rendered \u2014 " + Describe(ex);
+                ParamEmpty.Visibility = Visibility.Visible;
+            }
         }
 
         /// <summary>
@@ -2323,8 +2352,25 @@ namespace FfxTool.Gui
     public sealed class EcBodySelector : DataTemplateSelector
     {
         public DataTemplate GroupTemplate { get; set; }
+        public string GroupTemplateKey { get; set; }
         public DataTemplate RowTemplate { get; set; }
-        public override DataTemplate SelectTemplate(object item, DependencyObject container) =>
-            item is EcSubGroupVm ? GroupTemplate : RowTemplate;
+        private DataTemplate _groupByKey;
+
+        public override DataTemplate SelectTemplate(object item, DependencyObject container)
+        {
+            if (!(item is EcSubGroupVm)) return RowTemplate;
+            if (GroupTemplate != null) return GroupTemplate;
+            if (_groupByKey != null) return _groupByKey;
+            // Recursive group templates cannot be wired with
+            // {StaticResource Key} inside their own content: WPF expands
+            // template content off-tree, where the template's own key is
+            // unreachable ("Cannot find resource named ..."). Resolving
+            // the same key from the live container is the supported
+            // recursion path — the container is in the tree, so the page
+            // resource lookup succeeds.
+            if (!string.IsNullOrEmpty(GroupTemplateKey) && container is FrameworkElement fe)
+                _groupByKey = fe.TryFindResource(GroupTemplateKey) as DataTemplate;
+            return _groupByKey;
+        }
     }
 }
