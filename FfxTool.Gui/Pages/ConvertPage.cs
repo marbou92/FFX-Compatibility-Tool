@@ -148,10 +148,11 @@ namespace FfxTool.Gui
             _rows.Clear();
             foreach (var eff in _currentEffects.Where(e => !e.IsSentinel))
             {
-                // same recognition chain as the lister — one match name can
-                // never carry two different vendors across the two flows
-                var match = PluginLookup.Resolve(eff.MatchName, table, names);
-                bool missing = _profile.Owns(match.Vendor) == false;
+                // same recognition chain as the lister — system scan first,
+                // reference tables second — so one match name can never
+                // carry two different identities across the two flows
+                var match = PluginRecognition.Resolve(eff.MatchName, table, names);
+                bool missing = !match.Installed && _profile.Owns(match.Vendor) == false;
                 _rows.Add(new EffectRow
                 {
                     MatchName = eff.MatchName,

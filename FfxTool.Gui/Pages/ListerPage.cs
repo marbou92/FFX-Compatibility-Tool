@@ -739,17 +739,27 @@ namespace FfxTool.Gui
 
             // one recognized match per match name — the filter, the rows
             // and the Effect Controls headers must never disagree about a
-            // vendor: prefix table first, then the fallback chain
+            // vendor: system scan catalog first, reference tables second
             var matches = new Dictionary<string, PluginMatch>(StringComparer.Ordinal);
             foreach (var e in real)
+            {
                 string key = e.MatchName ?? "";
                 if (!matches.ContainsKey(key))
-                    matches[key] = PluginLookup.Resolve(e.MatchName, table, _names);
+                    matches[key] = PluginRecognition.Resolve(e.MatchName, table, _names);
+            }
 
             if (_filterMode == 1)
-                ordered = ordered.Where(e => _profile.Owns(matches[e.MatchName ?? ""].Vendor) == false);
+                ordered = ordered.Where(e =>
+                {
+                    var m = matches[e.MatchName ?? ""];
+                    return !m.Installed && _profile.Owns(m.Vendor) == false; // on disk can't be missing
+                });
             else if (_filterMode == 2)
-                ordered = ordered.Where(e => _profile.Owns(matches[e.MatchName ?? ""].Vendor) != false);
+                ordered = ordered.Where(e =>
+                {
+                    var m = matches[e.MatchName ?? ""];
+                    return m.Installed || _profile.Owns(m.Vendor) != false;
+                });
 
             int shown = 0, missing = 0;
             _rows.Clear();
@@ -761,7 +771,14 @@ namespace FfxTool.Gui
 
                 string status;
                 Brush row = Brushes.Transparent;
-                if (match.Vendor == null)
+                if (match.Installed)
+                {
+                    // the system scan found this plugin on the user's disk —
+                    // the strongest signal there is, checked before any table
+                    status = "Installed";
+                    row = (Brush)FindResource("B.PrimaryContainer");
+                }
+                else if (match.Vendor == null)
                 {
                     status = "Unknown plugin";
                     row = (Brush)FindResource("B.TertiaryContainer");
@@ -867,7 +884,10 @@ namespace FfxTool.Gui
         /// </summary>
         private static string VendorLine(PluginMatch m)
         {
-            if (m == null || m.Vendor == null) return "unrecognized — not in any reference table";
+            if (m == null) return "unrecognized — not in any reference table";
+            if (m.Installed)
+                return (m.Vendor ?? "your system") + " — installed: " + m.Suite;
+            if (m.Vendor == null) return "unrecognized — not in any reference table";
             return m.Vendor + (string.IsNullOrEmpty(m.Suite) ? "" : " — " + m.Suite);
         }
 
@@ -1100,26 +1120,26 @@ namespace FfxTool.Gui
         private void ShowEcAbout(PresetEffectDetails d, int effectIndex)
         {
             var nameEntry = EffectNameLookup.Resolve(d.MatchName, _names);
-            var plug = PluginLookup.Resolve(d.MatchName, PluginLookup.LoadTable(), _names);
+            var plug = PluginRecognition.Resolve(d.MatchName, PluginLookup.LoadTable(), _names);
 
             AboutTitle.Text = EcDisplayName(d);
             string cat = string.IsNullOrEmpty(nameEntry?.category) ? null : nameEntry.category;
             AboutGroup.Text = cat != null
                 ? "Effects \u25b8 " + cat
                 : "AE menu group unknown for this match name";
-            string vendorLine = plug.Vendor == null
-                ? "unrecognized plugin — not in any reference table"
-                : plug.Vendor + (string.IsNullOrEmpty(plug.Suite) ? "" : "  \u00b7  " + plug.Suite);
+            string vendorLine = VendorLine(plug);
             if (!string.IsNullOrEmpty(nameEntry?.version))
                 vendorLine += "  \u00b7  v" + nameEntry.version;
             AboutVendor.Text = vendorLine;
             AboutMatch.Text = "match name: " + d.MatchName;
-            AboutOrigin.Text = nameEntry == null
-                ? (plug.Inferred
-                    ? "recognized by rule — CC* plug-ins ship with AE"
-                    : "not in the reference dataset yet")
-                : (nameEntry.stock ? "stock AE table" : "3rd-party listing") +
-                  (string.IsNullOrEmpty(nameEntry.aeVersion) ? "" : " \u00b7 " + nameEntry.aeVersion);
+            AboutOrigin.Text = plug.Installed
+                ? "found on your system — plugin scan"
+                : nameEntry == null
+                    ? (plug.Inferred
+                        ? "recognized by rule — CC* plug-ins ship with AE"
+                        : "not in the reference dataset yet")
+                    : (nameEntry.stock ? "stock AE table" : "3rd-party listing") +
+                      (string.IsNullOrEmpty(nameEntry.aeVersion) ? "" : " \u00b7 " + nameEntry.aeVersion);
             AboutStatus.Text = _ecStatus.TryGetValue(effectIndex, out string st) && !string.IsNullOrEmpty(st)
                 ? "compatibility: " + st
                 : "compatibility: unknown";

@@ -265,7 +265,7 @@ namespace FfxTool.Gui
 
             var desc = new TextBlock
             {
-                Text = "Select your After Effects 'Plug-ins' directory and we'll automatically check matching vendors.",
+                Text = "Select your After Effects 'Plug-ins' directory — we'll catalog every effect on your system (file names plus match names read from the plugins themselves) and check that catalog FIRST, before the reference tables.",
                 FontSize = 12,
                 TextWrapping = TextWrapping.Wrap,
                 MaxWidth = 420,
@@ -385,6 +385,30 @@ namespace FfxTool.Gui
                 }
             }
 
+            // catalog EVERY file — this is the first recognition option:
+            // file/folder names, the file stem, and match-name-like strings
+            // read straight out of each plugin binary (PiPL resources carry
+            // them as plain ASCII)
+            var catalog = new PluginCatalog();
+            foreach (string file in files)
+            {
+                var entry = new CatalogFile { FilePath = file, Vendor = VendorFor(root, file) };
+                try
+                {
+                    entry.Names.AddRange(PluginCatalog.HarvestNames(File.ReadAllBytes(file)));
+                }
+                catch (Exception ex)
+                {
+                    // an unreadable file still keeps its name in the catalog
+                    LogService.Append("plugin scan: unreadable \"" + file + "\" — " +
+                                      ex.GetType().Name + ": " + ex.Message);
+                }
+                string stem = Path.GetFileNameWithoutExtension(file);
+                if (!string.IsNullOrEmpty(stem) && !entry.Names.Contains(stem))
+                    entry.Names.Insert(0, stem);
+                catalog.Add(entry);
+            }
+
             int flipped = 0;
             var found = new List<string>();
             foreach (var kv in VendorFileHints)
@@ -407,17 +431,36 @@ namespace FfxTool.Gui
             }
             if (flipped > 0) _profile.Save();
 
+            // only a scan that actually found something replaces the catalog
+            // — picking a wrong folder must not wipe the previous one
+            if (files.Count > 0)
+            {
+                catalog.Save();
+                PluginRecognition.ResetCatalog();
+            }
+
+            string catalogText = catalog.NameCount + " effect names cataloged";
             string result;
             if (files.Count == 0)
                 result = "no .aex plugin files found there — that doesn't look like an AE Plug-ins folder";
             else if (found.Count == 0)
-                result = files.Count + " plugin files scanned — none match a profile vendor";
+                result = files.Count + " plugin files scanned — " + catalogText +
+                         " — none match a profile vendor";
             else
-                result = files.Count + " plugin files scanned — recognized: " +
-                         string.Join(", ", found) +
+                result = files.Count + " plugin files scanned — " + catalogText +
+                         " — recognized: " + string.Join(", ", found) +
                          (flipped > 0 ? " (" + flipped + " linked now)" : " (already in profile)");
             ShowScanStatus(result);
             LogService.Append("plugin scan: " + files.Count + " .aex files under \"" + root + "\" — " + result);
+        }
+
+        /// <summary>First vendor whose hints hit the file's path relative to
+        /// the scan root, or null when no folder/file name names one.</summary>
+        private string VendorFor(string root, string file)
+        {
+            foreach (var kv in VendorFileHints)
+                if (HintHit(root, file, kv.Value)) return kv.Key;
+            return null;
         }
 
         private void ShowScanStatus(string text)

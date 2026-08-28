@@ -34,6 +34,11 @@ namespace FfxTool.Core
         /// table prefix — the UI marks the origin so nothing looks more
         /// certain than it is.</summary>
         public bool Inferred;
+
+        /// <summary>True when the system scan found this identity on the
+        /// user's own disk — the strongest signal there is, checked before
+        /// any reference table (Suite then carries the plugin file name).</summary>
+        public bool Installed;
     }
 
     public static class PluginLookup
