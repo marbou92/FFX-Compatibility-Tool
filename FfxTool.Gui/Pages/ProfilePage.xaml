@@ -10,8 +10,11 @@
                        Style="{StaticResource BodySecondary}" MaxWidth="760" TextWrapping="Wrap"
                        TextAlignment="Left" HorizontalAlignment="Left" Margin="0,0,0,20"/>
 
-            <!-- bento grid: vendor cards + add-custom + discovery (built in code) -->
-            <WrapPanel x:Name="Cards" Margin="0,0,16,16"/>
+            <!-- profile sections: "Linked to your profile" above
+                 "Available vendors", each a labeled WrapPanel built in
+                 code — cards physically move between them when a switch
+                 flips (Profiles page host) -->
+            <StackPanel x:Name="Cards" Margin="0,0,16,16"/>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

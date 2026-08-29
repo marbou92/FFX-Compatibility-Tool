@@ -23,7 +23,12 @@ namespace FfxTool.Core
     ///     +32 double out-slope       +40 double out-influence
     ///   (tangent quadruple matches RESEARCH_NOTES.md's "bezier tangent
     ///   doubles for Graph Editor easing"; the fixture carries classic
-    ///   Easy-Ease values like 1/3 and 1/6.)
+    ///   Easy-Ease values like 1/3 and 1/6. The tangent block is proven
+    ///   for record size 48 ONLY — other record shapes deliberately
+    ///   decode time/interp/value and interpolate linear, because guessed
+    ///   offsets would read a second value double as a tangent and bend
+    ///   curves into shapes AE never draws. Influences are normalized to
+    ///   0..1 at decode — stored percents (33.33) divide by 100.)
     /// </summary>
     public class PresetKeyframe
     {
@@ -477,12 +482,19 @@ namespace FfxTool.Core
                     InterpOut = o + 5 < bytes.Length ? bytes[o + 5] : 0,
                     Value = value,
                 };
-                if (recSize >= 48 && o + 48 <= bytes.Length)
+                if (recSize == 48 && o + 48 <= bytes.Length)
                 {
+                    // tangent fields are PROVEN for the 48-byte one-value
+                    // record only (the class comment); any other record
+                    // shape (padded or multidimensional layouts) must not
+                    // guess — offsets could land on a second value double
+                    // and bend every curve into an arc AE never drew. Such
+                    // streams parse time/interp/value and interpolate as
+                    // clean linear segments instead.
                     kf.InSlope = FiniteOrZero(ReadBEDouble(bytes, o + 16));
-                    kf.InInfluence = FiniteOrZero(ReadBEDouble(bytes, o + 24));
+                    kf.InInfluence = Influence(FiniteOrZero(ReadBEDouble(bytes, o + 24)));
                     kf.OutSlope = FiniteOrZero(ReadBEDouble(bytes, o + 32));
-                    kf.OutInfluence = FiniteOrZero(ReadBEDouble(bytes, o + 40));
+                    kf.OutInfluence = Influence(FiniteOrZero(ReadBEDouble(bytes, o + 40)));
                 }
                 into.Keyframes.Add(kf);
             }
@@ -493,6 +505,16 @@ namespace FfxTool.Core
         /// they must never reach the curve math as NaN.</summary>
         static double FiniteOrZero(double v) =>
             double.IsNaN(v) || double.IsInfinity(v) ? 0 : v;
+
+        /// <summary>
+        /// Influence unit normalization, applied once at decode: AE stores
+        /// a fraction (1/3 = 0.333…), but some writers store the UI's
+        /// percent (33.33 = one third). A value above 1.0 can only be that
+        /// percent, so it divides by 100 — every consumer downstream
+        /// (curve math, Easy Ease recognition, tooltips) then sees one
+        /// consistent 0..1 unit.
+        /// </summary>
+        static double Influence(double v) => v > 1.0 ? v / 100.0 : v;
 
         /// <summary>
         /// Effect match name from a tdsp index entry: tdmn[0] is always the

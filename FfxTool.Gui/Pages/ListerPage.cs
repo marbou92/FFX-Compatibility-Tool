@@ -188,6 +188,13 @@ namespace FfxTool.Gui
             public bool Checked { get; set; }
             public string PopupText { get; set; }
             public Brush ColorBrush { get; set; }
+            // ranged slider rendering (AE's track + number): the
+            // fill comes from the parT min/max decoded out of the
+            // preset; a visual read of the stored value, never an
+            // editor
+            public bool IsSlider { get; set; }
+            public double SliderFillW { get; set; }
+            public Visibility SliderVisible { get; set; } = Visibility.Collapsed;
             // which value control this row renders — computed here so the
             // templates bind Visibility straight to the VM (style triggers
             // could never override a local Visibility binding)
@@ -310,6 +317,19 @@ namespace FfxTool.Gui
                     ValueText = kind == PresetParamKind.Angle ? Num(v) + "°" : Num(v);
                     ValueVisible = Visibility.Visible;
                     TextVisible = Visibility.Visible;
+                    // a stated range renders AE's slider track: the
+                    // filled proportion of (v - min) / (max - min),
+                    // the number riding at the right of the track
+                    if (p.Min.HasValue && p.Max.HasValue && p.Max.Value > p.Min.Value)
+                    {
+                        double frac = (v - p.Min.Value) / (p.Max.Value - p.Min.Value);
+                        if (frac < 0) frac = 0;
+                        if (frac > 1) frac = 1;
+                        IsSlider = true;
+                        SliderFillW = 4.0 + frac * 84.0; // 92px track, 4px nub at both extremes
+                        SliderVisible = Visibility.Visible;
+                        TextVisible = Visibility.Collapsed; // the number lives inside the slider block
+                    }
                     if (p.IsAnimated)
                     {
                         double vMin = p.Keyframes.Min(k => k.Value);

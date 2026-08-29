@@ -33,6 +33,18 @@ namespace FfxTool.Core
     /// Easy-Ease streams (slope 0, influences 1/3 + 1/6) render as the
     /// familiar S-curve.
     ///
+    /// TWO INFLUENCE SANITIZERS keep real-world files AE-shaped (AE never
+    /// draws a folded or a full-span handle, so neither do we):
+    ///   1. A stored influence above 1.0 is a PERCENT (AE's own UI unit,
+    ///      33.33 = one third) — some writers store the UI number instead
+    ///      of the fraction; it is divided by 100 before use.
+    ///   2. When the two handles of one segment would overlap (out + in
+    ///      influences sum over 1), AE shrinks BOTH handles so they fill
+    ///      exactly the whole span and no further — the RATIO of the two
+    ///      handle spans is what the easing reads as, and it survives.
+    ///      (The earlier midpoint pinch erased that ratio and drew a
+    ///      symmetric bump no AE easing ever shows.)
+    ///
     /// EVALUATION: ValueAt/SpeedAt evaluate the TRUE cubic Bezier — the
     /// very curve WPF's BezierTo draws. (An earlier revision evaluated a
     /// degenerate 3-point form here, so the hover probe and the speed
@@ -62,8 +74,11 @@ namespace FfxTool.Core
 
         /// <summary>
         /// Build the segment list for a keyframe stream. Handles mirror
-        /// AE's (slope × influence × segment length) tangent geometry; a
-        /// zero-length stream yields an empty list. Read-only on input.
+        /// AE's (slope × influence × segment length) tangent geometry;
+        /// influences read as percents when stored above 1.0, and an
+        /// overlapping handle pair is shrunk AE-style — proportionally,
+        /// keeping the easing ratio. A zero-length stream yields an empty
+        /// list. Read-only on input.
         /// </summary>
         public static List<Segment> BuildSegments(List<PresetKeyframe> kfs)
         {
@@ -85,18 +100,31 @@ namespace FfxTool.Core
                         ? a.InterpOut : InterpBezier
                 };
 
-                double oi = Clamp01(a.OutInfluence);
-                double ii = Clamp01(b.InInfluence);
+                // AE influence units: files written by AE store a fraction
+                // (0.333…), but a value above 1.0 can only be the UI's
+                // percent (33.33 = one third) — normalize before clamping
+                double oi = Clamp01(NormInfluence(a.OutInfluence));
+                double ii = Clamp01(NormInfluence(b.InInfluence));
                 // handles: time offset = influence × Δt (seconds); value
                 // offset = slope × time offset — slopes are value/second
                 seg.C1T = t0 + oi * (t1 - t0);
                 seg.C1V = a.Value + a.OutSlope * oi * (t1 - t0);
                 seg.C2T = t1 - ii * (t1 - t0);
                 seg.C2V = b.Value - b.InSlope * ii * (t1 - t0);
-                // display guard: hand-tuned presets may carry influences
-                // summing over 1, which would fold time back on itself —
-                // pin both control times to their midpoint so x(u) stays
-                // monotonic and the inverse solve below remains valid
+                // AE's overlap rule: the two handles of one segment may
+                // share at most the whole span. Scale both by the same
+                // factor so they exactly fill it — the easing's handle
+                // RATIO (what the eye reads as the shape) survives, where
+                // the old midpoint pinch drew a symmetric bump. After the
+                // scale C1T ≤ C2T holds by construction; the final guard
+                // only absorbs floating-point dust.
+                double sum = oi + ii;
+                if (sum > 1.0)
+                {
+                    double k = 1.0 / sum;
+                    seg.C1T = t0 + oi * k * (t1 - t0);
+                    seg.C2T = t1 - ii * k * (t1 - t0);
+                }
                 if (seg.C1T > seg.C2T)
                     seg.C1T = seg.C2T = 0.5 * (seg.C1T + seg.C2T);
 
@@ -208,5 +236,9 @@ namespace FfxTool.Core
         static double Lerp(double a, double b, double u) => a + (b - a) * u;
 
         static double Clamp01(double v) => v < 0 ? 0 : v > 1 ? 1 : v;
+
+        /// <summary>A stored influence above 1.0 is AE's UI percent
+        /// (33.33 means one third) — bring it back to a fraction.</summary>
+        static double NormInfluence(double v) => v > 1.0 ? v / 100.0 : v;
     }
 }

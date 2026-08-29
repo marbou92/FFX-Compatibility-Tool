@@ -280,10 +280,33 @@
                     <!-- value slot: the control AE draws for this kind —
                          the reverse-engineered parT type picks between a
                          right-aligned number (hover: accent + underline),
-                         a real checkbox, a popup box with the selected
-                         entry, and a color swatch. All read-only; AE's
-                         Effect Controls is the reference. -->
+                         a real checkbox, a popup box, a color swatch, and
+                         a slider track + number for ranged sliders. All
+                         read-only; AE's Effect Controls is the reference. -->
                     <Grid Grid.Column="3">
+                        <!-- slider: AE draws ranged sliders as a thin track
+                             with the filled proportion plus the number at
+                             the right — the parT min/max decoded from the
+                             preset drives the fill; read-only -->
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                    HorizontalAlignment="Right"
+                                    Visibility="{Binding SliderVisible}"
+                                    ToolTip="{Binding ValueTip}">
+                            <Grid Width="92" Height="14" VerticalAlignment="Center">
+                                <Border Height="4" CornerRadius="2"
+                                        Background="{DynamicResource B.SCHighest}"
+                                        VerticalAlignment="Center"/>
+                                <Border Height="4" CornerRadius="2"
+                                        Background="{DynamicResource B.Primary}"
+                                        VerticalAlignment="Center" HorizontalAlignment="Left"
+                                        Width="{Binding SliderFillW}"/>
+                            </Grid>
+                            <TextBlock Text="{Binding ValueText}" FontSize="12"
+                                       Foreground="{DynamicResource B.OnSurface}"
+                                       VerticalAlignment="Center" Margin="8,0,0,0"
+                                       MinWidth="34" TextAlignment="Right"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
                         <TextBlock Text="{Binding ValueText}" FontSize="12"
                                    VerticalAlignment="Center" HorizontalAlignment="Right"
                                    Visibility="{Binding TextVisible}"
@@ -421,7 +444,7 @@
                                   ToolTip="Show / hide this parameter group">
                         <controls:IconGlyph IconName="ArrowDrop" Width="13" Height="13"/>
                     </ToggleButton>
-                    <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="12" FontWeight="Medium"
+                    <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="12" FontWeight="SemiBold"
                                Foreground="{DynamicResource B.OnSurface}"
                                VerticalAlignment="Center" Margin="2,0,0,0"
                                TextTrimming="CharacterEllipsis"/>
@@ -456,23 +479,42 @@
                                   ToolTip="Show / hide this effect's parameters">
                         <controls:IconGlyph IconName="ArrowDrop" Width="14" Height="14"/>
                     </ToggleButton>
-                    <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="12.5" FontWeight="Medium"
+                    <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
                                Foreground="{DynamicResource B.OnSurface}" VerticalAlignment="Center"
                                Margin="4,0,8,0" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Grid.Column="2" Text="About" FontSize="11.5" FontWeight="Medium"
-                               VerticalAlignment="Center" ToolTip="What this effect is, its AE menu group and compatibility"
-                               Cursor="Hand" MouseLeftButtonUp="EcAbout_Click">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
-                                <Style.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Foreground" Value="{DynamicResource B.OnSurface}"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
+                    <!-- AE's per-effect header links: Reset (display-only —
+                         this panel never rewrites preset data) and About -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Reset" FontSize="11.5" FontWeight="Medium"
+                                   VerticalAlignment="Center" Margin="0,0,10,0" Opacity="0.45"
+                                   ToolTip="AE shows a per-effect Reset here; this panel is read-only and never rewrites preset data"
+                                   Cursor="Hand">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Opacity" Value="0.8"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock Text="About" FontSize="11.5" FontWeight="Medium"
+                                   VerticalAlignment="Center" ToolTip="What this effect is, its AE menu group and compatibility"
+                                   Cursor="Hand" MouseLeftButtonUp="EcAbout_Click">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource B.OnSurface}"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
                 </Grid>
                 <!-- body: property lines + nested parameter groups in
                      document order — the selector picks the group

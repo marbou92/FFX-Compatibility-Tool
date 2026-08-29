@@ -11,12 +11,18 @@ using FfxTool.Core;
 namespace FfxTool.Gui
 {
     /// <summary>
-    /// Plugin Profiles: bento grid of vendor cards with expressive switches,
-    /// dynamic linked/not-linked badges, and the plugin-folder discovery card.
-    /// All colors are attached via SetResourceReference (NOT captured brush
-    /// instances) so the cards re-theme live when the palette or dark mode
-    /// changes — the old FindResource captures froze with the theme that was
-    /// active at startup and turned unreadable after switching.
+    /// Plugin Profiles: a CURATED set of vendor cards — the AE reference
+    /// dataset's long tail (one-off script authors and catalog entries)
+    /// deliberately does not generate cards here anymore; it still powers
+    /// recognition in the Lister, but the profile grid only offers real,
+    /// installable plugin makers, and every card carries a description.
+    /// Cards live in one of two sections — LINKED (switch on) and
+    /// AVAILABLE (switch off) — and physically move between them the
+    /// moment a switch flips. All colors are attached via
+    /// SetResourceReference (NOT captured brush instances) so the cards
+    /// re-theme live when the palette or dark mode changes — the old
+    /// FindResource captures froze with the theme that was active at
+    /// startup and turned unreadable after switching.
     /// </summary>
     public partial class ProfilePage : UserControl
     {
@@ -24,6 +30,14 @@ namespace FfxTool.Gui
         private readonly Action _onChange;
         private readonly Dictionary<string, ToggleButtonSwitchPair> _switches = new Dictionary<string, ToggleButtonSwitchPair>();
         private TextBlock _scanStatus; // live result line inside the discovery card
+        // the two profile sections and the cards that move between them
+        private WrapPanel _linkedCards;
+        private WrapPanel _otherCards;
+        private TextBlock _linkedHint;
+        private TextBlock _linkedCount;
+        private TextBlock _otherCount;
+        private readonly List<string> _vendorOrder = new List<string>();
+        private readonly Dictionary<string, Border> _cards = new Dictionary<string, Border>();
 
         private class ToggleButtonSwitchPair
         {
@@ -33,20 +47,28 @@ namespace FfxTool.Gui
             public IconGlyph BadgeIcon;
         }
 
+        /// <summary>The curated profile list, in display order. Every entry
+        /// carries an icon and a one-line description — a card without a
+        /// description never ships. This list (plus legacy owned vendors)
+        /// is the WHOLE grid: the AE reference dataset's script authors are
+        /// catalog data for recognition, not profile cards.</summary>
+        private static readonly (string vendor, string icon, string suites)[] CuratedVendors =
+        {
+            ("Red Giant / Maxon", "AutoAwesome", "Trapcode Particular, Magic Bullet, Universe — the Maxon effects collection"),
+            ("Boris FX", "Diamond", "Sapphire, Continuum, Mocha Pro — broadcast-grade VFX and planar tracking"),
+            ("Video Copilot", "Flare", "Optical Flares, Element 3D, Saber — lens flares and element 3D"),
+            ("RE:Vision Effects", "Eye", "Twixtor, ReelSmart Motion Blur, FieldsKit — retiming and motion blur"),
+            ("Rowbyte", "Plugin", "Plexus, TV Distortion — data-driven point grids and retro broadcast looks"),
+            ("Plugin Everything", "Plugin", "Deep Glow, AutoFill, Shadow Studio — modern utility effects"),
+            ("Frischluft", "Plugin", "Lenscare — fast, camera-accurate depth of field"),
+            ("Mettle", "Plugin", "FreeForm, Shape Shifter, SkyBox — 3D mesh warping and 360°/VR"),
+            ("Neat Video", "Plugin", "Temporal noise reduction for grainy or low-light footage"),
+            ("Knoll Light Factory", "Flare", "Lens flares built by John Knoll (Industrial Light & Magic)"),
+        };
+
+        /// <summary>Fast lookup over CuratedVendors by vendor name.</summary>
         private static readonly Dictionary<string, (string icon, string suites)> VendorMeta =
-            new Dictionary<string, (string, string)>
-            {
-                { "Boris FX", ("Diamond", "Sapphire, Continuum, Mocha") },
-                { "Plugin Everything", ("Plugin", "Deep Glow, AutoFill") },
-                { "RE:Vision Effects", ("Eye", "Twixtor, ReelSmart Motion Blur") },
-                { "Red Giant / Maxon", ("AutoAwesome", "Trapcode, Magic Bullet, VFX") },
-                { "Video Copilot", ("Flare", "Optical Flares, Element 3D, Saber") },
-                { "Rowbyte", ("Plugin", "Plexus, TV Distortion") },
-                { "Frischluft", ("Plugin", "Lenscare depth of field") },
-                { "Mettle", ("Plugin", "FreeForm, Shape Shifter, SkyBox") },
-                { "Neat Video", ("Plugin", "Temporal noise reduction") },
-                { "Knoll Light Factory", ("Flare", "Lens flares by John Knoll") },
-            };
+            CuratedVendors.ToDictionary(e => e.vendor, e => (e.icon, e.suites), StringComparer.Ordinal);
 
         private static readonly Dictionary<string, string[]> VendorFileHints =
             new Dictionary<string, string[]>
@@ -73,20 +95,115 @@ namespace FfxTool.Gui
 
         private void Build()
         {
-            var table = PluginLookup.LoadTable();
-            // dataset vendors join the prefix table's — every third-party
-            // maker the AE reference knows gets a profile switch
-            foreach (var vendor in _profile.AllKnownVendors(table, EffectNameLookup.Load()))
-                Cards.Children.Add(BuildVendorCard(vendor));
-            Cards.Children.Add(BuildAddCustomCard());
-            Cards.Children.Add(BuildDiscoveryCard());
+            // The grid is the curated vendor list — the AE reference
+            // dataset's one-off script authors no longer mint profile
+            // cards (that catalog stays a recognition source in the
+            // Lister, nothing more). Vendors already recorded in a legacy
+            // profile stay visible so no saved switch is ever orphaned.
+            foreach (var entry in CuratedVendors)
+            {
+                _vendorOrder.Add(entry.vendor);
+                _cards[entry.vendor] = BuildVendorCard(entry.vendor);
+            }
+            foreach (var vendor in _profile.OwnedVendors)
+            {
+                if (_cards.ContainsKey(vendor)) continue;
+                _vendorOrder.Add(vendor);
+                _cards[vendor] = BuildVendorCard(vendor);
+            }
+
+            // two labeled sections: linked first, available below — a
+            // flip physically moves the card between them
+            var linkedHead = new Grid { Margin = new Thickness(0, 0, 16, 6) };
+            var linkedTitle = new TextBlock
+            {
+                Text = "Linked to your profile",
+                FontSize = 12.5,
+                FontWeight = FontWeights.SemiBold
+            };
+            linkedTitle.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurface");
+            _linkedCount = new TextBlock { FontSize = 11.5, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            _linkedCount.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
+            // simple inline stack: title + count
+            var linkedStack = new StackPanel { Orientation = Orientation.Horizontal };
+            linkedStack.Children.Add(linkedTitle);
+            linkedStack.Children.Add(_linkedCount);
+            linkedHead.Children.Add(linkedStack);
+
+            _linkedHint = new TextBlock
+            {
+                Text = "Nothing linked yet — flip a vendor's switch below and its card moves up here.",
+                FontSize = 11.5,
+                FontStyles = FontStyles.Italic,
+                Margin = new Thickness(0, 0, 16, 10)
+            };
+            _linkedHint.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
+
+            _linkedCards = new WrapPanel();
+            Cards.Children.Add(linkedHead);
+            Cards.Children.Add(_linkedHint);
+            Cards.Children.Add(_linkedCards);
+
+            var otherHead = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 16, 6) };
+            var otherTitle = new TextBlock
+            {
+                Text = "Available vendors",
+                FontSize = 12.5,
+                FontWeight = FontWeights.SemiBold
+            };
+            otherTitle.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurface");
+            _otherCount = new TextBlock { FontSize = 11.5, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            _otherCount.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
+            otherHead.Children.Add(otherTitle);
+            otherHead.Children.Add(_otherCount);
+
+            _otherCards = new WrapPanel();
+            Cards.Children.Add(otherHead);
+            Cards.Children.Add(_otherCards);
+
+            UpdateSections();
+
+            // tools row: the not-yet custom vendor card and the discovery
+            // card close out the page
+            _otherCards.Children.Add(BuildAddCustomCard());
+            _otherCards.Children.Add(BuildDiscoveryCard());
+        }
+
+        /// <summary>
+        /// Re-files every vendor card into its section (linked vs.
+        /// available) in display order, refreshes both counts and the
+        /// empty-linked hint. Runs after Build and after every toggle/scan
+        /// flip, so the sections are always an honest snapshot of the
+        /// saved profile.
+        /// </summary>
+        private void UpdateSections()
+        {
+            int linked = 0;
+            foreach (var vendor in _vendorOrder)
+            {
+                var card = _cards[vendor];
+                bool owned = _profile.OwnedVendors.Contains(vendor);
+                if (owned) linked++;
+                var target = owned ? _linkedCards : _otherCards;
+                if (ReferenceEquals(card.Parent, target)) continue;
+                (card.Parent as Panel)?.Children.Remove(card);
+                target.Children.Add(card);
+            }
+            if (_linkedCount != null) _linkedCount.Text = linked == 0 ? "" : "· " + linked;
+            if (_otherCount != null) _otherCount.Text = "· " + (_vendorOrder.Count - linked);
+            if (_linkedHint != null)
+                _linkedHint.Visibility = linked == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private const int CardW = 300;
 
         private Border BuildVendorCard(string vendor)
         {
-            var meta = VendorMeta.TryGetValue(vendor, out var m) ? m : (icon: "Plugin", suites: "");
+            var meta = VendorMeta.TryGetValue(vendor, out var m)
+                ? m
+                // legacy/custom entries keep a description too — no bare
+                // cards on this page
+                : (icon: "Plugin", suites: "Custom vendor kept from your saved profile");
 
             var iconGlyph = new IconGlyph { IconName = meta.icon, Width = 24, Height = 24 };
             // B.Primary — tracks palette swaps live
@@ -210,6 +327,7 @@ namespace FfxTool.Gui
         {
             _profile.SetOwned(vendor, owned);
             _profile.Save();
+            UpdateSections(); // the card physically moves between the sections
             _onChange?.Invoke();
         }
 
