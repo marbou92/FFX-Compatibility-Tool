@@ -134,7 +134,7 @@ namespace FfxTool.Gui
             {
                 Text = "Nothing linked yet — flip a vendor's switch below and its card moves up here.",
                 FontSize = 11.5,
-                FontStyles = FontStyles.Italic,
+                FontStyle = FontStyles.Italic,
                 Margin = new Thickness(0, 0, 16, 10)
             };
             _linkedHint.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
