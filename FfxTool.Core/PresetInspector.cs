@@ -348,6 +348,16 @@ namespace FfxTool.Core
         {
             string pendingMatch = null;
             var declared = new List<string>(); // open GROUP_START display names
+            // Group display names repeat freely in real plugins (two tdgp
+            // siblings both named "Compositing Options", a GROUP_START
+            // reopened after it closed). The UI files rows by path, so two
+            // identical paths would merge two DIFFERENT groups into one
+            // node — rows show under the wrong (already-collapsed) header
+            // and the second header vanishes entirely. A per-parent counter
+            // appends an invisible \u0002<k> to the PATH of every repeat;
+            // display names strip it back off, and each group instance —
+            // with its own disclosure state — stays separate.
+            var seen = new Dictionary<string, int>();
             foreach (var child in group.Children)
             {
                 if (!child.IsContainer && Same(child.Cid, TDMN))
@@ -357,8 +367,11 @@ namespace FfxTool.Core
                 else if (child.IsContainer && Same(child.Form, RiffFile.Cid("tdgp")))
                 {
                     // the tdgp's own tdsn names it ("Compositing Options");
-                    // any open declared groups extend the path beneath it
+                    // any open declared groups extend the path beneath it.
+                    // Anonymous wrappers (no tdsn) keep the parent path —
+                    // they ARE the parent visually, so no disambiguation.
                     string nested = ChildGroupPath(child, groupPath);
+                    if (nested != groupPath) nested = Disambiguate(nested, seen);
                     WalkGroup(child, into, JoinPaths(nested, declared), meta);
                 }
                 else if (child.IsContainer && Same(child.Form, RiffFile.Cid("tdbs")))
@@ -367,7 +380,15 @@ namespace FfxTool.Core
                     pendingMatch = null;
                     if (p.Kind == PresetParamKind.GroupStart)
                     {
-                        declared.Add(string.IsNullOrEmpty(p.Name) ? p.MatchName : p.Name);
+                        string dn = string.IsNullOrEmpty(p.Name) ? p.MatchName : p.Name;
+                        // the candidate path this group will produce; the
+                        // suffix (if any) always lands on the LAST segment,
+                        // which is this name
+                        declared.Add(dn);
+                        string cand = JoinPaths(groupPath, declared);
+                        string uniq = Disambiguate(cand, seen);
+                        declared[declared.Count - 1] = dn +
+                            (uniq.Length > cand.Length ? uniq.Substring(cand.Length) : "");
                         continue;
                     }
                     if (p.Kind == PresetParamKind.GroupEnd)
@@ -393,6 +414,24 @@ namespace FfxTool.Core
             if (declared == null || declared.Count == 0) return basePath;
             string tail = string.Join("\u0001", declared);
             return string.IsNullOrEmpty(basePath) ? tail : basePath + '\u0001' + tail;
+        }
+
+        /// <summary>
+        /// Second and later uses of the same group path get an invisible
+        /// \u0002&lt;k&gt; suffix (k = 2, 3, …) so every group INSTANCE has
+        /// its own path — the UI files, collapses and expands them
+        /// separately, and display names strip the suffix back off.
+        /// </summary>
+        static string Disambiguate(string path, Dictionary<string, int> seen)
+        {
+            if (!seen.TryGetValue(path, out int n))
+            {
+                seen[path] = 1;
+                return path;
+            }
+            n++;
+            seen[path] = n;
+            return path + "\u0002" + n.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
 
         /// <summary>Display-group path of a tdgp, appended to the parent path.</summary>
@@ -490,16 +529,62 @@ namespace FfxTool.Core
                     // guess — offsets could land on a second value double
                     // and bend every curve into an arc AE never drew. Such
                     // streams parse time/interp/value and interpolate as
-                    // clean linear segments instead.
+                    // clean linear segments instead. Influences saturate
+                    // to AE's 0..100% right here, so every readout stays
+                    // honest even for wild third-party numbers.
                     kf.InSlope = FiniteOrZero(ReadBEDouble(bytes, o + 16));
-                    kf.InInfluence = Influence(FiniteOrZero(ReadBEDouble(bytes, o + 24)));
+                    kf.InInfluence = Saturate(Influence(FiniteOrZero(ReadBEDouble(bytes, o + 24))));
                     kf.OutSlope = FiniteOrZero(ReadBEDouble(bytes, o + 32));
-                    kf.OutInfluence = Influence(FiniteOrZero(ReadBEDouble(bytes, o + 40)));
+                    kf.OutInfluence = Saturate(Influence(FiniteOrZero(ReadBEDouble(bytes, o + 40))));
                 }
                 into.Keyframes.Add(kf);
             }
             into.IsAnimated = into.Keyframes.Count > 0;
+            ClampTangents(into.Keyframes);
         }
+
+        /// <summary>Influence clamped to AE's 0..100% window.</summary>
+        static double Saturate(double v) => v < 0 ? 0 : v > 1 ? 1 : v;
+
+        /// <summary>
+        /// AE-shaped tangent envelope for real-world streams. The 48-byte
+        /// tangent layout is proven, but a third-party writer can still
+        /// store numbers that are not speeds (a value double reinterpreted,
+        /// a raw byte offset); one absurd slope then bends the whole curve
+        /// into an arc AE never draws and blows the graph's scale into
+        /// 1e+ readouts — the "values make no sense" report. Real easing
+        /// never needs more than a few multiples of the stream's own
+        /// straight-line rates, so both envelopes below are deliberately
+        /// generous (4× the fastest span, 10× the overall average — real
+        /// easing peaks near 2×), while garbage tangents land orders of
+        /// magnitude beyond them. The fixture's zero slopes and honest
+        /// influences pass untouched.
+        /// </summary>
+        static void ClampTangents(List<PresetKeyframe> kfs)
+        {
+            if (kfs == null || kfs.Count < 2) return;
+            double totalDt = 0, totalDv = 0, maxRate = 0;
+            for (int i = 1; i < kfs.Count; i++)
+            {
+                double dt = (kfs[i].Time - kfs[i - 1].Time) / PresetCurve.TicksPerSecond;
+                if (dt <= 1e-9) continue;
+                double dv = Math.Abs(kfs[i].Value - kfs[i - 1].Value);
+                totalDv += dv;
+                totalDt += dt;
+                if (dv / dt > maxRate) maxRate = dv / dt;
+            }
+            if (totalDt <= 1e-9) return;
+            double envelope = Math.Max(10.0 * totalDv / totalDt, 4.0 * maxRate);
+            if (envelope <= 0) return; // flat stream — zero slopes, nothing to clamp
+            for (int i = 0; i < kfs.Count; i++)
+            {
+                kfs[i].InSlope = ClampAbs(kfs[i].InSlope, envelope);
+                kfs[i].OutSlope = ClampAbs(kfs[i].OutSlope, envelope);
+            }
+        }
+
+        static double ClampAbs(double v, double limit) =>
+            v > limit ? limit : v < -limit ? -limit : v;
 
         /// <summary>Garbage tangent doubles read as 0 (no handle pull) —
         /// they must never reach the curve math as NaN.</summary>

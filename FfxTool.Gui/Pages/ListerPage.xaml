@@ -192,22 +192,35 @@
             </Border>
         </DataTemplate>
 
-        <!-- INSPECTOR group caption: a quiet label above its children —
-             the inspector's groups are always expanded (nothing to click,
-             nothing to misread); the Effect Controls panel owns the
-             disclosure behavior. Reuses EcSubGroupVm with Open=true, so
-             the body binds through the same BodyVisible property. The
-             nested body asks for this template by KEY, not by
-             {StaticResource}: a template cannot resolve a StaticResource
-             to itself — WPF expands template content off-tree, where the
-             template's own key is unreachable ("Cannot find resource
-             named 'InspGroupTpl'"). -->
+        <!-- INSPECTOR group caption: a quiet, now COLLAPSIBLE label above
+             its children — the caption row twirls like AE's group headers
+             (state persisted per effect+path, default open, folding in
+             place without a rebuild). Reuses EcSubGroupVm, so the body
+             binds through the same BodyVisible property. The nested body
+             asks for this template by KEY, not by {StaticResource}: a
+             template cannot resolve a StaticResource to itself — WPF
+             expands template content off-tree, where the template's own
+             key is unreachable ("Cannot find resource named
+             'InspGroupTpl'"). -->
         <DataTemplate x:Key="InspGroupTpl">
             <StackPanel>
-                <TextBlock Text="{Binding Title}" FontSize="11" FontWeight="SemiBold"
-                           Foreground="{DynamicResource B.OnSurfaceVariant}" Margin="10,9,0,2"
-                           TextTrimming="CharacterEllipsis"/>
-                <ItemsControl ItemsSource="{Binding Items}" Margin="16,0,0,0">
+                <Grid Background="Transparent" MouseLeftButtonUp="InspSub_Click" Cursor="Hand"
+                      Height="21" Margin="10,6,0,2" ToolTip="Show / hide this parameter group">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <ToggleButton Style="{StaticResource AEDisclosure}" IsChecked="{Binding Open}"
+                                  Click="InspSubToggle_Click" VerticalAlignment="Center"
+                                  ToolTip="Show / hide this parameter group">
+                        <controls:IconGlyph IconName="ArrowDrop" Width="12" Height="12"/>
+                    </ToggleButton>
+                    <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="11" FontWeight="SemiBold"
+                               Foreground="{DynamicResource B.OnSurfaceVariant}" VerticalAlignment="Center"
+                               Margin="4,0,0,0" TextTrimming="CharacterEllipsis"/>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding Items}" Margin="16,0,0,0"
+                              Visibility="{Binding BodyVisible}">
                     <ItemsControl.ItemTemplateSelector>
                         <controls:EcBodySelector GroupTemplateKey="InspGroupTpl"
                                                  RowTemplate="{StaticResource InspRow}"/>
@@ -229,6 +242,19 @@
         <DataTemplate x:Key="EcRow">
             <Border Padding="2,0,6,0" ToolTip="{Binding MatchName}"
                     Cursor="{Binding RowCursor}" MouseLeftButtonUp="ParamRow_Click">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Style.Triggers>
+                            <!-- hover tint on the whole line: the rows are
+                                 clickable (animated ones drive the tabs),
+                                 and the affordance was invisible before -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource B.SCLowest}"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <Grid Height="19">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="56"/>   <!-- keyframe navigator gutter -->
@@ -459,17 +485,20 @@
             </StackPanel>
         </DataTemplate>
 
-        <!-- one Effect Controls group: AE's block anatomy — ONE flat
-             header line (twirl + effect name at the left; the About link
-             parked at the right the way AE's panel does it — no fx switch,
-             AE doesn't keep one here; the vendor line lives in the
-             tooltip), then the property tree, then a quiet hairline so
-             blocks read apart without becoming cards. -->
+        <!-- one Effect Controls group: AE's block anatomy — the header
+             carries the twirl, AE's italic fx badge, the effect name, and
+             the Reset/About links at the right; UNDER it the vendor /
+             parameters / animated / status line is now VISIBLE (it used to
+             live only in the header tooltip, where nobody found it), with
+             an animated-count chip when the effect moves. Then the
+             property tree, then a quiet hairline so blocks read apart
+             without becoming cards. -->
         <DataTemplate x:Key="EcEffectGroup">
             <StackPanel>
                 <Grid Background="Transparent" MouseLeftButtonUp="EcHeader_Click" Cursor="Hand"
                       Height="24" ToolTip="{Binding Sub}">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
@@ -479,12 +508,21 @@
                                   ToolTip="Show / hide this effect's parameters">
                         <controls:IconGlyph IconName="ArrowDrop" Width="14" Height="14"/>
                     </ToggleButton>
-                    <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                    <!-- AE's fx badge: the italic fx chip every Effect
+                         Controls block opens with -->
+                    <Border Grid.Column="1" Width="19" Height="19" CornerRadius="5.5" Margin="4,0,0,0"
+                            Background="{DynamicResource B.PrimaryContainer}" IsHitTestVisible="False"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="fx" FontSize="10" FontWeight="SemiBold" FontStyle="Italic"
+                                   Foreground="{DynamicResource B.OnPrimaryContainer}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Grid.Column="2" Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
                                Foreground="{DynamicResource B.OnSurface}" VerticalAlignment="Center"
                                Margin="4,0,8,0" TextTrimming="CharacterEllipsis"/>
                     <!-- AE's per-effect header links: Reset (display-only —
                          this panel never rewrites preset data) and About -->
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="Reset" FontSize="11.5" FontWeight="Medium"
                                    VerticalAlignment="Center" Margin="0,0,10,0" Opacity="0.45"
                                    ToolTip="AE shows a per-effect Reset here; this panel is read-only and never rewrites preset data"
@@ -515,6 +553,25 @@
                             </TextBlock.Style>
                         </TextBlock>
                     </StackPanel>
+                </Grid>
+                <!-- the sub line, visible at last: vendor · parameters ·
+                     animated · status — plus the animated chip when the
+                     effect moves (the number AE's panel doesn't show but
+                     a downgrade scan wants at a glance) -->
+                <Grid Margin="43,0,16,3">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding Sub}" FontSize="11"
+                               Foreground="{DynamicResource B.OnSurfaceVariant}"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                    <Border Grid.Column="1" CornerRadius="8" Padding="7,1.5" Margin="10,0,0,0"
+                            Background="{DynamicResource B.PrimaryContainer}" VerticalAlignment="Center"
+                            Visibility="{Binding AnimVisible}" ToolTip="keyframe streams in this effect — click a property row to open them">
+                        <TextBlock Text="{Binding AnimText}" FontSize="10.5" FontWeight="Medium"
+                                   Foreground="{DynamicResource B.OnPrimaryContainer}"/>
+                    </Border>
                 </Grid>
                 <!-- body: property lines + nested parameter groups in
                      document order — the selector picks the group
@@ -611,36 +668,95 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        <!-- column header -->
+                        <!-- column header mirrors the two-line rows:
+                             identity at the left, status chip rail right -->
                         <Grid Grid.Row="0" Margin="6,2,6,8">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="2*"/>
-                                <ColumnDefinition Width="1.4*"/>
+                                <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="EFFECT NAME" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
-                            <TextBlock Grid.Column="1" Text="PLUGIN VENDOR" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
-                            <TextBlock Grid.Column="2" Text="COMPATIBILITY" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                            <TextBlock Text="EFFECT" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="1" Text="STATUS" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
                         </Grid>
                         <ListBox x:Name="EffectList" Grid.Row="1" ScrollViewer.VerticalScrollBarVisibility="Auto"
                                  VirtualizingPanel.ScrollUnit="Pixel" Focusable="False"
                                  SelectionChanged="EffectList_SelectionChanged">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="{Binding RowBrush}" CornerRadius="10" Padding="14,9" Margin="0,1"
+                                    <!-- two-line row: identity (name over
+                                         vendor) at the left; the status CHIP
+                                         (dot + label, tinted per status) and
+                                         the animated marker at the right — a
+                                         scan of "what moves and what breaks"
+                                         at one glance, instead of three plain
+                                         text columns -->
+                                    <Border Background="{Binding RowBrush}" CornerRadius="10" Padding="12,7" Margin="0,1"
                                             ToolTip="{Binding MatchTip}">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="2*"/>
-                                                <ColumnDefinition Width="1.4*"/>
+                                                <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="Medium"
-                                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding VendorLabel}" Style="{StaticResource BodySecondary}"
-                                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                                            <TextBlock Grid.Column="2" Text="{Binding Status}" Style="{StaticResource Body}"
-                                                       VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="Medium"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding VendorLabel}" Style="{StaticResource Caption}"
+                                                           Margin="0,1,0,0" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10,0,0,0">
+                                                <Border CornerRadius="9" Padding="8,2" HorizontalAlignment="Right">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Background" Value="{DynamicResource B.SCLow}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Status}" Value="Installed">
+                                                                    <Setter Property="Background" Value="{DynamicResource B.PrimaryContainer}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Status}" Value="Likely to fail">
+                                                                    <Setter Property="Background" Value="{DynamicResource B.ErrorContainer}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Status}" Value="Unknown plugin">
+                                                                    <Setter Property="Background" Value="{DynamicResource B.TertiaryContainer}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Ellipse Width="7" Height="7" VerticalAlignment="Center">
+                                                            <Ellipse.Style>
+                                                                <Style TargetType="Ellipse">
+                                                                    <Setter Property="Fill" Value="{DynamicResource B.OnSurfaceVariant}"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Status}" Value="Installed">
+                                                                            <Setter Property="Fill" Value="{DynamicResource B.Primary}"/>
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding Status}" Value="Compatible">
+                                                                            <Setter Property="Fill" Value="{DynamicResource B.Primary}"/>
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding Status}" Value="Likely to fail">
+                                                                            <Setter Property="Fill" Value="{DynamicResource B.Error}"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Ellipse.Style>
+                                                        </Ellipse>
+                                                        <TextBlock Text="{Binding Status}" FontSize="11" FontWeight="Medium"
+                                                                   Foreground="{DynamicResource B.OnSurface}" Margin="5,0,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                                <!-- animated marker: the diamond
+                                                     the keyframe navigator uses,
+                                                     so the two reads stay linked -->
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,3,2,0"
+                                                            Visibility="{Binding HasAnimated}"
+                                                            ToolTip="this effect carries keyframe streams — select it and open the Keyframes or Graph tab">
+                                                    <controls:IconGlyph IconName="Diamond" Width="9" Height="9"
+                                                                        Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding AnimText}" FontSize="10.5"
+                                                               Foreground="{DynamicResource B.Primary}" Margin="4,0,0,0"
+                                                               VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </StackPanel>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>

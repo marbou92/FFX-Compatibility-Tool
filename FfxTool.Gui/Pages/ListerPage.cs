@@ -52,6 +52,12 @@ namespace FfxTool.Gui
             public string VendorLabel { get; set; }
             public string Status { get; set; }
             public Brush RowBrush { get; set; }
+            // animated-parameter count for the list row's badge — the
+            // clear "this effect moves" marker the plain rows lacked
+            public int Animated { get; set; }
+            public Visibility HasAnimated =>
+                Animated > 0 ? Visibility.Visible : Visibility.Collapsed;
+            public string AnimText => Animated + " animated";
             // position of this effect among the file's non-sentinel effects —
             // the stable key that ties a (sorted/filtered) row back to its
             // PresetEffectDetails entry
@@ -430,16 +436,36 @@ namespace FfxTool.Gui
         /// the AE property rows (the same ParamRowVm anatomy the inspector
         /// uses, so stopwatch/navigator behavior is identical in both views).
         /// </summary>
-        public class EcGroupVm
+        public class EcGroupVm : System.ComponentModel.INotifyPropertyChanged
         {
             public string Title { get; set; }
             public string Sub { get; set; }
-            public bool Open { get; set; }
+            // INPC: disclosure flips fold the block IN PLACE — the old
+            // rebuild-per-toggle reset the scroll and could leave blocks
+            // visually stuck (the "sometimes it won't collapse" report)
+            bool _open;
+            public bool Open
+            {
+                get { return _open; }
+                set { _open = value; Fire(); }
+            }
             public Visibility BodyVisible => Open ? Visibility.Visible : Visibility.Collapsed;
+            public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
+            void Fire()
+            {
+                var h = PropertyChanged;
+                if (h == null) return;
+                h(this, new System.ComponentModel.PropertyChangedEventArgs("Open"));
+                h(this, new System.ComponentModel.PropertyChangedEventArgs("BodyVisible"));
+            }
             // body tree: EcParamVm property lines and EcSubGroupVm group
             // nodes, in the preset's document order
             public List<object> Items { get; set; }
             public int EffectIndex { get; set; }
+            // header chip: how many keyframe streams this effect carries
+            public int Animated { get; set; }
+            public Visibility AnimVisible => Animated > 0 ? Visibility.Visible : Visibility.Collapsed;
+            public string AnimText => Animated + " animated";
         }
 
         private readonly PluginProfile _profile;
@@ -490,6 +516,14 @@ namespace FfxTool.Gui
         // AE anatomy state: each named parameter group's disclosure state
         // (keyed "effectIndex|groupPath"); survives every rebuild
         private readonly Dictionary<string, bool> _ecGroupOpen = new Dictionary<string, bool>();
+        // the Inspector's group disclosure state (keyed "effectIndex|path") —
+        // the inspector's captions collapse now, same persistence rules
+        private readonly Dictionary<string, bool> _inspGroupOpen = new Dictionary<string, bool>();
+        // the live Effect Controls blocks — disclosure flips fold these IN
+        // PLACE (INPC) instead of rebuilding the whole list, which reset
+        // the scroll position on every toggle and could leave blocks
+        // visually stuck until the next full rebuild
+        private List<EcGroupVm> _ecGroups;
         private readonly Dictionary<int, string> _ecStatus = new Dictionary<int, string>();
         private readonly Dictionary<int, string> _ecVendor = new Dictionary<int, string>();
 
@@ -645,6 +679,8 @@ namespace FfxTool.Gui
                 // must not leak into the new one
                 _ecOpen.Clear();
                 _ecGroupOpen.Clear();
+                _inspGroupOpen.Clear();
+                _ecGroups = null; // the live blocks belong to the old file too
                 _ecStatus.Clear();
                 _ecVendor.Clear();
                 // a fresh preset opens the Inspector section (the split
@@ -1003,6 +1039,7 @@ namespace FfxTool.Gui
                         Sub = EcSubFor(i, d),
                         Open = open,
                         Items = root,
+                        Animated = d.AnimatedCount,
                         EffectIndex = i
                     });
                 }
@@ -1025,6 +1062,7 @@ namespace FfxTool.Gui
             }
             try
             {
+                _ecGroups = groups;
                 EcList.ItemsSource = groups;
                 // realize the row templates HERE, inside the guard: without
                 // this the realization happens in the layout pass — past
@@ -1049,11 +1087,24 @@ namespace FfxTool.Gui
             {
                 string chain = Describe(ex);
                 LogService.Append($"effect controls: the panel couldn't be rendered \u2014 {chain}");
+                _ecGroups = null;
                 EcList.ItemsSource = null;
                 EcEmpty.Text = "This preset's parameter panel couldn't be rendered \u2014 " + chain +
                                " - the compatibility list still works. Details in About \u2192 Logs.";
                 EcEmpty.Visibility = Visibility.Visible;
             }
+        }
+
+        /// <summary>
+        /// Display name of a possibly-disambiguated group path: the Core
+        /// decoder suffixes repeat group instances with \u0002&lt;k&gt;
+        /// on the PATH only (so two same-named groups file and collapse
+        /// separately) — this strips it for what the user reads.
+        /// </summary>
+        private static string StripDisambiguator(string name)
+        {
+            int u = name.IndexOf('\u0002');
+            return u < 0 ? name : name.Substring(0, u);
         }
 
         /// <summary>
@@ -1077,6 +1128,7 @@ namespace FfxTool.Gui
             string name = path, parent = null;
             int sep = path.LastIndexOf('\u0001');
             if (sep >= 0) { name = path.Substring(sep + 1); parent = path.Substring(0, sep); }
+            name = StripDisambiguator(name);
             g = new EcSubGroupVm
             {
                 Title = name,
@@ -1098,7 +1150,16 @@ namespace FfxTool.Gui
         {
             bool open = !_ecOpen.TryGetValue(effectIndex, out bool cur) || cur;
             _ecOpen[effectIndex] = !open;
-            RefreshEcRows();
+            // fold the LIVE block in place: the state was always persisted
+            // here, but the full RefreshEcRows() rebuild reset the panel's
+            // scroll position and re-realized every template on every
+            // toggle — the collapse read as "sometimes it won't collapse".
+            // The template's ToggleButton already writes Open through its
+            // TwoWay binding when the twirl itself was clicked; raising it
+            // here covers header-row clicks too.
+            var g = _ecGroups?.FirstOrDefault(x => x.EffectIndex == effectIndex);
+            if (g != null) g.Open = !open;
+            else RefreshEcRows(); // stale list (fresh file) — rebuild once
         }
 
         private void EcToggle_Click(object sender, RoutedEventArgs e)
@@ -1193,7 +1254,38 @@ namespace FfxTool.Gui
             // to read the same base state or the first click does nothing
             bool open = _ecGroupOpen.TryGetValue(key, out bool cur) && cur;
             _ecGroupOpen[key] = !open;
-            RefreshEcRows();
+            // in-place fold on the LIVE node — same reasoning as FlipEcGroup
+            var live = FindEcSub(_ecGroups, g.EffectIndex, g.GroupKey);
+            if (live != null) live.Open = !open;
+            else RefreshEcRows();
+        }
+
+        /// <summary>Depth-first search for a live sub-group node by effect
+        /// index + path, so a disclosure flip touches exactly that node.</summary>
+        private static EcSubGroupVm FindEcSub(List<EcGroupVm> groups, int effectIndex, string path)
+        {
+            if (groups == null) return null;
+            foreach (var grp in groups)
+            {
+                if (grp.EffectIndex != effectIndex) continue;
+                var hit = FindEcSubIn(grp.Items, path);
+                if (hit != null) return hit;
+            }
+            return null;
+        }
+
+        private static EcSubGroupVm FindEcSubIn(IEnumerable<object> items, string path)
+        {
+            foreach (var item in items)
+            {
+                if (item is EcSubGroupVm sub)
+                {
+                    if (sub.GroupKey == path) return sub;
+                    var hit = FindEcSubIn(sub.Items, path);
+                    if (hit != null) return hit;
+                }
+            }
+            return null;
         }
 
         // ---------- inspector ----------
@@ -1401,9 +1493,10 @@ namespace FfxTool.Gui
 
         /// <summary>
         /// Rebuilds the Parameters tab as one calm read: plain property
-        /// lines under quiet, always-expanded group captions. No toggles
-        /// and no chips — the Keyframes and Graph tabs carry the motion
-        /// data. Cheap — the list is at most a few dozen rows.
+        /// lines under quiet group captions that collapse on click now
+        /// (state persisted per effect+path, folding in place). The
+        /// Keyframes and Graph tabs carry the motion data. Cheap — the
+        /// list is at most a few dozen rows.
         /// </summary>
         private void RefreshParamRows()
         {
@@ -1419,7 +1512,7 @@ namespace FfxTool.Gui
             {
                 var row = new ParamRowVm(p) { RowOpacity = 1.0 };
                 if (string.IsNullOrEmpty(p.Group)) root.Add(row);
-                else AddInspNode(root, created, p.Group).Items.Add(row);
+                else AddInspNode(root, created, _inspEffectIndex, p.Group).Items.Add(row);
             }
             try
             {
@@ -1443,21 +1536,62 @@ namespace FfxTool.Gui
 
         /// <summary>
         /// Inspector group caption for a group path, created on first
-        /// encounter. Always expanded — the inspector's simple read never
-        /// hides rows; the Effect Controls panel owns disclosure behavior.
+        /// encounter. Open by default (the inspector's calm read), but
+        /// collapsible now — the state persists per effect+path in
+        /// _inspGroupOpen, exactly like the Effect Controls panel's
+        /// _ecGroupOpen.
         /// </summary>
-        private static EcSubGroupVm AddInspNode(List<object> root,
-            Dictionary<string, EcSubGroupVm> created, string path)
+        private EcSubGroupVm AddInspNode(List<object> root,
+            Dictionary<string, EcSubGroupVm> created, int effectIndex, string path)
         {
             if (created.TryGetValue(path, out var g)) return g;
             string name = path, parent = null;
             int sep = path.LastIndexOf('\u0001');
             if (sep >= 0) { name = path.Substring(sep + 1); parent = path.Substring(0, sep); }
-            g = new EcSubGroupVm { Title = name, GroupKey = path, EffectIndex = -1, Open = true };
+            name = StripDisambiguator(name);
+            g = new EcSubGroupVm
+            {
+                Title = name,
+                GroupKey = path,
+                EffectIndex = effectIndex,
+                Open = _inspGroupOpen.TryGetValue(effectIndex + "|" + path, out bool stored) ? stored : true
+            };
             created[path] = g;
             if (parent == null) root.Add(g);
-            else AddInspNode(root, created, parent).Items.Add(g);
+            else AddInspNode(root, created, effectIndex, parent).Items.Add(g);
             return g;
+        }
+
+        /// <summary>
+        /// Collapses/expands one INSPECTOR parameter group — in place on
+        /// the live node (no rebuild, no scroll jump), with the state
+        /// persisted for the next rebuild.
+        /// </summary>
+        private void FlipInspSub(EcSubGroupVm g)
+        {
+            string key = g.EffectIndex + "|" + g.GroupKey;
+            // mirror AddInspNode's default (open) so the first click works
+            bool open = _inspGroupOpen.TryGetValue(key, out bool cur) ? cur : true;
+            _inspGroupOpen[key] = !open;
+            g.Open = !open; // INPC folds the body in place
+        }
+
+        private void InspSubToggle_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is EcSubGroupVm g)
+            {
+                FlipInspSub(g);
+                e.Handled = true;
+            }
+        }
+
+        private void InspSub_Click(object sender, MouseButtonEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is EcSubGroupVm g)
+            {
+                FlipInspSub(g);
+                e.Handled = true;
+            }
         }
 
         // ---------- AE parameter rows: click + keyframe navigator ----------
@@ -1749,7 +1883,15 @@ namespace FfxTool.Gui
             double t0 = PresetCurve.Seconds(p.Keyframes[0].Time);
             double t1 = PresetCurve.Seconds(p.Keyframes[p.Keyframes.Count - 1].Time);
             if (t1 - t0 < 1e-6) t1 = t0 + 0.5; // single-instant stream still gets an axis
-            Func<double, double> xOf = t => L + (t - t0) / (t1 - t0) * (w - L - R);
+            // AE's Graph Editor floats the keyframed span inside a wider
+            // time field — the value HOLDS before the first and after the
+            // last key (a preset lives on a longer layer). Pad the window
+            // by a tenth of the span each side and draw those holds, so
+            // the curve reads with approach/exit context and the eased
+            // part stops touching both plot edges.
+            double tw = t1 - t0;
+            double w0 = t0 - tw * 0.1, w1 = t1 + tw * 0.1;
+            Func<double, double> xOf = t => L + (t - w0) / (w1 - w0) * (w - L - R);
 
             // AE's Graph Editor reads as an inset panel — a quiet darker
             // backdrop so grid, curve and markers sit on a defined surface
@@ -1769,7 +1911,7 @@ namespace FfxTool.Gui
             Canvas.SetTop(backdrop, T - 10);
             GraphCanvas.Children.Add(backdrop);
 
-            DrawTimeGrid(t0, t1, xOf, w, h, T, Bot, L, R, gridBrush, labelBrush);
+            DrawTimeGrid(w0, w1, xOf, w, h, T, Bot, L, R, gridBrush, labelBrush);
 
             // AE's plot axes: a solid left (value) and bottom (time) line so
             // the plot reads as a chart, not a floating cloud
@@ -1795,7 +1937,7 @@ namespace FfxTool.Gui
 
             var plot = new PlotState
             {
-                Segs = segs, T0 = t0, T1 = t1,
+                Segs = segs, T0 = w0, T1 = w1,
                 W = w, H = h, L = L, R = R, T = T, Bot = Bot, Mode = _graphMode
             };
 
@@ -1964,7 +2106,7 @@ namespace FfxTool.Gui
             });
             string tip = $"{Timecode(PresetCurve.Seconds(kf.Time))}  ·  constant value {kf.Value.ToString("0.###")}  ·  click to select";
             GraphCanvas.Children.Add(MakeMarker(PresetCurve.InterpLinear,
-                XOf(plot, plot.T0), y, accent, surface, tip, 0));
+                XOf(plot, PresetCurve.Seconds(kf.Time)), y, accent, surface, tip, 0));
         }
 
         /// <summary>
@@ -2039,6 +2181,38 @@ namespace FfxTool.Gui
                 StrokeStartLineCap = PenLineCap.Round,
                 StrokeEndLineCap = PenLineCap.Round
             });
+
+            // the holds outside the keyframed span — AE's value carries
+            // before the first and after the last key; drawn thinner and
+            // quieter so the eased span stays the visual anchor
+            if (plot.T0 < segs[0].T0 - 1e-9 || plot.T1 > segs[segs.Count - 1].T1 + 1e-9)
+            {
+                var hold = new StreamGeometry();
+                using (var hctx = hold.Open())
+                {
+                    if (plot.T0 < segs[0].T0 - 1e-9)
+                    {
+                        hctx.BeginFigure(new Point(XOf(plot, plot.T0), yOf(segs[0].V0)), false, false);
+                        hctx.LineTo(new Point(XOf(plot, segs[0].T0), yOf(segs[0].V0)), true, false);
+                    }
+                    double lastT = segs[segs.Count - 1].T1;
+                    if (plot.T1 > lastT + 1e-9)
+                    {
+                        hctx.BeginFigure(new Point(XOf(plot, lastT), yOf(segs[segs.Count - 1].V1)), false, false);
+                        hctx.LineTo(new Point(XOf(plot, plot.T1), yOf(segs[segs.Count - 1].V1)), true, false);
+                    }
+                }
+                hold.Freeze();
+                GraphCanvas.Children.Add(new Path
+                {
+                    Data = hold,
+                    Stroke = accent,
+                    StrokeThickness = 1.4,
+                    Opacity = 0.6,
+                    StrokeStartLineCap = PenLineCap.Round,
+                    StrokeEndLineCap = PenLineCap.Round
+                });
+            }
 
             // keyframe markers, shaped by interpolation like AE's icons,
             // clickable to select (ring + handles + easing numbers)
@@ -2458,6 +2632,8 @@ namespace FfxTool.Gui
                     if (pp != null && pp.Keyframes.Count > 0) v = pp.Keyframes[0].Value;
                 }
                 double y = _plot.T + (_plot.VMax - v) / Math.Max(_plot.VMax - _plot.VMin, 1e-9) * plotH;
+                if (y < _plot.T) y = _plot.T;               // the dot rides the
+                if (y > _plot.T + plotH) y = _plot.T + plotH; // plot, never the gutters
                 Canvas.SetLeft(_cursorDot, x - 3.5);
                 Canvas.SetTop(_cursorDot, Math.Round(y) - 3.5);
                 _cursorDot.Visibility = Visibility.Visible;
@@ -2555,13 +2731,28 @@ namespace FfxTool.Gui
     /// collapsible sub-groups ("Compositing Options" and friends). A
     /// top-level class because the XAML template selector references it.
     /// </summary>
-    public class EcSubGroupVm
+    public class EcSubGroupVm : System.ComponentModel.INotifyPropertyChanged
     {
         public string Title { get; set; }
         public string GroupKey { get; set; }
         public int EffectIndex { get; set; }
-        public bool Open { get; set; }
+        // INPC: the disclosure toggle folds the node in place, in both
+        // the Effect Controls tree and the inspector's captions
+        bool _open;
+        public bool Open
+        {
+            get { return _open; }
+            set { _open = value; Fire(); }
+        }
         public Visibility BodyVisible => Open ? Visibility.Visible : Visibility.Collapsed;
+        public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
+        void Fire()
+        {
+            var h = PropertyChanged;
+            if (h == null) return;
+            h(this, new System.ComponentModel.PropertyChangedEventArgs("Open"));
+            h(this, new System.ComponentModel.PropertyChangedEventArgs("BodyVisible"));
+        }
         public List<object> Items { get; set; } = new List<object>();
     }
 
