@@ -485,14 +485,16 @@
             </StackPanel>
         </DataTemplate>
 
-        <!-- one Effect Controls group: AE's block anatomy — the header
-             carries the twirl, AE's italic fx badge, the effect name, and
-             the Reset/About links at the right; UNDER it the vendor /
-             parameters / animated / status line is now VISIBLE (it used to
-             live only in the header tooltip, where nobody found it), with
-             an animated-count chip when the effect moves. Then the
-             property tree, then a quiet hairline so blocks read apart
-             without becoming cards. -->
+        <!-- one Effect Controls group: AE's block anatomy, and NOTHING
+             on top of it — the header carries the twirl, AE's italic fx
+             badge, the effect name, and the Reset/About links at the
+             right; then the property tree; then a quiet hairline so
+             blocks read apart without becoming cards. (The vendor /
+             parameters / animated / status line under the title was
+             removed — AE's panel doesn't clutter its blocks with a
+             caption strip, and the user asked for exactly that calm;
+             the facts still live in the header tooltip and the About
+             popover.) -->
         <DataTemplate x:Key="EcEffectGroup">
             <StackPanel>
                 <Grid Background="Transparent" MouseLeftButtonUp="EcHeader_Click" Cursor="Hand"
@@ -553,25 +555,6 @@
                             </TextBlock.Style>
                         </TextBlock>
                     </StackPanel>
-                </Grid>
-                <!-- the sub line, visible at last: vendor · parameters ·
-                     animated · status — plus the animated chip when the
-                     effect moves (the number AE's panel doesn't show but
-                     a downgrade scan wants at a glance) -->
-                <Grid Margin="43,0,16,3">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="{Binding Sub}" FontSize="11"
-                               Foreground="{DynamicResource B.OnSurfaceVariant}"
-                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                    <Border Grid.Column="1" CornerRadius="8" Padding="7,1.5" Margin="10,0,0,0"
-                            Background="{DynamicResource B.PrimaryContainer}" VerticalAlignment="Center"
-                            Visibility="{Binding AnimVisible}" ToolTip="keyframe streams in this effect — click a property row to open them">
-                        <TextBlock Text="{Binding AnimText}" FontSize="10.5" FontWeight="Medium"
-                                   Foreground="{DynamicResource B.OnPrimaryContainer}"/>
-                    </Border>
                 </Grid>
                 <!-- body: property lines + nested parameter groups in
                      document order — the selector picks the group
@@ -684,14 +667,49 @@
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <!-- two-line row: identity (name over
-                                         vendor) at the left; the status CHIP
-                                         (dot + label, tinted per status) and
-                                         the animated marker at the right — a
-                                         scan of "what moves and what breaks"
-                                         at one glance, instead of three plain
-                                         text columns -->
-                                    <Border Background="{Binding RowBrush}" CornerRadius="10" Padding="12,7" Margin="0,1"
+                                         vendor) at the left; a QUIET status
+                                         chip (dot + label, neutral surfaces)
+                                         and the animated marker at the right.
+                                         Rows stay uncolored until clicked — the
+                                         selected row tints with its own status
+                                         (or the theme's selection color when
+                                         the status is calm), the old always-on
+                                         per-status rainbow is gone -->
+                                    <Border CornerRadius="10" Padding="12,7" Margin="0,1"
                                             ToolTip="{Binding MatchTip}">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="Transparent"/>
+                                                <Style.Triggers>
+                                                    <!-- color ONLY on click: each
+                                                         selected row shows its own
+                                                         status container; calm
+                                                         statuses leave the theme's
+                                                         own selection color visible -->
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True"/>
+                                                            <Condition Binding="{Binding Status}" Value="Installed"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Background" Value="{DynamicResource B.PrimaryContainer}"/>
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True"/>
+                                                            <Condition Binding="{Binding Status}" Value="Likely to fail"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Background" Value="{DynamicResource B.ErrorContainer}"/>
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True"/>
+                                                            <Condition Binding="{Binding Status}" Value="Unknown plugin"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Background" Value="{DynamicResource B.TertiaryContainer}"/>
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
@@ -704,42 +722,14 @@
                                                            Margin="0,1,0,0" TextTrimming="CharacterEllipsis"/>
                                             </StackPanel>
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10,0,0,0">
-                                                <Border CornerRadius="9" Padding="8,2" HorizontalAlignment="Right">
-                                                    <Border.Style>
-                                                        <Style TargetType="Border">
-                                                            <Setter Property="Background" Value="{DynamicResource B.SCLow}"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding Status}" Value="Installed">
-                                                                    <Setter Property="Background" Value="{DynamicResource B.PrimaryContainer}"/>
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding Status}" Value="Likely to fail">
-                                                                    <Setter Property="Background" Value="{DynamicResource B.ErrorContainer}"/>
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding Status}" Value="Unknown plugin">
-                                                                    <Setter Property="Background" Value="{DynamicResource B.TertiaryContainer}"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </Border.Style>
+                                                <!-- neutral chip: the status reads
+                                                     in text; the COLOR now lives on
+                                                     the clicked row only -->
+                                                <Border CornerRadius="9" Padding="8,2" HorizontalAlignment="Right"
+                                                        Background="{DynamicResource B.SCLow}">
                                                     <StackPanel Orientation="Horizontal">
-                                                        <Ellipse Width="7" Height="7" VerticalAlignment="Center">
-                                                            <Ellipse.Style>
-                                                                <Style TargetType="Ellipse">
-                                                                    <Setter Property="Fill" Value="{DynamicResource B.OnSurfaceVariant}"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding Status}" Value="Installed">
-                                                                            <Setter Property="Fill" Value="{DynamicResource B.Primary}"/>
-                                                                        </DataTrigger>
-                                                                        <DataTrigger Binding="{Binding Status}" Value="Compatible">
-                                                                            <Setter Property="Fill" Value="{DynamicResource B.Primary}"/>
-                                                                        </DataTrigger>
-                                                                        <DataTrigger Binding="{Binding Status}" Value="Likely to fail">
-                                                                            <Setter Property="Fill" Value="{DynamicResource B.Error}"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </Ellipse.Style>
-                                                        </Ellipse>
+                                                        <Ellipse Width="7" Height="7" VerticalAlignment="Center"
+                                                                 Fill="{DynamicResource B.OnSurfaceVariant}"/>
                                                         <TextBlock Text="{Binding Status}" FontSize="11" FontWeight="Medium"
                                                                    Foreground="{DynamicResource B.OnSurface}" Margin="5,0,0,0"/>
                                                     </StackPanel>

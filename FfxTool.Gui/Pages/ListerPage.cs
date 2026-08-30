@@ -51,7 +51,6 @@ namespace FfxTool.Gui
             public string MatchTip { get; set; }
             public string VendorLabel { get; set; }
             public string Status { get; set; }
-            public Brush RowBrush { get; set; }
             // animated-parameter count for the list row's badge — the
             // clear "this effect moves" marker the plain rows lacked
             public int Animated { get; set; }
@@ -545,9 +544,9 @@ namespace FfxTool.Gui
             KfTimeline.SizeChanged += (s, e) => DrawKfTimeline();
             SetTab(0);
             SetView(0); // the AE Effect Controls panel is the default workspace view
-            // row container brushes are captured per Refresh — re-run when the
-            // theme changes so status tints match the new palette/mode; the
-            // graph and the keyframe strip bake brush colors too
+            // the graph and the keyframe strip bake brush colors per Refresh —
+            // re-run on theme changes; the list rows and the EC panel theme
+            // live through DynamicResource
             ThemeService.Changed += () => { Refresh(); BuildKeyframes(); DrawGraph(); };
         }
 
@@ -826,24 +825,20 @@ namespace FfxTool.Gui
                 var owned = _profile.Owns(match.Vendor);
 
                 string status;
-                Brush row = Brushes.Transparent;
                 if (match.Installed)
                 {
                     // the system scan found this plugin on the user's disk —
                     // the strongest signal there is, checked before any table
                     status = "Installed";
-                    row = (Brush)FindResource("B.PrimaryContainer");
                 }
                 else if (match.Vendor == null)
                 {
                     status = "Unknown plugin";
-                    row = (Brush)FindResource("B.TertiaryContainer");
                 }
                 else if (owned == false)
                 {
                     status = "Likely to fail";
                     missing++;
-                    row = (Brush)FindResource("B.ErrorContainer");
                 }
                 else if (owned == true)
                 {
@@ -855,14 +850,17 @@ namespace FfxTool.Gui
                 }
 
                 string disp = DisplayNameFor(eff.MatchName);
+                int ei = fileOrder[eff];
                 _rows.Add(new EffectRowVm
                 {
                     Name = disp,
                     MatchTip = disp == eff.MatchName ? null : eff.MatchName,
                     VendorLabel = VendorLine(match),
                     Status = status,
-                    RowBrush = row,
-                    EffectIndex = fileOrder[eff]
+                    EffectIndex = ei,
+                    // the "N animated" diamond needs the decoded stream
+                    // count; 0 for a slot the inspector couldn't decode
+                    Animated = ei < _details.Count ? _details[ei].AnimatedCount : 0
                 });
 
                 // header data for the Effect Controls block, keyed by the

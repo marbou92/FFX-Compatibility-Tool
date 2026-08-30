@@ -238,12 +238,18 @@ namespace FfxTool.Core
                     // unexpected layout) still inspects, just with Unknown kinds.
                     var meta = ParseParamTree(sspcs[i]);
 
+                    // Group-path disambiguation is PER EFFECT: the UI files rows
+                    // by path within one effect, so same-named groups in two
+                    // ROOT tdgp blocks of the same effect (legal, if rare) must
+                    // not collide either — one counter covers every root walk.
+                    var seen = new Dictionary<string, int>();
+
                     foreach (var child in sspcs[i].Children)
                         if (child.IsContainer && Same(child.Form, RiffFile.Cid("tdgp")))
                         {
                             // the effect's ROOT tdgp: its own tdsn is the effect
                             // display name, not a parameter group
-                            WalkGroup(child, details, null, meta);
+                            WalkGroup(child, details, null, seen, meta);
                             if (string.IsNullOrEmpty(details.ShortName))
                             {
                                 var rootName = child.Children.FirstOrDefault(
@@ -341,10 +347,12 @@ namespace FfxTool.Core
         /// how AE nests groups in the effect controls. Plugins that declare
         /// groups the flat way (parT kinds 13 GROUP_START / 14 GROUP_END)
         /// fold into the same display-group paths, and their marker rows are
-        /// never surfaced as parameters.
+        /// never surfaced as parameters. <paramref name="seen"/> is the
+        /// PER-EFFECT repeat counter shared by every root walk (the UI files
+        /// rows per effect, so paths must stay unique across all of them).
         /// </summary>
         static void WalkGroup(RiffNode group, PresetEffectDetails into, string groupPath,
-                              Dictionary<string, ParamMeta> meta)
+                              Dictionary<string, int> seen, Dictionary<string, ParamMeta> meta)
         {
             string pendingMatch = null;
             var declared = new List<string>(); // open GROUP_START display names
@@ -353,11 +361,10 @@ namespace FfxTool.Core
             // reopened after it closed). The UI files rows by path, so two
             // identical paths would merge two DIFFERENT groups into one
             // node — rows show under the wrong (already-collapsed) header
-            // and the second header vanishes entirely. A per-parent counter
+            // and the second header vanishes entirely. A per-effect counter
             // appends an invisible \u0002<k> to the PATH of every repeat;
             // display names strip it back off, and each group instance —
             // with its own disclosure state — stays separate.
-            var seen = new Dictionary<string, int>();
             foreach (var child in group.Children)
             {
                 if (!child.IsContainer && Same(child.Cid, TDMN))
@@ -366,13 +373,20 @@ namespace FfxTool.Core
                 }
                 else if (child.IsContainer && Same(child.Form, RiffFile.Cid("tdgp")))
                 {
-                    // the tdgp's own tdsn names it ("Compositing Options");
-                    // any open declared groups extend the path beneath it.
-                    // Anonymous wrappers (no tdsn) keep the parent path —
-                    // they ARE the parent visually, so no disambiguation.
-                    string nested = ChildGroupPath(child, groupPath);
-                    if (nested != groupPath) nested = Disambiguate(nested, seen);
-                    WalkGroup(child, into, JoinPaths(nested, declared), meta);
+                    // A nested tdgp sits INSIDE whatever is open right now —
+                    // the declared GROUP_START stack is part of its base path
+                    // exactly as it is for plain parameters. (The old code
+                    // appended the open groups UNDER the tdgp's own name,
+                    // inverting the tree for effects that mix both group
+                    // styles: the tdgp hoisted out of its group and its
+                    // parameters filed under the wrong header — "sometimes
+                    // parameters don't belong to their group".) The tdgp's
+                    // own tdsn names it; anonymous wrappers (no tdsn) keep
+                    // the parent path — they ARE the parent visually.
+                    string baseWithDeclared = JoinPaths(groupPath, declared);
+                    string nested = ChildGroupPath(child, baseWithDeclared);
+                    if (nested != baseWithDeclared) nested = Disambiguate(nested, seen);
+                    WalkGroup(child, into, nested, seen, meta);
                 }
                 else if (child.IsContainer && Same(child.Form, RiffFile.Cid("tdbs")))
                 {
@@ -540,6 +554,19 @@ namespace FfxTool.Core
                 into.Keyframes.Add(kf);
             }
             into.IsAnimated = into.Keyframes.Count > 0;
+            // AE lists keyframes in time order; a third-party writer that
+            // doesn't would draw backward segments and scribble the graph
+            // (the "graphs sometimes show wrong on some effects" report).
+            // Restore time order only when actually unsorted — a no-op for
+            // honest files, and equal-time pairs keep their written order,
+            // which instant steps (value 0 and 100 on the same frame) and
+            // the row numbering depend on.
+            for (int i = 1; i < into.Keyframes.Count; i++)
+                if (into.Keyframes[i].Time < into.Keyframes[i - 1].Time)
+                {
+                    into.Keyframes.Sort((a, b) => a.Time.CompareTo(b.Time));
+                    break;
+                }
             ClampTangents(into.Keyframes);
         }
 
@@ -547,44 +574,69 @@ namespace FfxTool.Core
         static double Saturate(double v) => v < 0 ? 0 : v > 1 ? 1 : v;
 
         /// <summary>
-        /// AE-shaped tangent envelope for real-world streams. The 48-byte
+        /// AE-shaped tangent guard for real-world streams. The 48-byte
         /// tangent layout is proven, but a third-party writer can still
         /// store numbers that are not speeds (a value double reinterpreted,
-        /// a raw byte offset); one absurd slope then bends the whole curve
-        /// into an arc AE never draws and blows the graph's scale into
-        /// 1e+ readouts — the "values make no sense" report. Real easing
-        /// never needs more than a few multiples of the stream's own
-        /// straight-line rates, so both envelopes below are deliberately
-        /// generous (4× the fastest span, 10× the overall average — real
-        /// easing peaks near 2×), while garbage tangents land orders of
-        /// magnitude beyond them. The fixture's zero slopes and honest
-        /// influences pass untouched.
+        /// a raw byte offset) — one absurd handle then bends the whole
+        /// curve into an arc AE never draws and blows the graph's scale
+        /// into 1e+ readouts. The guard clamps GEOMETRY, not the raw
+        /// slope: a handle may pull the curve at most a few multiples of
+        /// the stream's own value travel away from its keyframe. Real
+        /// easing passes untouched — an S-curve keeps near-zero handles
+        /// at its keys, and even snappy high-influence eases, overshoots
+        /// and bounces stay inside the envelope — while garbage lands
+        /// orders of magnitude beyond it. (The previous slope-rate
+        /// envelope distorted honest curves instead: a 90%-influence ease
+        /// legitimately peaks near 10× its chord rate, far above a
+        /// 4×-chord slope cap, and the clamp visibly flattened it.)
         /// </summary>
         static void ClampTangents(List<PresetKeyframe> kfs)
         {
             if (kfs == null || kfs.Count < 2) return;
-            double totalDt = 0, totalDv = 0, maxRate = 0;
+            double vMin = kfs[0].Value, vMax = kfs[0].Value, maxAbs = 0;
+            foreach (var k in kfs)
+            {
+                if (k.Value < vMin) vMin = k.Value;
+                if (k.Value > vMax) vMax = k.Value;
+                double a = Math.Abs(k.Value);
+                if (a > maxAbs) maxAbs = a;
+            }
+            double range = vMax - vMin, maxSegDv = 0;
             for (int i = 1; i < kfs.Count; i++)
             {
-                double dt = (kfs[i].Time - kfs[i - 1].Time) / PresetCurve.TicksPerSecond;
-                if (dt <= 1e-9) continue;
                 double dv = Math.Abs(kfs[i].Value - kfs[i - 1].Value);
-                totalDv += dv;
-                totalDt += dt;
-                if (dv / dt > maxRate) maxRate = dv / dt;
+                if (dv > maxSegDv) maxSegDv = dv;
             }
-            if (totalDt <= 1e-9) return;
-            double envelope = Math.Max(10.0 * totalDv / totalDt, 4.0 * maxRate);
-            if (envelope <= 0) return; // flat stream — zero slopes, nothing to clamp
+            // the excursion envelope: 3× the stream's own travel, with a
+            // floor so flat streams still bound garbage (2% of the value
+            // scale, or a tiny constant near zero)
+            double envelope = Math.Max(Math.Max(3.0 * range, 3.0 * maxSegDv),
+                                       Math.Max(0.02 * maxAbs, 1e-6));
             for (int i = 0; i < kfs.Count; i++)
             {
-                kfs[i].InSlope = ClampAbs(kfs[i].InSlope, envelope);
-                kfs[i].OutSlope = ClampAbs(kfs[i].OutSlope, envelope);
+                var k = kfs[i];
+                if (i + 1 < kfs.Count)
+                    ClampHandle(k, true, (kfs[i + 1].Time - k.Time) / PresetCurve.TicksPerSecond, envelope);
+                if (i > 0)
+                    ClampHandle(k, false, (k.Time - kfs[i - 1].Time) / PresetCurve.TicksPerSecond, envelope);
             }
         }
 
-        static double ClampAbs(double v, double limit) =>
-            v > limit ? limit : v < -limit ? -limit : v;
+        /// <summary>Clamps ONE handle's value excursion (slope × influence ×
+        /// span) to the envelope by rescaling the slope; sign and influence
+        /// survive. A zero influence pulls nothing no matter the stored
+        /// slope, so it is never touched.</summary>
+        static void ClampHandle(PresetKeyframe k, bool outgoing, double dt, double envelope)
+        {
+            if (dt <= 1e-9) return;
+            double infl = outgoing ? k.OutInfluence : k.InInfluence;
+            if (infl <= 1e-9) return;
+            double slope = outgoing ? k.OutSlope : k.InSlope;
+            double excursion = slope * infl * dt;
+            if (Math.Abs(excursion) <= envelope) return;
+            double cappedSlope = envelope * (excursion < 0 ? -1 : 1) / (infl * dt);
+            if (outgoing) k.OutSlope = cappedSlope; else k.InSlope = cappedSlope;
+        }
 
         /// <summary>Garbage tangent doubles read as 0 (no handle pull) —
         /// they must never reach the curve math as NaN.</summary>

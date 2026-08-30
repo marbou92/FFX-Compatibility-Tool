@@ -210,10 +210,50 @@ namespace FfxTool.Gui
             _files.Add(f);
             foreach (string n in f.Names)
             {
-                if (!_exact.ContainsKey(n)) _exact[n] = f;
                 string norm = Normalize(n);
-                if (norm.Length >= 3 && !_loose.ContainsKey(norm)) _loose[norm] = f;
+                // Ownership of a name goes to the MOST SPECIFIC finding
+                // file, not whichever file the scan reached first: a match
+                // name harvested from a big multi-plugin pack AND from the
+                // effect's own .aex must read as that .aex, or the panel
+                // claims "installed: SomethingElse.aex" for half the list
+                // (the wrong-.aex report).
+                if (!_exact.TryGetValue(n, out var prev))
+                    _exact[n] = f;
+                else if (Beats(f, prev, norm))
+                    _exact[n] = f;
+                if (norm.Length >= 3)
+                {
+                    if (!_loose.TryGetValue(norm, out var prevLoose))
+                        _loose[norm] = f;
+                    else if (Beats(f, prevLoose, norm))
+                        _loose[norm] = f;
+                }
             }
+        }
+
+        /// <summary>Does candidate a claim the normalized name more
+        /// specifically than the current owner b? A file NAMED after the
+        /// effect wins over one that merely contains it, which wins over a
+        /// plain harvest; an equal rank goes to the leaner name list (a
+        /// dedicated plugin carries fewer strings than a bundle).</summary>
+        private static bool Beats(CatalogFile a, CatalogFile b, string norm)
+        {
+            int ra = ClaimRank(a, norm), rb = ClaimRank(b, norm);
+            if (ra != rb) return ra > rb;
+            return a.Names.Count < b.Names.Count;
+        }
+
+        /// <summary>How strongly a finding file claims a normalized name:
+        /// 3 = the file is NAMED after it ("OpticalFlares.aex" ← "optical
+        /// flares"), 2 = the file name contains it ("TrapcodeParticular"
+        /// ← "particular"), 1 = the string was merely harvested from the
+        /// binary.</summary>
+        private static int ClaimRank(CatalogFile f, string norm)
+        {
+            string stem = Normalize(Path.GetFileNameWithoutExtension(f.FilePath));
+            if (stem.Length == 0) return 1;
+            if (stem == norm) return 3;
+            return stem.Contains(norm) ? 2 : 1;
         }
 
         /// <summary>
@@ -221,6 +261,10 @@ namespace FfxTool.Gui
         /// first, then a letters-and-digits-only comparison (so "Optical
         /// Flares" finds OpticalFlares.aex), then a containment pass for
         /// long-enough names ("Particular" inside "Trapcode Particular").
+        /// Every pass picks the MOST SPECIFIC claimant rather than the
+        /// first dictionary hit — several plugins can carry the same or an
+        /// overlapping string, and the first-scanned one is rarely the
+        /// effect's real home.
         /// </summary>
         public CatalogFile Lookup(string matchName)
         {
@@ -232,12 +276,35 @@ namespace FfxTool.Gui
             if (_loose.TryGetValue(norm, out hit)) return hit;
             if (norm.Length >= 6)
             {
-                foreach (var kv in _loose)
-                    if (kv.Key.Contains(norm)) return kv.Value;
-                foreach (var kv in _loose)
-                    if (norm.Contains(kv.Key)) return kv.Value;
+                hit = BestContainment(norm, true);  // harvested key contains the name
+                if (hit != null) return hit;
+                hit = BestContainment(norm, false); // name contains a harvested key
+                if (hit != null) return hit;
             }
             return null;
+        }
+
+        /// <summary>Best claimant among the loose keys whose containment
+        /// direction matches: strongest claim rank wins, then the leanest
+        /// name list, then insertion order (strictly-better keeps the scan
+        /// deterministic).</summary>
+        private CatalogFile BestContainment(string norm, bool keyContainsName)
+        {
+            CatalogFile best = null;
+            int bestRank = 0, bestCount = 0;
+            foreach (var kv in _loose)
+            {
+                bool match = keyContainsName ? kv.Key.Contains(norm) : norm.Contains(kv.Key);
+                if (!match) continue;
+                int rank = ClaimRank(kv.Value, norm);
+                int count = kv.Value.Names.Count;
+                if (best == null || rank > bestRank ||
+                    (rank == bestRank && count < bestCount))
+                {
+                    best = kv.Value; bestRank = rank; bestCount = count;
+                }
+            }
+            return best;
         }
 
         private static string Normalize(string s)

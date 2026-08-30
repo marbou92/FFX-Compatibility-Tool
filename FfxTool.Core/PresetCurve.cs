@@ -115,7 +115,10 @@ namespace FfxTool.Core
                 // share at most the whole span. Scale both by the same
                 // factor so they exactly fill it — the easing's handle
                 // RATIO (what the eye reads as the shape) survives, where
-                // the old midpoint pinch drew a symmetric bump. After the
+                // the old midpoint pinch drew a symmetric bump. The value
+                // offsets scale WITH the time offsets so each handle keeps
+                // the slope the file stored (rescaling the times alone
+                // silently steepened every resampled ease). After the
                 // scale C1T ≤ C2T holds by construction; the final guard
                 // only absorbs floating-point dust.
                 double sum = oi + ii;
@@ -123,7 +126,9 @@ namespace FfxTool.Core
                 {
                     double k = 1.0 / sum;
                     seg.C1T = t0 + oi * k * (t1 - t0);
+                    seg.C1V = a.Value + a.OutSlope * oi * k * (t1 - t0);
                     seg.C2T = t1 - ii * k * (t1 - t0);
+                    seg.C2V = b.Value - b.InSlope * ii * k * (t1 - t0);
                 }
                 if (seg.C1T > seg.C2T)
                     seg.C1T = seg.C2T = 0.5 * (seg.C1T + seg.C2T);
