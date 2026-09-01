@@ -181,9 +181,10 @@ especially) was the keyframe reader treating a 2D stream as 1D:
   must share its time (the structural fingerprint of interleaving).
   Anything else falls back to the 1D read. `[3] = 0` (synthetic test
   files) reads as 1.
-- Only dimension 0 drives the graph; the row/tooltip names 2D streams
-  ("X of 2D (Y = ...)") so a single curve never claims to be the whole
-  property.
+- Round 23 plotted only dimension 0 (the row/tooltip named 2D streams
+  "X of 2D (Y = ...)"); round 25 decodes dimension 1's value AND its
+  own tangent block, so the value graph draws AE's X+Y curve pair and
+  the speed graph draws the combined magnitude (round-25 section below).
 
 ## The pard param-flags word (+4) and AE-hidden rows — round-23 panel fix
 
@@ -213,17 +214,24 @@ inside the group resolving to the parT descriptor's embedded display
 name — used as a fallback before treating the group as anonymous
 (anonymous wrappers keep the parent path, they ARE the parent visually).
 
-## Graph Editor rendering references (round-23; CORRECTED round-24)
+## Graph Editor rendering references (round-23; corrected rounds 24/25)
 
 The round-23 reading of a "light editor" with unselected direction
 lines and a faint speed fill was wrong - the round-24 screenshot pair
-(value graph, speed graph) proves AE has ONE dark Graph Editor skin,
-and the tool now always uses it:
+(value graph, speed graph) shows AE's REFERENCE shots wearing one dark
+skin. Round 25 settles the theme question the way AE itself does: AE's
+Graph Editor follows AE's UI brightness preference, so OUR editor
+follows the app theme - dark app = AE's dark palette, light app = the
+app's own light tokens. The round-24 shape grammar stands:
 
 - dark editor (BOTH modes): field #656565, grid #595959, zero line
   brighter, curve #CBCBCB, picked key #FFEE00, current-time line
   #FC0000, ruler labels bare numbers - the readout above the plot
   carries the unit ("N units" / "N units/sec", AE's own grammar).
+- light editor (BOTH modes, round 25): the app's own tokens - B.Surface
+  field, B.OutlineVariant grid, B.Primary curve and key fill,
+  B.OnSurfaceVariant labels; AE's #FFEE00 picked key and #FC0000
+  current-time line stay fixed (they read on any brightness).
 - value graph: direction lines exist ONLY on the picked key
   (unselected keys show none; round-23 drew every bezier key's lines -
   disproven by the round-24 screenshot). The value carry beyond the
@@ -241,3 +249,24 @@ and the tool now always uses it:
   easy ease, hollow square = linear, half square = hold); the value
   editor draws squares regardless. The PICKED key's icon is painted
   editor yellow; AE draws no selection ring around it.
+
+
+## Multidimensional graphs draw AE's per-dimension pair (round 25)
+
+Round-25 research pins AE's Graph Editor behavior for a 2D property
+(Position, a POINT control):
+
+- VALUE graph: ONE CURVE PER DIMENSION - "when you animate Position,
+  the value graph shows two separate lines, X and Y" (the two curves
+  overlay in one editor; Separate Dimensions splits them apart). The
+  Y curve needs Y's OWN tangent block - the 48-byte ldat record
+  carries it one record after dimension 0's - so the parser decodes
+  dimension 1's slopes/influences/interpolation too, and PresetCurve
+  builds Y segments through the same proven geometry.
+- SPEED graph: ONE COMBINED curve - "the speed graph combines them
+  into one single line representing the object's overall speed", the
+  magnitude sqrt(vx^2 + vy^2) of the per-dimension signed rates. 1D
+  streams keep the signed speed (the -500 dip reference).
+- Dimension 1's tangent block gets the same garbage envelope as
+  dimension 0 (ClampHandle2), so one absurd Y slope cannot bend the
+  Y curve into an arc AE never draws.

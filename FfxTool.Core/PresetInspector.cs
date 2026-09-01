@@ -35,6 +35,9 @@ namespace FfxTool.Core
     ///   offsets would read a second value double as a tangent and bend
     ///   curves into shapes AE never draws. Influences are normalized to
     ///   0..1 at decode — stored percents (33.33) divide by 100.)
+    ///   Dimension 1 of a 2D stream stores the SAME proven record layout
+    ///   one record later, so its tangent block is decoded too: AE's
+    ///   value graph draws one curve per dimension (round-25 research).
     /// </summary>
     public class PresetKeyframe
     {
@@ -52,6 +55,24 @@ namespace FfxTool.Core
         public double OutInfluence;
         public int InterpIn;
         public int InterpOut;
+        // --- dimension 1 (2D streams) ---------------------------------
+        // The second interleaved ldat record carries dimension 1's OWN
+        // tangent block (the same proven 48-byte layout, one record
+        // later). AE's value graph draws ONE CURVE PER DIMENSION ("when
+        // you animate Position, the value graph shows two separate
+        // lines, X and Y"), so the Y curve needs the file's real easing
+        // instead of a linear guess. NaN means "not decoded" (non-48-byte
+        // records) - PresetCurve then reads the field as zero, which is
+        // exactly how a 1D stream without tangents behaves.
+        public double InSlope2 = double.NaN;
+        public double InInfluence2 = double.NaN;
+        public double OutSlope2 = double.NaN;
+        public double OutInfluence2 = double.NaN;
+        /// <summary>Dimension 1's interpolation codes (-1 = mirror the
+        /// dimension-0 codes; both records of one keyframe usually
+        /// agree, but a third-party writer may disagree).</summary>
+        public int InterpIn2 = -1;
+        public int InterpOut2 = -1;
 
         /// <summary>
         /// Human label for this keyframe's easing. Linear and Hold come
@@ -618,12 +639,26 @@ namespace FfxTool.Core
                 kf.DimCount = dims;
                 if (dims > 1 && recSize >= 16 && o + recSize + recSize <= bytes.Length)
                 {
-                    // second dimension's value (Y of a POINT) — its tangent
-                    // block is NOT decoded (only dim 0 drives the graph);
-                    // the row and the graph tooltip name the stream 2D so a
-                    // single-curve plot never pretends to be the whole truth
-                    double v2 = ReadBEDouble(bytes, o + recSize + 8);
+                    // second dimension's value (Y of a POINT) - and, on
+                    // the proven 48-byte record, its OWN tangent block one
+                    // record later. AE's value graph draws ONE CURVE PER
+                    // DIMENSION ("when you animate Position, the value
+                    // graph shows two separate lines, X and Y"), so the Y
+                    // curve carries the file's real easing instead of a
+                    // guessed straight line; the row and the graph tooltip
+                    // still name the stream 2D.
+                    int o2 = o + recSize;
+                    double v2 = ReadBEDouble(bytes, o2 + 8);
                     if (!double.IsNaN(v2) && !double.IsInfinity(v2)) kf.Value2 = v2;
+                    if (recSize == 48 && o2 + 48 <= bytes.Length)
+                    {
+                        kf.InSlope2 = FiniteOrZero(ReadBEDouble(bytes, o2 + 16));
+                        kf.InInfluence2 = Saturate(Influence(FiniteOrZero(ReadBEDouble(bytes, o2 + 24))));
+                        kf.OutSlope2 = FiniteOrZero(ReadBEDouble(bytes, o2 + 32));
+                        kf.OutInfluence2 = Saturate(Influence(FiniteOrZero(ReadBEDouble(bytes, o2 + 40))));
+                        kf.InterpIn2 = bytes[o2 + 4];
+                        kf.InterpOut2 = bytes[o2 + 5];
+                    }
                 }
                 if (recSize == 48 && o + 48 <= bytes.Length)
                 {
@@ -731,6 +766,45 @@ namespace FfxTool.Core
                 if (i > 0)
                     ClampHandle(k, false, (k.Time - kfs[i - 1].Time) / PresetCurve.TicksPerSecond, envelope);
             }
+
+            // 2D streams: dimension 1's tangent block gets the same
+            // geometry envelope over its own value travel - one garbage Y
+            // slope must not bend the Y curve any more than an X one.
+            if (kfs[0].DimCount > 1)
+            {
+                double yMin = double.PositiveInfinity, yMax = double.NegativeInfinity, yMaxAbs = 0;
+                bool anyY = false;
+                foreach (var k in kfs)
+                {
+                    if (double.IsNaN(k.Value2) || double.IsInfinity(k.Value2)) continue;
+                    anyY = true;
+                    if (k.Value2 < yMin) yMin = k.Value2;
+                    if (k.Value2 > yMax) yMax = k.Value2;
+                    double a = Math.Abs(k.Value2);
+                    if (a > yMaxAbs) yMaxAbs = a;
+                }
+                if (anyY)
+                {
+                    double yRange = yMax - yMin, yMaxSegDv = 0;
+                    for (int i = 1; i < kfs.Count; i++)
+                    {
+                        if (double.IsNaN(kfs[i].Value2) || double.IsInfinity(kfs[i].Value2) ||
+                            double.IsNaN(kfs[i - 1].Value2) || double.IsInfinity(kfs[i - 1].Value2)) continue;
+                        double dv = Math.Abs(kfs[i].Value2 - kfs[i - 1].Value2);
+                        if (dv > yMaxSegDv) yMaxSegDv = dv;
+                    }
+                    double yEnvelope = Math.Max(Math.Max(3.0 * yRange, 3.0 * yMaxSegDv),
+                                                Math.Max(0.02 * yMaxAbs, 1e-6));
+                    for (int i = 0; i < kfs.Count; i++)
+                    {
+                        var k = kfs[i];
+                        if (i + 1 < kfs.Count)
+                            ClampHandle2(k, true, (kfs[i + 1].Time - k.Time) / PresetCurve.TicksPerSecond, yEnvelope);
+                        if (i > 0)
+                            ClampHandle2(k, false, (k.Time - kfs[i - 1].Time) / PresetCurve.TicksPerSecond, yEnvelope);
+                    }
+                }
+            }
         }
 
         /// <summary>Clamps ONE handle's value excursion (slope × influence ×
@@ -747,6 +821,21 @@ namespace FfxTool.Core
             if (Math.Abs(excursion) <= envelope) return;
             double cappedSlope = envelope * (excursion < 0 ? -1 : 1) / (infl * dt);
             if (outgoing) k.OutSlope = cappedSlope; else k.InSlope = cappedSlope;
+        }
+
+        /// <summary>ClampHandle for dimension 1's tangent fields - NaN
+        /// fields (undecoded blocks) are never touched.</summary>
+        static void ClampHandle2(PresetKeyframe k, bool outgoing, double dt, double envelope)
+        {
+            if (dt <= 1e-9) return;
+            double infl = outgoing ? k.OutInfluence2 : k.InInfluence2;
+            if (double.IsNaN(infl) || infl <= 1e-9) return;
+            double slope = outgoing ? k.OutSlope2 : k.InSlope2;
+            if (double.IsNaN(slope)) return;
+            double excursion = slope * infl * dt;
+            if (Math.Abs(excursion) <= envelope) return;
+            double capped = envelope * (excursion < 0 ? -1 : 1) / (infl * dt);
+            if (outgoing) k.OutSlope2 = capped; else k.InSlope2 = capped;
         }
 
         /// <summary>Garbage tangent doubles read as 0 (no handle pull) —

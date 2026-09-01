@@ -73,70 +73,114 @@ namespace FfxTool.Core
         }
 
         /// <summary>
-        /// Build the segment list for a keyframe stream. Handles mirror
-        /// AE's (slope × influence × segment length) tangent geometry;
-        /// influences read as percents when stored above 1.0, and an
-        /// overlapping handle pair is shrunk AE-style — proportionally,
-        /// keeping the easing ratio. A zero-length stream yields an empty
-        /// list. Read-only on input.
+        /// Build the segment list for a keyframe stream (dimension 0).
+        /// Handles mirror AE's tangent geometry (slope x influence x
+        /// segment length); influences read as percents when stored
+        /// above 1.0, and an overlapping handle pair is shrunk AE-style
+        /// - proportionally, keeping the easing ratio. A zero-length
+        /// stream yields an empty list. Read-only on input.
         /// </summary>
         public static List<Segment> BuildSegments(List<PresetKeyframe> kfs)
         {
+            return BuildSegments(kfs, 0);
+        }
+
+        /// <summary>
+        /// Dimension overload. Dimension 0 is the classic scalar stream.
+        /// Dimension 1 builds the SAME tangent geometry from a 2D
+        /// stream's second-dimension value and tangent fields - AE's
+        /// value graph draws one curve PER dimension (round-25 research:
+        /// "when you animate Position, the value graph shows two
+        /// separate lines, X and Y"), and the Y curve deserves the
+        /// file's real easing, not a straight-line guess. Keyframes
+        /// whose Y did not decode (NaN) are skipped; undecoded Y
+        /// tangents (NaN) read as zero, which degenerates the bezier
+        /// into exactly the line a 1D stream without tangents draws.
+        /// </summary>
+        public static List<Segment> BuildSegments(List<PresetKeyframe> kfs, int dim)
+        {
             var segs = new List<Segment>();
             if (kfs == null || kfs.Count < 2) return segs;
-
-            for (int i = 0; i + 1 < kfs.Count; i++)
+            if (dim != 1)
             {
-                var a = kfs[i];
-                var b = kfs[i + 1];
-                double t0 = Seconds(a.Time), t1 = Seconds(b.Time);
-                double dt = Math.Max(t1 - t0, 1e-9);
-
-                var seg = new Segment
-                {
-                    T0 = t0, V0 = a.Value,
-                    T1 = t1, V1 = b.Value,
-                    Mode = a.InterpOut == InterpLinear || a.InterpOut == InterpHold
-                        ? a.InterpOut : InterpBezier
-                };
-
-                // AE influence units: files written by AE store a fraction
-                // (0.333…), but a value above 1.0 can only be the UI's
-                // percent (33.33 = one third) — normalize before clamping
-                double oi = Clamp01(NormInfluence(a.OutInfluence));
-                double ii = Clamp01(NormInfluence(b.InInfluence));
-                // handles: time offset = influence × Δt (seconds); value
-                // offset = slope × time offset — slopes are value/second
-                seg.C1T = t0 + oi * (t1 - t0);
-                seg.C1V = a.Value + a.OutSlope * oi * (t1 - t0);
-                seg.C2T = t1 - ii * (t1 - t0);
-                seg.C2V = b.Value - b.InSlope * ii * (t1 - t0);
-                // AE's overlap rule: the two handles of one segment may
-                // share at most the whole span. Scale both by the same
-                // factor so they exactly fill it — the easing's handle
-                // RATIO (what the eye reads as the shape) survives, where
-                // the old midpoint pinch drew a symmetric bump. The value
-                // offsets scale WITH the time offsets so each handle keeps
-                // the slope the file stored (rescaling the times alone
-                // silently steepened every resampled ease). After the
-                // scale C1T ≤ C2T holds by construction; the final guard
-                // only absorbs floating-point dust.
-                double sum = oi + ii;
-                if (sum > 1.0)
-                {
-                    double k = 1.0 / sum;
-                    seg.C1T = t0 + oi * k * (t1 - t0);
-                    seg.C1V = a.Value + a.OutSlope * oi * k * (t1 - t0);
-                    seg.C2T = t1 - ii * k * (t1 - t0);
-                    seg.C2V = b.Value - b.InSlope * ii * k * (t1 - t0);
-                }
-                if (seg.C1T > seg.C2T)
-                    seg.C1T = seg.C2T = 0.5 * (seg.C1T + seg.C2T);
-
-                segs.Add(seg);
+                for (int i = 0; i + 1 < kfs.Count; i++)
+                    segs.Add(MakeSegment(kfs[i], kfs[i + 1], false));
+                return segs;
             }
+            var ys = new List<PresetKeyframe>();
+            foreach (var k in kfs)
+                if (!double.IsNaN(k.Value2) && !double.IsInfinity(k.Value2)) ys.Add(k);
+            for (int i = 0; i + 1 < ys.Count; i++)
+                segs.Add(MakeSegment(ys[i], ys[i + 1], true));
             return segs;
         }
+
+        /// <summary>One keyframe-to-keyframe span with AE's tangent
+        /// geometry, built from either dimension's numbers. The dim-0
+        /// path is byte-for-byte the round-22 math (shape-verified
+        /// since round 21); the dim-1 path feeds it the Y fields
+        /// through the same influence normalization and overlap
+        /// rescale.</summary>
+        static Segment MakeSegment(PresetKeyframe a, PresetKeyframe b, bool dim1)
+        {
+            double v0 = dim1 ? a.Value2 : a.Value;
+            double v1 = dim1 ? b.Value2 : b.Value;
+            int aOut = dim1 ? (a.InterpOut2 < 0 ? a.InterpOut : a.InterpOut2) : a.InterpOut;
+            double outSlope = Sanitize(dim1 ? a.OutSlope2 : a.OutSlope);
+            double outInfl = Sanitize(dim1 ? a.OutInfluence2 : a.OutInfluence);
+            double inSlope = Sanitize(dim1 ? b.InSlope2 : b.InSlope);
+            double inInfl = Sanitize(dim1 ? b.InInfluence2 : b.InInfluence);
+
+            double t0 = Seconds(a.Time), t1 = Seconds(b.Time);
+
+            var seg = new Segment
+            {
+                T0 = t0, V0 = v0,
+                T1 = t1, V1 = v1,
+                Mode = aOut == InterpLinear || aOut == InterpHold
+                    ? aOut : InterpBezier
+            };
+
+            // AE influence units: files written by AE store a fraction
+            // (0.333...), but a value above 1.0 can only be the UI's
+            // percent (33.33 = one third) - normalize before clamping
+            double oi = Clamp01(NormInfluence(outInfl));
+            double ii = Clamp01(NormInfluence(inInfl));
+            // handles: time offset = influence x dt (seconds); value
+            // offset = slope x time offset - slopes are value/second
+            seg.C1T = t0 + oi * (t1 - t0);
+            seg.C1V = v0 + outSlope * oi * (t1 - t0);
+            seg.C2T = t1 - ii * (t1 - t0);
+            seg.C2V = v1 - inSlope * ii * (t1 - t0);
+            // AE's overlap rule: the two handles of one segment may
+            // share at most the whole span. Scale both by the same
+            // factor so they exactly fill it - the easing's handle
+            // RATIO (what the eye reads as the shape) survives, where
+            // the old midpoint pinch drew a symmetric bump. The value
+            // offsets scale WITH the time offsets so each handle keeps
+            // the slope the file stored (rescaling the times alone
+            // silently steepened every resampled ease). After the
+            // scale C1T <= C2T holds by construction; the final guard
+            // only absorbs floating-point dust.
+            double sum = oi + ii;
+            if (sum > 1.0)
+            {
+                double k = 1.0 / sum;
+                seg.C1T = t0 + oi * k * (t1 - t0);
+                seg.C1V = v0 + outSlope * oi * k * (t1 - t0);
+                seg.C2T = t1 - ii * k * (t1 - t0);
+                seg.C2V = v1 - inSlope * ii * k * (t1 - t0);
+            }
+            if (seg.C1T > seg.C2T)
+                seg.C1T = seg.C2T = 0.5 * (seg.C1T + seg.C2T);
+
+            return seg;
+        }
+
+        /// <summary>NaN tangent fields (undecoded dimension-1 blocks)
+        /// act as zero - the handle then sits on its keyframe and the
+        /// bezier degenerates to the straight line the stream earns.</summary>
+        static double Sanitize(double v) => double.IsNaN(v) ? 0 : v;
 
         /// <summary>
         /// Value of the stream at time t (seconds). Outside the stream the
@@ -194,6 +238,25 @@ namespace FfxTool.Core
                 return Math.Abs(dt) < 1e-12 ? 0 : dv / dt;
             }
             return 0;
+        }
+
+        /// <summary>
+        /// AE's speed graph for a MULTIDIMENSIONAL property: the
+        /// magnitude of the velocity vector - sqrt(vx^2 + vy^2) -
+        /// combining every dimension's own signed rate into the ONE
+        /// curve AE draws (round-25 research: "the speed graph combines
+        /// them into one single line representing the object's overall
+        /// speed"). 1D callers keep SpeedAt's signed value. NaN when
+        /// dimension 1 is missing, so callers can fall back to the 1D
+        /// read.
+        /// </summary>
+        public static double SpeedMagnitudeAt(List<Segment> segs0, List<Segment> segs1, double t)
+        {
+            if (segs1 == null || segs1.Count == 0) return double.NaN;
+            double vx = SpeedAt(segs0, t);
+            double vy = SpeedAt(segs1, t);
+            if (double.IsNaN(vx) || double.IsNaN(vy)) return double.NaN;
+            return Math.Sqrt(vx * vx + vy * vy);
         }
 
         /// <summary>

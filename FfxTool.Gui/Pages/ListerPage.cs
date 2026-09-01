@@ -1678,9 +1678,6 @@ namespace FfxTool.Gui
             _graphMode = sender == GraphSpeedBtn ? 1 : 0;
             GraphValueBtn.IsChecked = _graphMode == 0;
             GraphSpeedBtn.IsChecked = _graphMode == 1;
-            GraphLegend.Text = _graphMode == 0
-                ? "value over time · left ruler = value"
-                : "signed speed Δvalue/Δt · left ruler = units/sec";
             DrawGraph();
         }
 
@@ -1793,16 +1790,13 @@ namespace FfxTool.Gui
         private static string Pct(double v) => (v * 100).ToString("0.#") + "%";
 
         /// <summary>
-        /// The two graph palettes, both sampled from the user's own AE
-        /// reference screenshots: Light - the value card as AE draws it on
-        /// a light UI (white field, #BDC9C3 grid, #006B5F teal curve with
-        /// a soft glow, muted red current-time line); Dark - AE's classic
-        /// Graph Editor (#656565 field, #595959 grid, #CBCBCB curve,
-        /// #FFEE00 picked key, #FC0000 current-time line). The speed graph
-        /// ALWAYS wears the dark editor - a scope reads as a scope, not as
-        /// themed chrome - and the value graph follows the app theme
-        /// (dark editor on a dark theme), which is how the reference
-        /// screenshots pair up.
+        /// The two editor skins, picked by the app theme - AE's own editor
+        /// follows AE's UI brightness the same way. Dark theme: AE's
+        /// sampled Graph Editor palette (#656565 field, #595959 grid,
+        /// #CBCBCB curve, #FFEE00 picked key, #FC0000 current-time line).
+        /// Light theme: the app's own light tokens (surface field,
+        /// outline grid, primary curve) so the editor reads as part of
+        /// the app instead of a dark box glued into a light window.
         /// </summary>
         private sealed class GraphSkin
         {
@@ -1839,12 +1833,35 @@ namespace FfxTool.Gui
             return _skinDark;
         }
 
-        /// <summary>Both graph modes render on AE's dark Graph Editor pane.
-        /// AE has exactly one editor skin — the value curve does not turn
-        /// light when the app does (the round-24 light-mode report).</summary>
+        /// <summary>The light-theme editor: the app's OWN tokens, read
+        /// fresh at every draw - ThemeService swaps the merged color
+        /// dictionary, so a cached brush would freeze with the startup
+        /// palette (the phase-4 lesson). AE's selection yellow and CTI
+        /// red stay fixed: they read on any brightness.</summary>
+        private GraphSkin LightSkin()
+        {
+            return new GraphSkin
+            {
+                Bg = (Brush)FindResource("B.Surface"),
+                Grid = (Brush)FindResource("B.OutlineVariant"),
+                Zero = (Brush)FindResource("B.Outline"),
+                Curve = (Brush)FindResource("B.Primary"),
+                Label = (Brush)FindResource("B.OnSurfaceVariant"),
+                Key = (Brush)FindResource("B.Primary"),
+                KeyStroke = (Brush)FindResource("B.OnSurface"),
+                KeySel = HexBrush("#FFEE00"),
+                Cti = HexBrush("#FC0000"),
+                BgRadius = 4
+            };
+        }
+
+        /// <summary>The graph follows the app theme - light editor on a
+        /// light app, AE's dark editor on a dark one (the round-25 ask;
+        /// round-24's always-dark editor is retired). AE behaves the
+        /// same way: its editor follows AE's UI brightness.</summary>
         private GraphSkin SkinNow()
         {
-            return DarkSkin();
+            return ThemeService.Mode == Md3Mode.Dark ? DarkSkin() : LightSkin();
         }
 
         /// <summary>Timeline-strip markers stay themed chrome - accent on
@@ -1862,31 +1879,35 @@ namespace FfxTool.Gui
         private sealed class PlotState
         {
             public List<PresetCurve.Segment> Segs;
+            public List<PresetCurve.Segment> Segs1; // dimension 1 of a 2D stream (null on 1D)
             public double T0, T1;      // seconds span
             public double W, H;        // canvas size
             public double L, R, T, Bot; // margins
             public int Mode;           // 0 value, 1 speed
             public double VMin, VMax;  // value mode y-range
             public double SpeedMin, SpeedMax; // speed mode y-range (SIGNED)
+            public bool Is2D;          // 2D stream: value plots X+Y curves, speed plots magnitude
         }
         private PlotState _plot;
         private Line _cursorLine;
         private Ellipse _cursorDot;
 
         /// <summary>
-        /// AE's Graph Editor, redrawn to the user's reference screenshots.
-        /// ONE dark editor for both modes: value mode draws the thin
-        /// #CBCBCB curve on the #656565 field with square keys, the picked
+        /// AE's Graph Editor, redrawn to the user's reference screenshots,
+        /// wearing the APP THEME (the round-25 ask): dark app = AE's dark
+        /// editor palette, light app = the app's own light editor tokens.
+        /// Value mode draws the thin curve(s) - ONE PER DIMENSION on a 2D
+        /// stream, exactly AE's X+Y pair - with square keys, the picked
         /// key painted editor yellow with its direction handles, DASHED
-        /// value carries beyond the keyed span and the readout above the
-        /// plot. Speed mode plots signed dv/dt exactly as AE does: one
-        /// analytic arc per segment with TRUE VERTICAL jump lines where
-        /// the speed is discontinuous, zero carries outside the keyed
-        /// span, interpolation-shaped key icons (circle = bezier, square
-        /// = linear, half = hold), no area fill. Pure WPF shapes - Win7-
-        /// safe, no bitmap effects. Curve geometry is deliberately NOT
-        /// pixel-snapped: rounding every coordinate quantized the
-        /// beziers into visible kinks.
+        /// carries beyond the keyed span and the readout above the plot.
+        /// Speed mode plots AE's speed: signed dv/dt for 1D (one analytic
+        /// arc per segment, TRUE VERTICAL jump lines at discontinuities)
+        /// or the ONE combined magnitude curve AE draws for 2D, zero
+        /// carries outside the keyed span, interpolation-shaped key icons
+        /// (circle = bezier, square = linear, half = hold), no area fill.
+        /// Pure WPF shapes - Win7-safe, no bitmap effects. Curve geometry
+        /// is deliberately NOT pixel-snapped: rounding every coordinate
+        /// quantized the beziers into visible kinks.
         /// </summary>
         private void DrawGraph()
         {
@@ -1939,6 +1960,22 @@ namespace FfxTool.Gui
             // a one-keyframe stream has no spans but still plots - the value
             // branch draws it as AE does: a constant. No hint fallback here.
 
+            // 2D stream: dimension 1's own segments drive AE's second
+            // value curve and the combined speed magnitude. A Y side
+            // that failed to decode (< 2 points) degrades the plot to
+            // the honest 1D read.
+            bool twoDim = p.Keyframes[0].DimCount > 1;
+            var segs1 = twoDim ? PresetCurve.BuildSegments(p.Keyframes, 1) : null;
+            if (segs1 != null && segs1.Count == 0) segs1 = null;
+            if (GraphLegend != null)
+                GraphLegend.Text = twoDim
+                    ? (_graphMode == 0
+                        ? "value over time · X + Y curves · left ruler = value"
+                        : "speed magnitude · X + Y combined · left ruler = units/sec")
+                    : (_graphMode == 0
+                        ? "value over time · left ruler = value"
+                        : "signed speed Δvalue/Δt · left ruler = units/sec");
+
             // AE's editor margins: the value ruler lives on the LEFT (the
             // reference screenshots' "-500" / "50" / "0" column), the time
             // ruler along the bottom, and the current-value readout above
@@ -1961,7 +1998,7 @@ namespace FfxTool.Gui
 
             var plot = new PlotState
             {
-                Segs = segs, T0 = w0, T1 = w1,
+                Segs = segs, Segs1 = segs1, Is2D = twoDim, T0 = w0, T1 = w1,
                 W = w, H = h, L = L, R = R, T = T, Bot = Bot, Mode = _graphMode
             };
 
@@ -1983,10 +2020,24 @@ namespace FfxTool.Gui
                 if (double.IsNaN(vAt))
                     vAt = p.Keyframes[_selKf >= 0 && _selKf < p.Keyframes.Count ? _selKf : 0].Value;
                 readout = vAt.ToString("0.###") + " units";
+                if (twoDim)
+                {
+                    // AE's readout for a point carries the PAIR
+                    double v2At = PresetCurve.ValueAt(segs1, ctiT);
+                    if (double.IsNaN(v2At))
+                    {
+                        var ck = p.Keyframes[_selKf >= 0 && _selKf < p.Keyframes.Count ? _selKf : 0];
+                        if (!double.IsNaN(ck.Value2)) v2At = ck.Value2;
+                    }
+                    if (!double.IsNaN(v2At))
+                        readout = vAt.ToString("0.###") + ", " + v2At.ToString("0.###") + " units";
+                }
             }
             else
             {
-                double sAt = PresetCurve.SpeedAt(segs, ctiT);
+                double sAt = twoDim
+                    ? PresetCurve.SpeedMagnitudeAt(segs, segs1, ctiT)
+                    : PresetCurve.SpeedAt(segs, ctiT);
                 if (double.IsNaN(sAt)) sAt = 0;
                 readout = sAt.ToString("0.###") + " units/sec";
             }
@@ -2034,6 +2085,23 @@ namespace FfxTool.Gui
                     if (v < vMin) vMin = v;
                     if (v > vMax) vMax = v;
                 }
+                if (segs1 != null)
+                {
+                    // the Y curve shares the plot - its extremes set
+                    // the scale too (AE fits BOTH dimensions)
+                    foreach (var k in p.Keyframes)
+                    {
+                        if (double.IsNaN(k.Value2) || double.IsInfinity(k.Value2)) continue;
+                        if (k.Value2 < vMin) vMin = k.Value2;
+                        if (k.Value2 > vMax) vMax = k.Value2;
+                    }
+                    PresetCurve.SampleValues(segs1, 240, out _, out var sampled1);
+                    foreach (double v in sampled1)
+                    {
+                        if (v < vMin) vMin = v;
+                        if (v > vMax) vMax = v;
+                    }
+                }
                 if (vMax - vMin < 1e-9) { vMin -= 1; vMax += 1; }
                 else { double pad = (vMax - vMin) * 0.12; vMin -= pad; vMax += pad; }
                 plot.VMin = vMin; plot.VMax = vMax;
@@ -2048,7 +2116,7 @@ namespace FfxTool.Gui
             }
             else
             {
-                DrawSpeedCurve(plot, skin);
+                DrawSpeedCurve(plot, skin, p);
                 DrawSelection(plot, null, skin);
             }
 
@@ -2180,6 +2248,12 @@ namespace FfxTool.Gui
                 X1 = plot.L, Y1 = y, X2 = plot.W - plot.R, Y2 = y,
                 Stroke = skin.Curve, StrokeThickness = 2, Opacity = 0.9
             });
+            if (kf.DimCount > 1 && !double.IsNaN(kf.Value2))
+                GraphCanvas.Children.Add(new Line
+                {
+                    X1 = plot.L, Y1 = yOf(kf.Value2), X2 = plot.W - plot.R, Y2 = yOf(kf.Value2),
+                    Stroke = skin.Curve, StrokeThickness = 2, Opacity = 0.9
+                });
             string dims = kf.DimCount > 1 ? "  \u00b7  2D stream" : "";
             string tip = $"{Timecode(PresetCurve.Seconds(kf.Time))}  \u00b7  constant value {kf.Value.ToString("0.###")}{dims}  \u00b7  click to select";
             GraphCanvas.Children.Add(MakeMarker(PresetCurve.InterpLinear,
@@ -2206,17 +2280,11 @@ namespace FfxTool.Gui
             return s;
         }
 
-        private void DrawValueCurve(PlotState plot, PresetParameter stream, GraphSkin skin, Func<double, double> yOf)
+        /// <summary>The value curve for ONE dimension as a styled path -
+        /// identical line grammar for X and Y (AE draws the pair alike).</summary>
+        private Path ValueCurvePath(PlotState plot, List<PresetCurve.Segment> segs,
+            Func<double, double> yOf, GraphSkin skin)
         {
-            var segs = plot.Segs;
-
-            // Direction lines belong to the PICKED key only - the AE
-            // reference screenshot's unselected keys carry none
-            // (round-23 drew every bezier key's lines; disproven by the
-            // round-24 screenshots). DrawSelection owns them, so this
-            // pass draws curve + keys, nothing else.
-
-            // the curve itself - smooth coordinates, no pixel snapping
             var geo = new StreamGeometry();
             using (var ctx = geo.Open())
             {
@@ -2242,9 +2310,9 @@ namespace FfxTool.Gui
                 }
             }
             geo.Freeze();
-            // AE's editor draws a plain thin light line - no halo in
-            // either mode (the round-24 screenshots have no fringe)
-            GraphCanvas.Children.Add(new Path
+            // AE's editor draws a plain thin line - no halo in either
+            // mode (the round-24 screenshots have no fringe)
+            return new Path
             {
                 Data = geo,
                 Stroke = skin.Curve,
@@ -2252,41 +2320,71 @@ namespace FfxTool.Gui
                 StrokeLineJoin = PenLineJoin.Round,
                 StrokeStartLineCap = PenLineCap.Round,
                 StrokeEndLineCap = PenLineCap.Round
-            });
+            };
+        }
+
+        /// <summary>The DASHED value carry beyond a dimension's keyed
+        /// span (AE's stub after the last key), for either dimension.</summary>
+        private Path DashedCarryPath(PlotState plot, List<PresetCurve.Segment> segs,
+            Func<double, double> yOf, GraphSkin skin)
+        {
+            var hold = new StreamGeometry();
+            using (var hctx = hold.Open())
+            {
+                if (plot.T0 < segs[0].T0 - 1e-9)
+                {
+                    hctx.BeginFigure(new Point(XOf(plot, plot.T0), yOf(segs[0].V0)), false, false);
+                    hctx.LineTo(new Point(XOf(plot, segs[0].T0), yOf(segs[0].V0)), true, false);
+                }
+                double lastT = segs[segs.Count - 1].T1;
+                if (plot.T1 > lastT + 1e-9)
+                {
+                    hctx.BeginFigure(new Point(XOf(plot, lastT), yOf(segs[segs.Count - 1].V1)), false, false);
+                    hctx.LineTo(new Point(XOf(plot, plot.T1), yOf(segs[segs.Count - 1].V1)), true, false);
+                }
+            }
+            hold.Freeze();
+            return new Path
+            {
+                Data = hold,
+                Stroke = skin.Curve,
+                StrokeThickness = 1.2,
+                Opacity = 0.85,
+                StrokeDashArray = new DoubleCollection { 2.5, 2.5 },
+                StrokeStartLineCap = PenLineCap.Flat,
+                StrokeEndLineCap = PenLineCap.Flat
+            };
+        }
+
+        private void DrawValueCurve(PlotState plot, PresetParameter stream, GraphSkin skin, Func<double, double> yOf)
+        {
+            var segs = plot.Segs;
+
+            // Direction lines belong to the PICKED key only - the AE
+            // reference screenshot's unselected keys carry none
+            // (round-23 drew every bezier key's lines; disproven by the
+            // round-24 screenshots). DrawSelection owns them, so this
+            // pass draws curve + keys, nothing else.
+
+            // the curve itself - smooth coordinates, no pixel snapping
+            GraphCanvas.Children.Add(ValueCurvePath(plot, segs, yOf, skin));
+            // AE's value editor draws ONE CURVE PER DIMENSION for a 2D
+            // property (round-25 research: "when you animate Position,
+            // the value graph shows two separate lines, X and Y") - the
+            // Y curve comes from its own tangent block and rides the
+            // same editor with the same line style
+            if (plot.Segs1 != null)
+                GraphCanvas.Children.Add(ValueCurvePath(plot, plot.Segs1, yOf, skin));
 
             // the holds outside the keyframed span - AE's value carries
             // before the first and after the last key as a DASHED
             // extension (the reference screenshot's dashes after the last
             // key), so the eased span stays the solid visual anchor
             if (plot.T0 < segs[0].T0 - 1e-9 || plot.T1 > segs[segs.Count - 1].T1 + 1e-9)
-            {
-                var hold = new StreamGeometry();
-                using (var hctx = hold.Open())
-                {
-                    if (plot.T0 < segs[0].T0 - 1e-9)
-                    {
-                        hctx.BeginFigure(new Point(XOf(plot, plot.T0), yOf(segs[0].V0)), false, false);
-                        hctx.LineTo(new Point(XOf(plot, segs[0].T0), yOf(segs[0].V0)), true, false);
-                    }
-                    double lastT = segs[segs.Count - 1].T1;
-                    if (plot.T1 > lastT + 1e-9)
-                    {
-                        hctx.BeginFigure(new Point(XOf(plot, lastT), yOf(segs[segs.Count - 1].V1)), false, false);
-                        hctx.LineTo(new Point(XOf(plot, plot.T1), yOf(segs[segs.Count - 1].V1)), true, false);
-                    }
-                }
-                hold.Freeze();
-                GraphCanvas.Children.Add(new Path
-                {
-                    Data = hold,
-                    Stroke = skin.Curve,
-                    StrokeThickness = 1.2,
-                    Opacity = 0.85,
-                    StrokeDashArray = new DoubleCollection { 2.5, 2.5 },
-                    StrokeStartLineCap = PenLineCap.Flat,
-                    StrokeEndLineCap = PenLineCap.Flat
-                });
-            }
+                GraphCanvas.Children.Add(DashedCarryPath(plot, segs, yOf, skin));
+            if (plot.Segs1 != null &&
+                (plot.T0 < plot.Segs1[0].T0 - 1e-9 || plot.T1 > plot.Segs1[plot.Segs1.Count - 1].T1 + 1e-9))
+                GraphCanvas.Children.Add(DashedCarryPath(plot, plot.Segs1, yOf, skin));
 
             // keyframe markers - AE's value editor draws squares regardless
             // of easing; clickable to select (ring + handles + numbers).
@@ -2309,14 +2407,21 @@ namespace FfxTool.Gui
             }
         }
 
-        private void DrawSpeedCurve(PlotState plot, GraphSkin skin)
+        private void DrawSpeedCurve(PlotState plot, GraphSkin skin, PresetParameter stream0)
         {
             var segs = plot.Segs;
+            var stream = stream0 ?? CurrentAnimParam();
+            // the magnitude read needs dimension 1 aligned segment-for-
+            // segment with dimension 0 (same key count); anything else
+            // degrades the speed pane to the honest 1D signed read
+            bool sp2D = plot.Segs1 != null && plot.Segs1.Count == segs.Count;
 
             // AE's speed graph plots the SIGNED derivative - a growing
             // value rides above zero, a shrinking one below (the reference
             // screenshot dips under its -500 ruler line). The range always
             // includes the zero line, padded so the extremes breathe.
+            // A 2D property plots the ONE magnitude curve AE draws for it
+            // (round-25 research) - sqrt(vx²+vy²), always at or above zero.
             // Each segment contributes ONE exact arc - the analytic
             // dv/dt of its own cubic, evaluated straight from the control
             // points (the old 320-point SpeedAt sweep smeared every
@@ -2328,9 +2433,14 @@ namespace FfxTool.Gui
             // reference screenshot's flat approach and the vertical rise
             // at its right edge are exactly these.
             double st0 = plot.T0, st1 = plot.T1;
-            Func<int, double, double> segSpeedAt = (i, u) =>
+            // analytic dv/dt straight from a segment's control points -
+            // dim 0 for the 1D read; per-dimension for the 2D magnitude
+            Func<List<PresetCurve.Segment>, int, double, double> segSpeed = (list, i, u) =>
             {
-                var s = segs[i];
+                var s = list[i];
+                if (s.Mode == PresetCurve.InterpHold) return 0;
+                if (s.Mode == PresetCurve.InterpLinear)
+                    return (s.V1 - s.V0) / Math.Max(s.T1 - s.T0, 1e-9);
                 double m = 1 - u;
                 double dv = 3 * m * m * (s.C1V - s.V0) + 6 * m * u * (s.C2V - s.C1V) + 3 * u * u * (s.V1 - s.C2V);
                 double dt = 3 * m * m * (s.C1T - s.T0) + 6 * m * u * (s.C2T - s.C1T) + 3 * u * u * (s.T1 - s.C2T);
@@ -2338,25 +2448,55 @@ namespace FfxTool.Gui
                 double v = dv / dt;
                 return double.IsNaN(v) || double.IsInfinity(v) ? 0 : v;
             };
+            Func<int, double, double> segSpeedAt = (i, u) => segSpeed(segs, i, u);
+            // the 2D magnitude at TIME t: each dimension solves its own
+            // segment for t, then the rates combine as sqrt(vx²+vy²)
+            Func<double, double> magAt = t =>
+            {
+                if (!sp2D) return 0;
+                double vx = PresetCurve.SpeedAt(segs, t);
+                double vy = PresetCurve.SpeedAt(plot.Segs1, t);
+                if (double.IsNaN(vx) || double.IsNaN(vy)) return 0;
+                return Math.Sqrt(vx * vx + vy * vy);
+            };
 
             // RANGE: coarse arc samples (real extremes ride the arcs or
             // their keyframe endpoints); the zero carries keep 0 in view
             double spMin = 0, spMax = 0;
-            for (int i = 0; i < segs.Count; i++)
+            if (sp2D)
             {
-                if (segs[i].Mode == PresetCurve.InterpHold) continue; // flat zero
-                if (segs[i].Mode == PresetCurve.InterpLinear)
+                // the magnitude is >= 0; sample each span's time evenly
+                // (each dimension solves its own segment for that time)
+                for (int i = 0; i < segs.Count; i++)
                 {
-                    double c = (segs[i].V1 - segs[i].V0) / Math.Max(segs[i].T1 - segs[i].T0, 1e-9);
-                    if (c < spMin) spMin = c;
-                    if (c > spMax) spMax = c;
-                    continue;
+                    if (segs[i].Mode == PresetCurve.InterpHold) continue;
+                    for (int k = 0; k <= 24; k++)
+                    {
+                        double t = segs[i].T0 + (segs[i].T1 - segs[i].T0) * (k / 24.0);
+                        double s = magAt(t);
+                        if (s < spMin) spMin = s;
+                        if (s > spMax) spMax = s;
+                    }
                 }
-                for (int k = 0; k <= 24; k++)
+            }
+            else
+            {
+                for (int i = 0; i < segs.Count; i++)
                 {
-                    double s = segSpeedAt(i, k / 24.0);
-                    if (s < spMin) spMin = s;
-                    if (s > spMax) spMax = s;
+                    if (segs[i].Mode == PresetCurve.InterpHold) continue; // flat zero
+                    if (segs[i].Mode == PresetCurve.InterpLinear)
+                    {
+                        double c = (segs[i].V1 - segs[i].V0) / Math.Max(segs[i].T1 - segs[i].T0, 1e-9);
+                        if (c < spMin) spMin = c;
+                        if (c > spMax) spMax = c;
+                        continue;
+                    }
+                    for (int k = 0; k <= 24; k++)
+                    {
+                        double s = segSpeedAt(i, k / 24.0);
+                        if (s < spMin) spMin = s;
+                        if (s > spMax) spMax = s;
+                    }
                 }
             }
             double spPad = Math.Max((spMax - spMin) * 0.08, 1e-9);
@@ -2432,7 +2572,15 @@ namespace FfxTool.Gui
             {
                 var s = segs[i];
                 double sIn, sOut;
-                if (s.Mode == PresetCurve.InterpHold) { sIn = 0; sOut = 0; }
+                if (sp2D)
+                {
+                    // boundary magnitudes from each dimension's own edge
+                    double vxa = segSpeed(segs, i, 0), vya = segSpeed(plot.Segs1, i, 0);
+                    double vxb = segSpeed(segs, i, 1), vyb = segSpeed(plot.Segs1, i, 1);
+                    sIn = Math.Sqrt(vxa * vxa + vya * vya);
+                    sOut = Math.Sqrt(vxb * vxb + vyb * vyb);
+                }
+                else if (s.Mode == PresetCurve.InterpHold) { sIn = 0; sOut = 0; }
                 else if (s.Mode == PresetCurve.InterpLinear)
                     sIn = sOut = (s.V1 - s.V0) / Math.Max(s.T1 - s.T0, 1e-9);
                 else { sIn = segSpeedAt(i, 0); sOut = segSpeedAt(i, 1); }
@@ -2456,6 +2604,19 @@ namespace FfxTool.Gui
                 {
                     Append(s.T1, 0);
                     lastSp = 0;
+                }
+                else if (sp2D)
+                {
+                    // the magnitude wanders even under a linear X when
+                    // Y eases - sample the span's TIME evenly; the edge
+                    // speeds come from the boundary values above
+                    const int MagN = 36;
+                    for (int k = 1; k <= MagN; k++)
+                    {
+                        double t = s.T0 + (s.T1 - s.T0) * (k / (double)MagN);
+                        Append(t, k == MagN ? sOut : magAt(t));
+                    }
+                    lastSp = sOut;
                 }
                 else if (s.Mode == PresetCurve.InterpLinear)
                 {
@@ -2494,14 +2655,13 @@ namespace FfxTool.Gui
             // circle = bezier/easy-ease, hollow square = linear, half
             // square = hold; exact analytic speed at each key, clickable
             // like their value-graph twins
-            var stream = CurrentAnimParam();
             if (stream == null) return;
             for (int i = 0; i < stream.Keyframes.Count; i++)
             {
                 var k = stream.Keyframes[i];
                 int shape = i + 1 < stream.Keyframes.Count ? k.InterpOut : k.InterpIn;
                 double t = PresetCurve.Seconds(k.Time);
-                double s = PresetCurve.SpeedAt(segs, t);
+                double s = sp2D ? magAt(t) : PresetCurve.SpeedAt(segs, t);
                 if (double.IsNaN(s)) s = 0; // one-keyframe stream: constant = zero speed
                 string tip = $"#{i + 1}  {Timecode(t)}  \u00b7  speed {s.ToString("0.###")}/sec  \u00b7  {k.InterpLabel}  \u00b7  click to select";
                 int idx = i;
@@ -2657,7 +2817,7 @@ namespace FfxTool.Gui
                 // AE draws the picked speed key's direction lines HORIZONTAL:
                 // each spans its influence share of the neighboring segment,
                 // at the key's own speed
-                double ky = yOf(Math.Min(Math.Max(SpeedOfKey(plot.Segs, t), plot.SpeedMin), plot.SpeedMax));
+                double ky = yOf(Math.Min(Math.Max(SpeedOfKey(plot.Segs, t, plot.Segs1), plot.SpeedMin), plot.SpeedMax));
                 double pxPerSec = (plot.W - plot.L - plot.R) / Math.Max(plot.T1 - plot.T0, 1e-9);
                 if (_selKf < plot.Segs.Count)
                 {
@@ -2673,7 +2833,7 @@ namespace FfxTool.Gui
 
             double y = plot.Mode == 0
                 ? yOf(k.Value)
-                : yOf(Math.Min(Math.Max(SpeedOfKey(plot.Segs, t), plot.SpeedMin), plot.SpeedMax));
+                : yOf(Math.Min(Math.Max(SpeedOfKey(plot.Segs, t, plot.Segs1), plot.SpeedMin), plot.SpeedMax));
             if (double.IsNaN(y)) return;
             // AE paints the picked key's own ICON yellow - a circle in
             // the speed editor (bezier keys), a square elsewhere; no ring
@@ -2698,10 +2858,15 @@ namespace FfxTool.Gui
             GraphCanvas.Children.Add(cover);
         }
 
-        /// <summary>Signed speed at t, NaN-proofed for the one-keyframe stream.</summary>
-        private static double SpeedOfKey(List<PresetCurve.Segment> segs, double t)
+        /// <summary>Speed at t for the selection marker - the 2D
+        /// magnitude when dimension 1 rides along, else the signed 1D
+        /// speed; NaN-proofed for the one-keyframe stream.</summary>
+        private static double SpeedOfKey(List<PresetCurve.Segment> segs, double t,
+            List<PresetCurve.Segment> segs1 = null)
         {
-            double s = PresetCurve.SpeedAt(segs, t);
+            double s = segs1 != null && segs1.Count > 0
+                ? PresetCurve.SpeedMagnitudeAt(segs, segs1, t)
+                : PresetCurve.SpeedAt(segs, t);
             return double.IsNaN(s) ? 0 : s;
         }
 
@@ -2868,11 +3033,20 @@ namespace FfxTool.Gui
                 Canvas.SetLeft(_cursorDot, x - 3.5);
                 Canvas.SetTop(_cursorDot, Math.Round(y) - 3.5);
                 _cursorDot.Visibility = Visibility.Visible;
-                readout = $"{t.ToString("0.##")} s · f{frame} · {v.ToString("0.###")} units{easing}";
+                string vtxt = v.ToString("0.###") + " units";
+                if (_plot.Segs1 != null)
+                {
+                    // a 2D probe reads the pair, X first
+                    double v2 = PresetCurve.ValueAt(_plot.Segs1, t);
+                    if (!double.IsNaN(v2)) vtxt = v.ToString("0.###") + ", " + v2.ToString("0.###") + " units";
+                }
+                readout = $"{t.ToString("0.##")} s · f{frame} · {vtxt}{easing}";
             }
             else
             {
-                double s = PresetCurve.SpeedAt(_plot.Segs, t);
+                double s = _plot.Segs1 != null
+                    ? PresetCurve.SpeedMagnitudeAt(_plot.Segs, _plot.Segs1, t)
+                    : PresetCurve.SpeedAt(_plot.Segs, t);
                 double y = _plot.T + (_plot.SpeedMax - s) / Math.Max(_plot.SpeedMax - _plot.SpeedMin, 1e-9) * plotH;
                 if (y < _plot.T) y = _plot.T;                 // signed speed can sit
                 if (y > _plot.T + plotH) y = _plot.T + plotH; // below the old 0-floor
