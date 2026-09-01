@@ -159,3 +159,76 @@ container-level version/string fixes were in place.
   `tdix`, unchanged keyframe/blob data) — several of the above mistakes
   produced a file that "looked" fine (parsed without error) but was wrong
   in ways only visible by actually opening it in AE.
+
+## Keyframe records are per-DIMENSION (lhd3 field [3]) — round-23 graph fix
+
+The graph pane's "spike then decay" artifact on some effects (BCC points
+especially) was the keyframe reader treating a 2D stream as 1D:
+
+- `lhd3` is 52 bytes of big-endian uint32s. Proven layout:
+  `[0] 0x00D00BEE` magic, `[2]` keyframe count, `[3]` **dimension count**,
+  `[4]` record size (48), the rest zeros/flags on current samples. Every
+  stream in `sample_1.ffx` is 1D and carries `[3] = 1`.
+- `ldat` holds `count x dims` records, interleaved per keyframe
+  (dim0, dim1, dim0, dim1, ...), each record the proven 48-byte layout
+  (time, interp in/out, value, in-slope, in-influence, out-slope,
+  out-influence, 2 bytes pad).
+- Reading a 2D stream as 1D plots X and Y as if they were consecutive
+  keyframes — the value graph zig-zags between the dimensions and the
+  speed graph spikes and decays; shapes AE never draws.
+- The dimension declaration is only trusted after two checks: the record
+  count must tile the ldat exactly, and every dimension of one keyframe
+  must share its time (the structural fingerprint of interleaving).
+  Anything else falls back to the 1D read. `[3] = 0` (synthetic test
+  files) reads as 1.
+- Only dimension 0 drives the graph; the row/tooltip names 2D streams
+  ("X of 2D (Y = ...)") so a single curve never claims to be the whole
+  property.
+
+## The pard param-flags word (+4) and AE-hidden rows — round-23 panel fix
+
+The 148-byte `pard` descriptor in `LIST parT` starts with a big-endian
+uint32 **flags word at offset +4** (the control kind is the uint32 at +12,
+its low byte at +15):
+
+- **Bit 0x200 hides a parameter.** Proven on `sample_1.ffx`: BCC's three
+  "placeholder" rows carry 0x220, Sapphire's opaque "mocha" blob 0x208 —
+  and every visibly rendered parameter of all three vendors leaves bit
+  0x200 clear. Visible rows carry 0x8 / 0x20 / 0x2 freely, so only 0x200
+  may hide a row.
+- BCC's own "Hidden" slider carries 0x8 like visible sliders, so the flag
+  alone cannot identify it; it is hidden by its exact display name, along
+  with the "placeholder" padders.
+- ARB_DATA parameters (kind 11) render no UI in AE at all — hidden
+  unconditionally (Sapphire "mocha", BCC "Mocha Data0").
+- Net effect on the fixture: BCC's Effect Controls drop 5 junk rows
+  (3x placeholder, "Hidden", "Mocha Data0") and Sapphire's mocha blob row,
+  matching what AE's own panel shows.
+
+## Nested tdgp groups may be named only via parT
+
+A nested `LIST tdgp` usually carries its display name in a `tdsn` leaf.
+Writers that skip the `tdsn` may still name the group through a `tdmn`
+inside the group resolving to the parT descriptor's embedded display
+name — used as a fallback before treating the group as anonymous
+(anonymous wrappers keep the parent path, they ARE the parent visually).
+
+## Graph Editor rendering references (round-23)
+
+Colors sampled from the user's own AE screenshots (value graph, light
+appearance; speed graph, dark appearance):
+
+- dark editor: field #656565, grid #595959, zero line brighter, curve
+  #CBCBCB, picked key #FFEE00, current-time line #FC0000, ruler labels
+  light gray with "/sec" on speed.
+- light editor: field #FFFFFF, grid #BDC9C3, curve #006B5F with a soft
+  glow, filled square keys, thin unselected direction lines on every
+  bezier keyframe (horizontal at zero speed), muted red current-time
+  line.
+- the speed graph plots the SIGNED derivative: a shrinking value dips
+  below the zero line (the reference screenshot dips under its -500
+  ruler label), and the speed area gets only a faint fill between curve
+  and zero.
+- speed-editor key icons are shaped by interpolation (circle = bezier /
+  easy ease, hollow square = linear, half square = hold); the value
+  editor draws squares regardless.

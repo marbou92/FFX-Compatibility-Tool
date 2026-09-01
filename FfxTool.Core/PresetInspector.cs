@@ -12,13 +12,19 @@ namespace FfxTool.Core
     /// three animated streams in the fixture decode with exact length match):
     ///   lhd3 (52 bytes, big-endian uint32s):
     ///     [0] 0x00D00BEE magic, [2] keyframe count, [4] record size (48)
-    ///   ldat: count × record, and with record size 48:
+    ///   ldat: count × dims × record — lhd3 field [3] is the property's
+    ///   DIMENSION COUNT (1 on every proven 1D stream; a 2D point stores
+    ///   one record PER DIMENSION per keyframe, interleaved dim0, dim1,
+    ///   dim0, dim1…). Reading a 2D stream as 1D plots X and Y as if
+    ///   they were consecutive keyframes — the value graph zig-zags and
+    ///   the speed graph spikes and decays, shapes AE never draws. With
+    ///   record size 48 each per-dimension record is:
     ///     +0  int32  time — raw preset ticks (AE stores these in the comp's
     ///                    own timebase; no public spec maps them to seconds,
     ///                    so the UI presents them as relative units)
     ///     +4  byte   interpolation into  this keyframe (1 linear 2 bezier 3 hold)
     ///     +5  byte   interpolation out of this keyframe
-    ///     +8  double value
+    ///     +8  double value (of this dimension)
     ///     +16 double in-slope        +24 double in-influence
     ///     +32 double out-slope       +40 double out-influence
     ///   (tangent quadruple matches RESEARCH_NOTES.md's "bezier tangent
@@ -34,6 +40,12 @@ namespace FfxTool.Core
     {
         public int Time;
         public double Value;
+        /// <summary>Second dimension's value when the stream is 2D
+        /// (lhd3 dimension count 2) — dimension 0 stays in Value, so a
+        /// POINT parameter can honestly say "X …, Y …". NaN when 1D.</summary>
+        public double Value2 = double.NaN;
+        /// <summary>Property dimension count from lhd3[3] (1 = scalar).</summary>
+        public int DimCount = 1;
         public double InSlope;
         public double InInfluence;
         public double OutSlope;
@@ -120,6 +132,10 @@ namespace FfxTool.Core
         public string Group;
         /// <summary>Control kind from the parT pard descriptor (PresetParamKind).</summary>
         public int Kind = PresetParamKind.Unknown;
+        /// <summary>The pard's param-flags word (big-endian uint32 at +4).
+        /// Bits: the 0x200 hidden bit empirically marks rows AE never
+        /// renders — BCC "placeholder" rows and vendor arb blobs.</summary>
+        public uint ParamFlags;
         /// <summary>Popup menu labels, in order — the '|' split of the parT pdnm chunk.</summary>
         public string[] MenuItems;
         public bool IsAnimated;
@@ -180,12 +196,20 @@ namespace FfxTool.Core
 
         /// <summary>parT metadata of one parameter: control kind, the pard's
         /// embedded display name (AE's fallback when the tdbs carries no
-        /// tdsn), and the popup menu labels.</summary>
+        /// tdsn), the popup menu labels, and the pard's param-flags word —
+        /// whose empirically-proven hidden bit is 0x200: the fixture's BCC
+        /// "placeholder" rows carry 0x220 and Sapphire's opaque "mocha"
+        /// blob 0x208, while every visibly rendered parameter — across all
+        /// three vendors in the fixture — leaves bit 0x200 clear (visible
+        /// rows carry 0x8/0x20/0x2 freely, so ONLY 0x200 may hide a row).
+        /// BCC's own "Hidden" slider carries 0x8 like visible sliders,
+        /// so it is recognized by name instead (see IsHiddenParam).</summary>
         private class ParamMeta
         {
             public int Kind = PresetParamKind.Unknown;
             public string PardName;
             public string[] Menu;
+            public uint Flags;
         }
 
         public static List<PresetEffectDetails> Inspect(byte[] data) => Inspect(data, null);
@@ -300,6 +324,7 @@ namespace FfxTool.Core
                     {
                         var meta = new ParamMeta();
                         var p = child.Content;
+                        if (p.Length >= 8) meta.Flags = ReadBEUInt32(p, 4);
                         if (p.Length >= 16) meta.Kind = (int)ReadBEUInt32(p, 12);
                         // the pard's name field starts at byte 16, null-padded
                         int room = Math.Min(64, p.Length - 16);
@@ -381,10 +406,12 @@ namespace FfxTool.Core
                     // styles: the tdgp hoisted out of its group and its
                     // parameters filed under the wrong header — "sometimes
                     // parameters don't belong to their group".) The tdgp's
-                    // own tdsn names it; anonymous wrappers (no tdsn) keep
-                    // the parent path — they ARE the parent visually.
+                    // own tdsn names it (with the parT display name of its
+                    // match name as fallback); anonymous wrappers (no name
+                    // anywhere) keep the parent path — they ARE the parent
+                    // visually.
                     string baseWithDeclared = JoinPaths(groupPath, declared);
-                    string nested = ChildGroupPath(child, baseWithDeclared);
+                    string nested = ChildGroupPath(child, baseWithDeclared, meta);
                     if (nested != baseWithDeclared) nested = Disambiguate(nested, seen);
                     WalkGroup(child, into, nested, seen, meta);
                 }
@@ -415,6 +442,15 @@ namespace FfxTool.Core
                     // old parser surfaced them as match-name junk rows).
                     if (string.IsNullOrEmpty(p.Name)) continue;
                     if (SkipMatchNames.Contains(p.MatchName)) continue;
+                    // AE-hidden rows the plugin itself flags or names: the
+                    // pard's hidden bit 0x200 (BCC "placeholder" ×3,
+                    // Sapphire's mocha blob), ARB_DATA shapes AE renders no
+                    // UI for (Sapphire "mocha", BCC "Mocha Data0"), and
+                    // BCC's internal "placeholder"/"Hidden" padding rows —
+                    // "Hidden"'s own flag word (0x8) matches visible
+                    // sliders, so only the name identifies it.
+                    if (p.Kind == PresetParamKind.ArbitraryData) continue;
+                    if (IsHiddenParam(p)) continue;
 
                     p.Group = JoinPaths(groupPath, declared);
                     into.Parameters.Add(p);
@@ -448,11 +484,41 @@ namespace FfxTool.Core
             return path + "\u0002" + n.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
 
+        /// <summary>
+        /// True when the plugin itself marks this parameter invisible:
+        /// the pard's empirically-proven hidden bit (0x200 — BCC
+        /// "placeholder" ×3, Sapphire's mocha blob) or BCC's internal
+        /// padding names, which AE never draws ("Hidden"'s flag word
+        /// (0x8) matches visible sliders, so the name is the only
+        /// signal).
+        /// </summary>
+        static bool IsHiddenParam(PresetParameter p)
+        {
+            if ((p.ParamFlags & 0x200) != 0) return true;
+            return p.Name == "placeholder" || p.Name == "Hidden";
+        }
+
         /// <summary>Display-group path of a tdgp, appended to the parent path.</summary>
-        static string ChildGroupPath(RiffNode node, string parentPath)
+        static string ChildGroupPath(RiffNode node, string parentPath,
+                                     Dictionary<string, ParamMeta> meta)
         {
             var tdsn = node.Children.FirstOrDefault(c => !c.IsContainer && Same(c.Cid, TDSN));
             string name = tdsn != null ? DecodeString(tdsn.Content) : null;
+            if (string.IsNullOrEmpty(name))
+            {
+                // Some writers name a nested tdgp only through its match
+                // name — the tdmn inside the group resolving to the parT
+                // descriptor's display name. Fall back to that before
+                // giving up: an unnamed tdgp would silently hoist every
+                // parameter inside it one level up ("parameters don't
+                // belong to their group").
+                foreach (var tdmn in node.Children.Where(c => !c.IsContainer && Same(c.Cid, TDMN)))
+                {
+                    string mn = DecodeString(tdmn.Content);
+                    if (mn != null && meta != null && meta.TryGetValue(mn, out var m) &&
+                        !string.IsNullOrEmpty(m.PardName)) { name = m.PardName; break; }
+                }
+            }
             if (string.IsNullOrEmpty(name)) return parentPath; // anonymous wrapper: keep parent depth
             return parentPath == null ? name : parentPath + '\u0001' + name;
         }
@@ -465,6 +531,7 @@ namespace FfxTool.Core
             if (matchName != null && meta != null && meta.TryGetValue(matchName, out var m))
             {
                 p.Kind = m.Kind;
+                p.ParamFlags = m.Flags;
                 p.MenuItems = m.Menu;
                 if (!string.IsNullOrEmpty(m.PardName)) p.Name = m.PardName;
             }
@@ -515,12 +582,25 @@ namespace FfxTool.Core
             // Hard guards: anything outside the proven envelope (see class
             // comment) degrades to "no keyframes" instead of garbage rows.
             if (recSize < 48 || count < 1 || count > 100000) return;
-            if (ldat.Content.Length != count * recSize) return;
+
+            // Multidimensional properties (a POINT's X/Y, a COLOR's R/G/B)
+            // interleave one record PER DIMENSION per keyframe; lhd3[3]
+            // states the dimension count (0 on files/tests that predate the
+            // discovery — read as 1). The declaration must survive two
+            // arithmetic checks before it is trusted: the record count must
+            // tile the ldat exactly, and every dimension of one keyframe
+            // must share its time. Anything else falls back to the 1D read
+            // (and its exact-length guard) rather than guessing.
+            int dims = (int)ReadBEUInt32(lhd3.Content, 12);
+            if (dims < 1 || dims > 8) dims = 1;
+            if ((long)count * dims * recSize != ldat.Content.Length) dims = 1;
+            if (dims > 1) ValidateDimensionTimes(ldat.Content, count, dims, recSize, ref dims);
+            if (ldat.Content.Length != count * dims * recSize) return;
 
             var bytes = ldat.Content;
             for (int r = 0; r < count; r++)
             {
-                int o = r * recSize;
+                int o = r * dims * recSize;
                 // third-party streams can carry garbage doubles; one
                 // non-finite value must never poison the row text, the
                 // stream summary or the graph geometry — the record is
@@ -535,17 +615,27 @@ namespace FfxTool.Core
                     InterpOut = o + 5 < bytes.Length ? bytes[o + 5] : 0,
                     Value = value,
                 };
+                kf.DimCount = dims;
+                if (dims > 1 && recSize >= 16 && o + recSize + recSize <= bytes.Length)
+                {
+                    // second dimension's value (Y of a POINT) — its tangent
+                    // block is NOT decoded (only dim 0 drives the graph);
+                    // the row and the graph tooltip name the stream 2D so a
+                    // single-curve plot never pretends to be the whole truth
+                    double v2 = ReadBEDouble(bytes, o + recSize + 8);
+                    if (!double.IsNaN(v2) && !double.IsInfinity(v2)) kf.Value2 = v2;
+                }
                 if (recSize == 48 && o + 48 <= bytes.Length)
                 {
                     // tangent fields are PROVEN for the 48-byte one-value
                     // record only (the class comment); any other record
-                    // shape (padded or multidimensional layouts) must not
-                    // guess — offsets could land on a second value double
-                    // and bend every curve into an arc AE never drew. Such
-                    // streams parse time/interp/value and interpolate as
-                    // clean linear segments instead. Influences saturate
-                    // to AE's 0..100% right here, so every readout stays
-                    // honest even for wild third-party numbers.
+                    // shape (padded layouts) must not guess — offsets could
+                    // land on a second value double and bend every curve
+                    // into an arc AE never drew. Such streams parse
+                    // time/interp/value and interpolate as clean linear
+                    // segments instead. Influences saturate to AE's 0..100%
+                    // right here, so every readout stays honest even for
+                    // wild third-party numbers.
                     kf.InSlope = FiniteOrZero(ReadBEDouble(bytes, o + 16));
                     kf.InInfluence = Saturate(Influence(FiniteOrZero(ReadBEDouble(bytes, o + 24))));
                     kf.OutSlope = FiniteOrZero(ReadBEDouble(bytes, o + 32));
@@ -568,6 +658,27 @@ namespace FfxTool.Core
                     break;
                 }
             ClampTangents(into.Keyframes);
+        }
+
+        /// <summary>
+        /// Every dimension of one keyframe must carry the same time — the
+        /// one structural fingerprint that separates interleaved dimension
+        /// records from a genuine flat 1D run. On the first mismatch the
+        /// dims guess is revoked (the caller re-reads as 1D).
+        /// </summary>
+        static void ValidateDimensionTimes(byte[] bytes, int count, int dims, int recSize, ref int dimsInOut)
+        {
+            for (int r = 0; r < count; r++)
+            {
+                int baseOff = r * dims * recSize;
+                int t0 = (int)ReadBEUInt32(bytes, baseOff);
+                for (int d = 1; d < dims; d++)
+                    if ((int)ReadBEUInt32(bytes, baseOff + d * recSize) != t0)
+                    {
+                        dimsInOut = 1;
+                        return;
+                    }
+            }
         }
 
         /// <summary>Influence clamped to AE's 0..100% window.</summary>

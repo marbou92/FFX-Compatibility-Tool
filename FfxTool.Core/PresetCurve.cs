@@ -163,11 +163,15 @@ namespace FfxTool.Core
         }
 
         /// <summary>
-        /// Analytic speed |dv/dt| of the stream at time t (seconds) — the
-        /// derivative of the same cubic the value graph draws. Linear
-        /// segments carry a constant slope, Hold segments 0, Bezier
-        /// segments the exact tangent magnitude; outside the stream the
-        /// value is held, so the speed is 0.
+        /// SIGNED speed dv/dt of the stream at time t (seconds) — the
+        /// derivative of the same cubic the value graph draws, sign
+        /// included, exactly what AE's Graph Editor speed readout and
+        /// speed graph show: an increasing value plots ABOVE zero, a
+        /// decreasing one BELOW it (the user's AE screenshot pairs the
+        /// descending value ease with a speed dip under the -500 line).
+        /// Linear segments carry their constant slope, Hold segments 0,
+        /// Bezier segments the exact tangent magnitude; outside the
+        /// stream the value is held, so the speed is 0.
         /// </summary>
         public static double SpeedAt(List<Segment> segs, double t)
         {
@@ -181,13 +185,13 @@ namespace FfxTool.Core
                 if (t > s.T1) continue; // first segment whose span reaches t
                 if (s.Mode == InterpHold) return 0;
                 if (s.Mode == InterpLinear)
-                    return Math.Abs((s.V1 - s.V0) / Math.Max(s.T1 - s.T0, 1e-9));
+                    return (s.V1 - s.V0) / Math.Max(s.T1 - s.T0, 1e-9);
                 double u = SolveBezierT(s, Math.Min(Math.Max(t, s.T0), s.T1));
                 double m = 1 - u;
                 // dP/du of the cubic at u, for value and time separately
                 double dv = 3 * m * m * (s.C1V - s.V0) + 6 * m * u * (s.C2V - s.C1V) + 3 * u * u * (s.V1 - s.C2V);
                 double dt = 3 * m * m * (s.C1T - s.T0) + 6 * m * u * (s.C2T - s.C1T) + 3 * u * u * (s.T1 - s.C2T);
-                return Math.Abs(dt) < 1e-12 ? 0 : Math.Abs(dv / dt);
+                return Math.Abs(dt) < 1e-12 ? 0 : dv / dt;
             }
             return 0;
         }
