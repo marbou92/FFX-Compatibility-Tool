@@ -40,6 +40,16 @@
                         <TextBlock Text="Appearance" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
                 </ListBoxItem>
+                <!-- Storage sits directly below Appearance: the two
+                     machine-local pages first (theme, then disk), the
+                     catalog/about pages after. -->
+                <ListBoxItem x:Name="NavStorage" Padding="12,10" Margin="0,0,0,4">
+                    <StackPanel Orientation="Horizontal">
+                        <controls:IconGlyph IconName="Storage" Width="19" Height="19"
+                                            VerticalAlignment="Center"/>
+                        <TextBlock Text="Storage" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </ListBoxItem>
                 <ListBoxItem x:Name="NavProfile" Padding="12,10" Margin="0,0,0,4">
                     <StackPanel Orientation="Horizontal">
                         <controls:IconGlyph IconName="Plugin" Width="19" Height="19"
@@ -97,6 +107,83 @@
 
                                 <TextBlock x:Name="RestoreLink" Text="Restore Defaults" Style="{StaticResource M3Link}"
                                            Margin="0,22,0,0" MouseLeftButtonUp="Restore_Click"/>
+                            </StackPanel>
+                        </Border>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- ===== Storage ===== -->
+                <Grid x:Name="StorageView" Visibility="Collapsed">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <Border Style="{StaticResource Card}" MaxWidth="760" VerticalAlignment="Top">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                                    <Border Width="40" Height="40" CornerRadius="12" Background="{DynamicResource B.SCHigh}"
+                                            VerticalAlignment="Center">
+                                        <controls:IconGlyph IconName="Storage" Width="22" Height="22"
+                                                            Foreground="{DynamicResource B.Primary}"/>
+                                    </Border>
+                                    <TextBlock Text="Storage" Style="{StaticResource SectionTitle}" FontSize="17"
+                                               Margin="14,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+
+                                <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,0,0,16"
+                                           Text="Everything this tool keeps between sessions lives in %APPDATA%\FFXCompatibilityTool. Both of these are safe to delete — the scan catalog rebuilds on the next plugin scan and the history fills up again as presets are analyzed."/>
+
+                                <!-- cache row -->
+                                <Border Background="{DynamicResource B.SC}" CornerRadius="14" Padding="18,12" Margin="0,0,0,12">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Cache" Style="{StaticResource Body}" FontWeight="Medium"/>
+                                            <TextBlock Text="Plugin scan catalog — rebuilt by the next system scan"
+                                                       Style="{StaticResource Caption}" Margin="0,2,0,0"/>
+                                            <TextBlock x:Name="CacheInfo" Style="{StaticResource Caption}"
+                                                       Foreground="{DynamicResource B.OnSurfaceVariant}"
+                                                       Opacity="0.85" Margin="0,2,0,0" Text="Plugin scan catalog"/>
+                                        </StackPanel>
+                                        <Button x:Name="ClearCacheButton" Grid.Column="1" Content="Delete"
+                                                Style="{StaticResource OutlinedButton}" MinWidth="96"
+                                                Margin="12,0,0,0" VerticalAlignment="Center"
+                                                Click="ClearCache_Click"
+                                                ToolTip="Deletes plugin_catalog.txt — recognition falls back to the reference tables until the next scan"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- history row -->
+                                <Border Background="{DynamicResource B.SC}" CornerRadius="14" Padding="18,12" Margin="0,0,0,12">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="History" Style="{StaticResource Body}" FontWeight="Medium"/>
+                                            <TextBlock Text="Recently opened presets — the last 5 analyzed .ffx files"
+                                                       Style="{StaticResource Caption}" Margin="0,2,0,0"/>
+                                            <TextBlock x:Name="HistoryInfo" Style="{StaticResource Caption}"
+                                                       Foreground="{DynamicResource B.OnSurfaceVariant}"
+                                                       Opacity="0.85" Margin="0,2,0,0" Text="Recently opened presets"/>
+                                        </StackPanel>
+                                        <Button x:Name="ClearHistoryButton" Grid.Column="1" Content="Delete"
+                                                Style="{StaticResource OutlinedButton}" MinWidth="96"
+                                                Margin="12,0,0,0" VerticalAlignment="Center"
+                                                Click="ClearHistory_Click"
+                                                ToolTip="Deletes recent_files.json — the recent list empties and refills as presets are analyzed"/>
+                                    </Grid>
+                                </Border>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <TextBlock Text="Open Storage Folder" Style="{StaticResource M3Link}" Cursor="Hand"
+                                               MouseLeftButtonUp="OpenFolder_Click"
+                                               ToolTip="Opens %APPDATA%\FFXCompatibilityTool in Explorer — console logs live here too"/>
+                                </StackPanel>
+
+                                <TextBlock Text="Appearance and plugin-profile preferences are kept."
+                                           Style="{StaticResource Caption}" Margin="0,10,0,0" Opacity="0.85"/>
                             </StackPanel>
                         </Border>
                     </ScrollViewer>

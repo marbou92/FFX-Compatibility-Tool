@@ -34,13 +34,40 @@ namespace FfxTool.Gui
             [DataMember(Name = "effectCount")] public int EffectCount;
         }
 
-        private static string StorePath()
+        /// <summary>Where the history file lives — a pure path with no side
+        /// effects, so the Storage page can probe its size before anything
+        /// has ever been written.</summary>
+        public static string StorePath
         {
-            string dir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "FFXCompatibilityTool");
-            Directory.CreateDirectory(dir);
-            return Path.Combine(dir, "recent_files.json");
+            get
+            {
+                return Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "FFXCompatibilityTool", "recent_files.json");
+            }
+        }
+
+        /// <summary>The history file, with its directory guaranteed to exist.</summary>
+        private static string FilePath()
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(StorePath));
+            return StorePath;
+        }
+
+        /// <summary>
+        /// Deletes the history file entirely (the Storage settings' "Delete
+        /// History"). The next Load reads an empty list and the next Push
+        /// starts a fresh one. True when a stored file was actually removed.
+        /// </summary>
+        public static bool Clear()
+        {
+            try
+            {
+                if (!File.Exists(StorePath)) return false;
+                File.Delete(StorePath);
+                return true;
+            }
+            catch { return false; } /* a locked file must not take Settings down */
         }
 
         private static readonly DataContractJsonSerializer Serializer =
@@ -50,7 +77,7 @@ namespace FfxTool.Gui
         {
             try
             {
-                string p = StorePath();
+                string p = FilePath();
                 if (!File.Exists(p)) return new List<RecentFileEntry>();
                 List<StoredEntry> raw;
                 using (var fs = File.OpenRead(p))
@@ -102,7 +129,7 @@ namespace FfxTool.Gui
                         EffectCount = e.EffectCount
                     });
 
-                using (var fs = File.Create(StorePath()))
+                using (var fs = File.Create(FilePath()))
                     Serializer.WriteObject(fs, raw);
             }
             catch { /* best-effort */ }

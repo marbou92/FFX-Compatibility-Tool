@@ -7,10 +7,11 @@ using System.Windows.Media;
 namespace FfxTool.Gui
 {
     /// <summary>
-    /// Settings hub with sub-settings: Appearance, Plugin Profiles (the
-    /// existing ProfilePage embedded verbatim — its logic is untouched) and
-    /// About (with real project links). Theme changes apply instantly via
-    /// ThemeService.
+    /// Settings hub with sub-settings: Appearance, Storage (delete the
+    /// plugin-scan cache and the recent-files history), Plugin Profiles
+    /// (the existing ProfilePage embedded verbatim — its logic is
+    /// untouched) and About (with real project links). Theme changes apply
+    /// instantly via ThemeService.
     /// </summary>
     public partial class SettingsPage : UserControl
     {
@@ -48,8 +49,100 @@ namespace FfxTool.Gui
         {
             if (AppearanceView == null) return; // XAML not loaded yet
             AppearanceView.Visibility = SubNav.SelectedIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
-            ProfileHost.Visibility = SubNav.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
-            AboutView.Visibility = SubNav.SelectedIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
+            StorageView.Visibility = SubNav.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
+            ProfileHost.Visibility = SubNav.SelectedIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
+            AboutView.Visibility = SubNav.SelectedIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
+            if (SubNav.SelectedIndex == 1) RefreshStorageInfo();
+        }
+
+        // ---------- storage ----------
+
+        /// <summary>Human size for the storage readouts.</summary>
+        private static string FmtBytes(long bytes)
+        {
+            if (bytes >= 1024 * 1024) return ((double)bytes / (1024 * 1024)).ToString("0.#") + " MB";
+            if (bytes >= 1024) return ((double)bytes / 1024).ToString("0.#") + " KB";
+            return bytes + " B";
+        }
+
+        /// <summary>Live readouts for the two delete rows: the plugin scan
+        /// catalog's size on disk (or "not built yet") and the history's
+        /// entry count. Runs when the Storage tab opens and after each
+        /// delete, so the numbers can never lie about what's on disk.</summary>
+        private void RefreshStorageInfo()
+        {
+            long cacheBytes = 0;
+            bool cacheExists = false;
+            try
+            {
+                var cat = new System.IO.FileInfo(PluginCatalog.CatalogPath);
+                cacheExists = cat.Exists;
+                if (cat.Exists) cacheBytes = cat.Length;
+            }
+            catch { /* unreadable profile folder — fall through to the not-built wording */ }
+            CacheInfo.Text = cacheExists
+                ? "plugin_catalog.txt · " + FmtBytes(cacheBytes)
+                : "plugin_catalog.txt · not built yet";
+
+            long historyBytes = 0;
+            try
+            {
+                var f = new System.IO.FileInfo(HistoryStore.StorePath);
+                if (f.Exists) historyBytes = f.Length;
+            }
+            catch { /* same probe failure — the entry count still shows */ }
+            int entries = HistoryStore.Load().Count;
+            HistoryInfo.Text = entries > 0
+                ? "recent_files.json · " + entries + " of 5 · " + FmtBytes(historyBytes)
+                : "recent_files.json · empty";
+        }
+
+        private void ClearCache_Click(object sender, RoutedEventArgs e)
+        {
+            var choice = MessageBox.Show(
+                "Delete the plugin scan catalog?\n\nPlugin recognition falls back to the built-in reference tables until the next system scan rebuilds it.",
+                "Delete Cache", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (choice != MessageBoxResult.Yes) return;
+            bool deleted = false;
+            try
+            {
+                if (System.IO.File.Exists(PluginCatalog.CatalogPath))
+                {
+                    System.IO.File.Delete(PluginCatalog.CatalogPath);
+                    deleted = true;
+                }
+            }
+            catch { /* a locked file must not take Settings down */ }
+            // drop the in-memory copy too, so the next lookup re-reads
+            // the (now absent) file instead of trusting the old scan
+            PluginRecognition.ResetCatalog();
+            LogService.Append("storage: plugin scan catalog " +
+                              (deleted ? "deleted" : "already absent"));
+            RefreshStorageInfo();
+        }
+
+        private void ClearHistory_Click(object sender, RoutedEventArgs e)
+        {
+            var choice = MessageBox.Show(
+                "Delete the recently-opened history?\n\nThe list of analyzed presets empties; it fills up again as new presets are analyzed.",
+                "Delete History", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (choice != MessageBoxResult.Yes) return;
+            bool deleted = HistoryStore.Clear();
+            LogService.Append("storage: recent-files history " +
+                              (deleted ? "deleted" : "already empty"));
+            RefreshStorageInfo();
+        }
+
+        private void OpenFolder_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            try
+            {
+                // CatalogPath's getter creates the folder if it never
+                // existed, so Explorer always has something to open
+                System.IO.Process.Start("explorer.exe",
+                    "\"" + System.IO.Path.GetDirectoryName(PluginCatalog.CatalogPath) + "\"");
+            }
+            catch { /* Explorer refused — nothing sensible to do */ }
         }
 
         // ---------- project links ----------
