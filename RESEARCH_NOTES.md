@@ -185,6 +185,18 @@ especially) was the keyframe reader treating a 2D stream as 1D:
   "X of 2D (Y = ...)"); round 25 decodes dimension 1's value AND its
   own tangent block, so the value graph draws AE's X+Y curve pair and
   the speed graph draws the combined magnitude (round-25 section below).
+- **Padded records carry the tangents too (round 26).** Every tangent
+  offset lives in the record's FIRST 48 bytes; a writer that pads the
+  record beyond byte 48 keeps the proven layout intact, and the padding
+  proves it: when every byte past byte 48 is zero, the tangent block
+  decodes with the same confidence as a 48-byte record. Round 25 and
+  earlier decoded tangents ONLY at recSize == 48, so a padded stream
+  silently drew clean straight lines where AE shows eased curves — the
+  "the curve math doesn't look like AE" report that no presentation fix
+  could reach. A record whose tail is NOT zero (an unknown layout whose
+  +16 could be a second value double) still takes the honest linear
+  read; the fixture's 48-byte streams are untouched (byte-identical
+  decode, proven old-vs-new).
 
 ## The pard param-flags word (+4) and AE-hidden rows — round-23 panel fix
 
@@ -206,13 +218,30 @@ its low byte at +15):
   (3x placeholder, "Hidden", "Mocha Data0") and Sapphire's mocha blob row,
   matching what AE's own panel shows.
 
-## Nested tdgp groups may be named only via parT
+## Nested tdgp groups: the naming order, and the tdmn BEFORE the group (round 26)
 
 A nested `LIST tdgp` usually carries its display name in a `tdsn` leaf.
-Writers that skip the `tdsn` may still name the group through a `tdmn`
-inside the group resolving to the parT descriptor's embedded display
-name — used as a fallback before treating the group as anonymous
-(anonymous wrappers keep the parent path, they ARE the parent visually).
+Round 26 established the FULL naming order AE's own writer uses:
+
+1. the `tdsn` inside the group;
+2. **the `tdmn` directly BEFORE the group** — the group's match name.
+   The fixture pairs `'ADBE Effect Built In Params'` with the
+   "Compositing Options" tdgp and `'ADBE Effect Mask Parade'` with its
+   internal wrapper six times, always as the immediately preceding
+   sibling. That tdmn belongs to the GROUP, not to the next parameter:
+   leaving it pending mis-paired the next `tdbs` that carried no tdmn of
+   its own (its parT kind/flags/menu then came from the group's
+   descriptor — a visible row could inherit the group's 0x200 hidden bit
+   and vanish, or a GROUP marker misfire), and an unnamed group hoisted
+   every parameter inside it one level up. The walker now consumes the
+   tdmn at the tdgp, uses it as a name candidate, and clears it.
+3. a `tdmn` INSIDE the group resolving to the parT descriptor's display
+   name (round 23's fallback — and the last resort: on a tdsn-less group
+   it used to name the GROUP after its first inner PARAMETER, a header
+   AE never shows).
+
+Anonymous wrappers (no name anywhere) keep the parent path — they ARE
+the parent visually.
 
 ## Graph Editor rendering references (round-23; corrected rounds 24/25)
 

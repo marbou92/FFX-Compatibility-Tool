@@ -419,6 +419,22 @@ namespace FfxTool.Core
                 }
                 else if (child.IsContainer && Same(child.Form, RiffFile.Cid("tdgp")))
                 {
+                    // A tdmn directly BEFORE the tdgp names the GROUP — AE's
+                    // own writer marks "Compositing Options" exactly that way
+                    // (the fixture pairs 'ADBE Effect Built In Params' with
+                    // the group six times). Consume it HERE: it becomes the
+                    // group's name candidate and is cleared, so it can never
+                    // pair with a later tdbs. The leaked match name used to
+                    // mis-source the next parameter's parT kind/flags/menu
+                    // whenever a writer followed the group with a parameter
+                    // that carried no tdmn of its own — a visible row could
+                    // inherit the group's 0x200 hidden bit and vanish, a
+                    // GROUP marker misfire, a popup lose its menu — and an
+                    // unnamed group hoisted every parameter inside it one
+                    // level up, which reads as "sometimes the grouping just
+                    // isn't recognized".
+                    string groupMatch = pendingMatch;
+                    pendingMatch = null;
                     // A nested tdgp sits INSIDE whatever is open right now —
                     // the declared GROUP_START stack is part of its base path
                     // exactly as it is for plain parameters. (The old code
@@ -427,12 +443,12 @@ namespace FfxTool.Core
                     // styles: the tdgp hoisted out of its group and its
                     // parameters filed under the wrong header — "sometimes
                     // parameters don't belong to their group".) The tdgp's
-                    // own tdsn names it (with the parT display name of its
-                    // match name as fallback); anonymous wrappers (no name
-                    // anywhere) keep the parent path — they ARE the parent
-                    // visually.
+                    // own tdsn names it (with the group's tdmn and the parT
+                    // display names as fallbacks); anonymous wrappers (no
+                    // name anywhere) keep the parent path — they ARE the
+                    // parent visually.
                     string baseWithDeclared = JoinPaths(groupPath, declared);
-                    string nested = ChildGroupPath(child, baseWithDeclared, meta);
+                    string nested = ChildGroupPath(child, baseWithDeclared, meta, groupMatch);
                     if (nested != baseWithDeclared) nested = Disambiguate(nested, seen);
                     WalkGroup(child, into, nested, seen, meta);
                 }
@@ -519,29 +535,53 @@ namespace FfxTool.Core
             return p.Name == "placeholder" || p.Name == "Hidden";
         }
 
-        /// <summary>Display-group path of a tdgp, appended to the parent path.</summary>
+        /// <summary>
+        /// Display-group path of a tdgp, appended to the parent path. The
+        /// name resolves in AE's own order: the tdsn inside the group,
+        /// then the tdmn AE writes directly BEFORE it (the group's match
+        /// name — how "Compositing Options" is named), then a tdmn inside
+        /// the group through its parT descriptor (round 23's fallback).
+        /// </summary>
         static string ChildGroupPath(RiffNode node, string parentPath,
-                                     Dictionary<string, ParamMeta> meta)
+                                     Dictionary<string, ParamMeta> meta,
+                                     string outerMatch = null)
         {
             var tdsn = node.Children.FirstOrDefault(c => !c.IsContainer && Same(c.Cid, TDSN));
             string name = tdsn != null ? DecodeString(tdsn.Content) : null;
             if (string.IsNullOrEmpty(name))
             {
+                // the group's own match name, declared in the tdmn right
+                // before the tdgp (consumed by the caller) — without it an
+                // unnamed tdgp would silently hoist every parameter inside
+                // it one level up ("sometimes the grouping just isn't
+                // recognized")
+                name = PardNameOf(outerMatch, meta);
+            }
+            if (string.IsNullOrEmpty(name))
+            {
                 // Some writers name a nested tdgp only through its match
                 // name — the tdmn inside the group resolving to the parT
                 // descriptor's display name. Fall back to that before
-                // giving up: an unnamed tdgp would silently hoist every
-                // parameter inside it one level up ("parameters don't
-                // belong to their group").
+                // giving up.
                 foreach (var tdmn in node.Children.Where(c => !c.IsContainer && Same(c.Cid, TDMN)))
                 {
                     string mn = DecodeString(tdmn.Content);
-                    if (mn != null && meta != null && meta.TryGetValue(mn, out var m) &&
-                        !string.IsNullOrEmpty(m.PardName)) { name = m.PardName; break; }
+                    string viaMeta = PardNameOf(mn, meta);
+                    if (viaMeta != null) { name = viaMeta; break; }
                 }
             }
             if (string.IsNullOrEmpty(name)) return parentPath; // anonymous wrapper: keep parent depth
             return parentPath == null ? name : parentPath + '\u0001' + name;
+        }
+
+        /// <summary>The parT display name of a match name, or null when the
+        /// descriptor is missing or nameless — the group-naming fuel.</summary>
+        static string PardNameOf(string matchName, Dictionary<string, ParamMeta> meta)
+        {
+            if (string.IsNullOrEmpty(matchName) || meta == null) return null;
+            return meta.TryGetValue(matchName, out var m) && !string.IsNullOrEmpty(m.PardName)
+                ? m.PardName
+                : null;
         }
 
         static PresetParameter ParseParameter(RiffNode tdbs, string matchName,
@@ -650,7 +690,7 @@ namespace FfxTool.Core
                     int o2 = o + recSize;
                     double v2 = ReadBEDouble(bytes, o2 + 8);
                     if (!double.IsNaN(v2) && !double.IsInfinity(v2)) kf.Value2 = v2;
-                    if (recSize == 48 && o2 + 48 <= bytes.Length)
+                    if (HasProvenTangentBlock(bytes, o2, recSize))
                     {
                         kf.InSlope2 = FiniteOrZero(ReadBEDouble(bytes, o2 + 16));
                         kf.InInfluence2 = Saturate(Influence(FiniteOrZero(ReadBEDouble(bytes, o2 + 24))));
@@ -660,17 +700,21 @@ namespace FfxTool.Core
                         kf.InterpOut2 = bytes[o2 + 5];
                     }
                 }
-                if (recSize == 48 && o + 48 <= bytes.Length)
+                if (HasProvenTangentBlock(bytes, o, recSize))
                 {
-                    // tangent fields are PROVEN for the 48-byte one-value
-                    // record only (the class comment); any other record
-                    // shape (padded layouts) must not guess — offsets could
-                    // land on a second value double and bend every curve
-                    // into an arc AE never drew. Such streams parse
-                    // time/interp/value and interpolate as clean linear
-                    // segments instead. Influences saturate to AE's 0..100%
-                    // right here, so every readout stays honest even for
-                    // wild third-party numbers.
+                    // tangent fields ride the proven 48-byte layout at the
+                    // record's START (time, interp, value, in/out slope and
+                    // influence). Padded records join them now — a writer
+                    // that appends zero padding after byte 48 keeps every
+                    // proven offset, and the all-zero tail PROVES the layout
+                    // instead of guessing it. Before round 26 any non-48
+                    // record silently drew clean straight lines where AE
+                    // shows eased curves — the curve-math shapes that never
+                    // matched. A record whose tail is NOT zero (an unknown
+                    // layout whose +16 could be a second value double) still
+                    // takes the honest linear read. Influences saturate to
+                    // AE's 0..100% right here, so every readout stays honest
+                    // even for wild third-party numbers.
                     kf.InSlope = FiniteOrZero(ReadBEDouble(bytes, o + 16));
                     kf.InInfluence = Saturate(Influence(FiniteOrZero(ReadBEDouble(bytes, o + 24))));
                     kf.OutSlope = FiniteOrZero(ReadBEDouble(bytes, o + 32));
@@ -842,6 +886,21 @@ namespace FfxTool.Core
         /// they must never reach the curve math as NaN.</summary>
         static double FiniteOrZero(double v) =>
             double.IsNaN(v) || double.IsInfinity(v) ? 0 : v;
+
+        /// <summary>
+        /// True when the record at <paramref name="o"/> provably carries the
+        /// proven 48-byte tangent layout: the record is at least 48 bytes
+        /// and every byte beyond them is zero padding. A non-zero tail means
+        /// an unknown layout whose +16/+24/+32/+40 offsets could be a second
+        /// value double — such records keep the honest linear read.
+        /// </summary>
+        static bool HasProvenTangentBlock(byte[] bytes, int o, int recSize)
+        {
+            if (recSize < 48 || o + 48 > bytes.Length) return false;
+            for (int i = o + 48; i < o + recSize; i++)
+                if (bytes[i] != 0) return false;
+            return true;
+        }
 
         /// <summary>
         /// Influence unit normalization, applied once at decode: AE stores
