@@ -213,22 +213,31 @@ inside the group resolving to the parT descriptor's embedded display
 name — used as a fallback before treating the group as anonymous
 (anonymous wrappers keep the parent path, they ARE the parent visually).
 
-## Graph Editor rendering references (round-23)
+## Graph Editor rendering references (round-23; CORRECTED round-24)
 
-Colors sampled from the user's own AE screenshots (value graph, light
-appearance; speed graph, dark appearance):
+The round-23 reading of a "light editor" with unselected direction
+lines and a faint speed fill was wrong - the round-24 screenshot pair
+(value graph, speed graph) proves AE has ONE dark Graph Editor skin,
+and the tool now always uses it:
 
-- dark editor: field #656565, grid #595959, zero line brighter, curve
-  #CBCBCB, picked key #FFEE00, current-time line #FC0000, ruler labels
-  light gray with "/sec" on speed.
-- light editor: field #FFFFFF, grid #BDC9C3, curve #006B5F with a soft
-  glow, filled square keys, thin unselected direction lines on every
-  bezier keyframe (horizontal at zero speed), muted red current-time
-  line.
-- the speed graph plots the SIGNED derivative: a shrinking value dips
-  below the zero line (the reference screenshot dips under its -500
-  ruler label), and the speed area gets only a faint fill between curve
-  and zero.
+- dark editor (BOTH modes): field #656565, grid #595959, zero line
+  brighter, curve #CBCBCB, picked key #FFEE00, current-time line
+  #FC0000, ruler labels bare numbers - the readout above the plot
+  carries the unit ("N units" / "N units/sec", AE's own grammar).
+- value graph: direction lines exist ONLY on the picked key
+  (unselected keys show none; round-23 drew every bezier key's lines -
+  disproven by the round-24 screenshot). The value carry beyond the
+  keyed span is DASHED (AE's dashed stub after the last key). No glow,
+  no fill: a plain 2px line.
+- speed graph: SIGNED derivative with NO area fill (the round-23 faint
+  fill was wrong - AE's field stays uniformly dark under the curve).
+  Each segment renders as ONE analytic arc (dv/dt evaluated straight
+  from the segment's control points); keyframe speed discontinuities
+  get TRUE VERTICAL jump lines at the key's time (the reference's
+  vertical plunge at the left edge and rise at the right edge are the
+  carry-to-segment and segment-to-carry jumps); zero carries fill the
+  window outside the keyed span. Ruler: ~6 lines, bare numbers.
 - speed-editor key icons are shaped by interpolation (circle = bezier /
   easy ease, hollow square = linear, half square = hold); the value
-  editor draws squares regardless.
+  editor draws squares regardless. The PICKED key's icon is painted
+  editor yellow; AE draws no selection ring around it.

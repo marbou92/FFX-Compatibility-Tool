@@ -1680,7 +1680,7 @@ namespace FfxTool.Gui
             GraphSpeedBtn.IsChecked = _graphMode == 1;
             GraphLegend.Text = _graphMode == 0
                 ? "value over time · left ruler = value"
-                : "signed speed Δvalue/Δt · left ruler = speed/sec";
+                : "signed speed Δvalue/Δt · left ruler = units/sec";
             DrawGraph();
         }
 
@@ -1806,7 +1806,7 @@ namespace FfxTool.Gui
         /// </summary>
         private sealed class GraphSkin
         {
-            public Brush Bg, Grid, Zero, Curve, Glow, Label, Key, KeyStroke, KeySel, Handle, Cti, Fill;
+            public Brush Bg, Grid, Zero, Curve, Label, Key, KeyStroke, KeySel, Cti;
             public double BgRadius;
         }
 
@@ -1818,29 +1818,7 @@ namespace FfxTool.Gui
             return brush;
         }
 
-        private GraphSkin _skinLight, _skinDark, _curSkin;
-
-        private GraphSkin LightSkin()
-        {
-            if (_skinLight != null) return _skinLight;
-            _skinLight = new GraphSkin
-            {
-                Bg = HexBrush("#FFFFFF"),
-                Grid = HexBrush("#BDC9C3"),
-                Zero = HexBrush("#9FB0A9"),
-                Curve = HexBrush("#006B5F"),
-                Glow = HexBrush("#006B5F", 0.14),
-                Label = HexBrush("#6E7975"),
-                Key = HexBrush("#006B5F"),
-                KeyStroke = HexBrush("#F5FAF7"),
-                KeySel = HexBrush("#006B5F"),
-                Handle = HexBrush("#8FA39C"),
-                Cti = HexBrush("#E03E3E"),
-                Fill = null, // the value curve is a line only - AE never fills it
-                BgRadius = 10
-            };
-            return _skinLight;
-        }
+        private GraphSkin _skinDark, _curSkin;
 
         private GraphSkin DarkSkin()
         {
@@ -1851,28 +1829,22 @@ namespace FfxTool.Gui
                 Grid = HexBrush("#595959"),
                 Zero = HexBrush("#7D7D7D"),
                 Curve = HexBrush("#CBCBCB"),
-                Glow = null, // AE's dark editor: a clean thin line, no halo
                 Label = HexBrush("#9E9E9E"),
                 Key = HexBrush("#E6E6E6"),
                 KeyStroke = HexBrush("#4A4A4A"),
                 KeySel = HexBrush("#FFEE00"),
-                Handle = HexBrush("#B9B9B9"),
                 Cti = HexBrush("#FC0000"),
-                Fill = HexBrush("#FFFFFF", 0.10), // speed area: curve to zero
                 BgRadius = 4
             };
             return _skinDark;
         }
 
-        /// <summary>The speed graph is always AE's dark editor; the value
-        /// graph follows the app theme's surface luminance.</summary>
+        /// <summary>Both graph modes render on AE's dark Graph Editor pane.
+        /// AE has exactly one editor skin — the value curve does not turn
+        /// light when the app does (the round-24 light-mode report).</summary>
         private GraphSkin SkinNow()
         {
-            if (_graphMode == 1) return DarkSkin();
-            bool dark = false;
-            if (FindResource("B.Surface") is SolidColorBrush s)
-                dark = (0.299 * s.Color.R + 0.587 * s.Color.G + 0.114 * s.Color.B) < 128;
-            return dark ? DarkSkin() : LightSkin();
+            return DarkSkin();
         }
 
         /// <summary>Timeline-strip markers stay themed chrome - accent on
@@ -1903,17 +1875,18 @@ namespace FfxTool.Gui
 
         /// <summary>
         /// AE's Graph Editor, redrawn to the user's reference screenshots.
-        /// Value mode: the curve on AE's light field (teal line with a soft
-        /// glow, filled square keys, EVERY bezier key's direction lines,
-        /// left value ruler, red current-time line, readout above the
-        /// plot). Speed mode: AE's dark editor - signed dv/dt on the
-        /// #656565 field, thin light curve, soft fill to the zero line,
-        /// interpolation-shaped key icons (circle = bezier, square =
-        /// linear, half = hold), the picked key in editor yellow with its
-        /// horizontal influence handles. Pure WPF shapes - Win7-safe, no
-        /// bitmap effects. Curve geometry is deliberately NOT pixel-
-        /// snapped: rounding every coordinate quantized the beziers into
-        /// visible kinks.
+        /// ONE dark editor for both modes: value mode draws the thin
+        /// #CBCBCB curve on the #656565 field with square keys, the picked
+        /// key painted editor yellow with its direction handles, DASHED
+        /// value carries beyond the keyed span and the readout above the
+        /// plot. Speed mode plots signed dv/dt exactly as AE does: one
+        /// analytic arc per segment with TRUE VERTICAL jump lines where
+        /// the speed is discontinuous, zero carries outside the keyed
+        /// span, interpolation-shaped key icons (circle = bezier, square
+        /// = linear, half = hold), no area fill. Pure WPF shapes - Win7-
+        /// safe, no bitmap effects. Curve geometry is deliberately NOT
+        /// pixel-snapped: rounding every coordinate quantized the
+        /// beziers into visible kinks.
         /// </summary>
         private void DrawGraph()
         {
@@ -2009,13 +1982,13 @@ namespace FfxTool.Gui
                 double vAt = PresetCurve.ValueAt(segs, ctiT);
                 if (double.IsNaN(vAt))
                     vAt = p.Keyframes[_selKf >= 0 && _selKf < p.Keyframes.Count ? _selKf : 0].Value;
-                readout = "value " + vAt.ToString("0.###");
+                readout = vAt.ToString("0.###") + " units";
             }
             else
             {
                 double sAt = PresetCurve.SpeedAt(segs, ctiT);
                 if (double.IsNaN(sAt)) sAt = 0;
-                readout = "speed " + sAt.ToString("0.###") + "/sec";
+                readout = sAt.ToString("0.###") + " units/sec";
             }
             var readoutLbl = new TextBlock { Text = readout, FontSize = 10, Foreground = skin.Label };
             Canvas.SetLeft(readoutLbl, L);
@@ -2237,21 +2210,11 @@ namespace FfxTool.Gui
         {
             var segs = plot.Segs;
 
-            // AE draws EVERY bezier keyframe's direction lines - the short
-            // strokes through the keys in the reference screenshot appear
-            // with no selection at all, horizontal whenever the key's
-            // speed is zero (Easy Ease). Bare lines: AE reserves the
-            // hollow dots for the picked key's handles.
-            for (int i = 0; i < stream.Keyframes.Count; i++)
-            {
-                var k = stream.Keyframes[i];
-                double kx = XOf(plot, PresetCurve.Seconds(k.Time));
-                double ky = yOf(k.Value);
-                if (i < segs.Count && segs[i].Mode == PresetCurve.InterpBezier)
-                    AddHandleLine(kx, ky, XOf(plot, segs[i].C1T), yOf(segs[i].C1V), skin.Handle);
-                if (i > 0 && segs[i - 1].Mode == PresetCurve.InterpBezier)
-                    AddHandleLine(kx, ky, XOf(plot, segs[i - 1].C2T), yOf(segs[i - 1].C2V), skin.Handle);
-            }
+            // Direction lines belong to the PICKED key only - the AE
+            // reference screenshot's unselected keys carry none
+            // (round-23 drew every bezier key's lines; disproven by the
+            // round-24 screenshots). DrawSelection owns them, so this
+            // pass draws curve + keys, nothing else.
 
             // the curve itself - smooth coordinates, no pixel snapping
             var geo = new StreamGeometry();
@@ -2279,32 +2242,22 @@ namespace FfxTool.Gui
                 }
             }
             geo.Freeze();
-            // soft glow: the same geometry, wide and faint - AE's light
-            // editor gives the teal curve a quiet halo (the reference
-            // screenshot's #DBEAE8 fringe); the dark editor draws none
-            if (skin.Glow != null)
-                GraphCanvas.Children.Add(new Path
-                {
-                    Data = geo,
-                    Stroke = skin.Glow,
-                    StrokeThickness = 6,
-                    StrokeLineJoin = PenLineJoin.Round,
-                    StrokeStartLineCap = PenLineCap.Round,
-                    StrokeEndLineCap = PenLineCap.Round
-                });
+            // AE's editor draws a plain thin light line - no halo in
+            // either mode (the round-24 screenshots have no fringe)
             GraphCanvas.Children.Add(new Path
             {
                 Data = geo,
                 Stroke = skin.Curve,
-                StrokeThickness = 2.2,
+                StrokeThickness = 2,
                 StrokeLineJoin = PenLineJoin.Round,
                 StrokeStartLineCap = PenLineCap.Round,
                 StrokeEndLineCap = PenLineCap.Round
             });
 
             // the holds outside the keyframed span - AE's value carries
-            // before the first and after the last key; drawn thinner and
-            // quieter so the eased span stays the visual anchor
+            // before the first and after the last key as a DASHED
+            // extension (the reference screenshot's dashes after the last
+            // key), so the eased span stays the solid visual anchor
             if (plot.T0 < segs[0].T0 - 1e-9 || plot.T1 > segs[segs.Count - 1].T1 + 1e-9)
             {
                 var hold = new StreamGeometry();
@@ -2327,10 +2280,11 @@ namespace FfxTool.Gui
                 {
                     Data = hold,
                     Stroke = skin.Curve,
-                    StrokeThickness = 1.4,
-                    Opacity = 0.6,
-                    StrokeStartLineCap = PenLineCap.Round,
-                    StrokeEndLineCap = PenLineCap.Round
+                    StrokeThickness = 1.2,
+                    Opacity = 0.85,
+                    StrokeDashArray = new DoubleCollection { 2.5, 2.5 },
+                    StrokeStartLineCap = PenLineCap.Flat,
+                    StrokeEndLineCap = PenLineCap.Flat
                 });
             }
 
@@ -2363,20 +2317,47 @@ namespace FfxTool.Gui
             // value rides above zero, a shrinking one below (the reference
             // screenshot dips under its -500 ruler line). The range always
             // includes the zero line, padded so the extremes breathe.
-            const int N = 320;
-            double[] ts = new double[N], sp = new double[N];
+            // Each segment contributes ONE exact arc - the analytic
+            // dv/dt of its own cubic, evaluated straight from the control
+            // points (the old 320-point SpeedAt sweep smeared every
+            // keyframe discontinuity into a ~1-pixel slant and rode
+            // sampling noise on top of the arcs). Where a keyframe's
+            // incoming and outgoing speeds disagree, AE connects the two
+            // levels with a TRUE VERTICAL jump line at the key's time;
+            // zero carries fill the window outside the keyed span - the
+            // reference screenshot's flat approach and the vertical rise
+            // at its right edge are exactly these.
             double st0 = plot.T0, st1 = plot.T1;
-            for (int i = 0; i < N; i++)
+            Func<int, double, double> segSpeedAt = (i, u) =>
             {
-                ts[i] = st0 + (st1 - st0) * i / (N - 1);
-                double s = PresetCurve.SpeedAt(segs, ts[i]);
-                sp[i] = double.IsNaN(s) ? 0 : s;
-            }
+                var s = segs[i];
+                double m = 1 - u;
+                double dv = 3 * m * m * (s.C1V - s.V0) + 6 * m * u * (s.C2V - s.C1V) + 3 * u * u * (s.V1 - s.C2V);
+                double dt = 3 * m * m * (s.C1T - s.T0) + 6 * m * u * (s.C2T - s.C1T) + 3 * u * u * (s.T1 - s.C2T);
+                if (Math.Abs(dt) < 1e-12) return 0;
+                double v = dv / dt;
+                return double.IsNaN(v) || double.IsInfinity(v) ? 0 : v;
+            };
+
+            // RANGE: coarse arc samples (real extremes ride the arcs or
+            // their keyframe endpoints); the zero carries keep 0 in view
             double spMin = 0, spMax = 0;
-            for (int i = 0; i < N; i++)
+            for (int i = 0; i < segs.Count; i++)
             {
-                if (sp[i] < spMin) spMin = sp[i];
-                if (sp[i] > spMax) spMax = sp[i];
+                if (segs[i].Mode == PresetCurve.InterpHold) continue; // flat zero
+                if (segs[i].Mode == PresetCurve.InterpLinear)
+                {
+                    double c = (segs[i].V1 - segs[i].V0) / Math.Max(segs[i].T1 - segs[i].T0, 1e-9);
+                    if (c < spMin) spMin = c;
+                    if (c > spMax) spMax = c;
+                    continue;
+                }
+                for (int k = 0; k <= 24; k++)
+                {
+                    double s = segSpeedAt(i, k / 24.0);
+                    if (s < spMin) spMin = s;
+                    if (s > spMax) spMax = s;
+                }
             }
             double spPad = Math.Max((spMax - spMin) * 0.08, 1e-9);
             spMin -= spPad; spMax += spPad;
@@ -2385,9 +2366,11 @@ namespace FfxTool.Gui
             double plotH = plot.H - plot.T - plot.Bot;
             Func<double, double> yOf = v => plot.T + (plot.SpeedMax - v) / Math.Max(plot.SpeedMax - plot.SpeedMin, 1e-9) * plotH;
 
-            // horizontal speed grid with AE's LEFT ruler labels ("/sec");
-            // the zero line reads a touch brighter than the rest
-            double vStep = NiceStep((plot.SpeedMax - plot.SpeedMin) / 3.2);
+            // horizontal speed grid with AE's LEFT ruler - bare numbers
+            // (the readout above the plot carries "units/sec"), and a
+            // denser ladder than the value pane: AE's speed editor shows
+            // six-ish lines (the reference's 0/-500/.../-3000 column)
+            double vStep = NiceStep((plot.SpeedMax - plot.SpeedMin) / 6.0);
             double lastLabelY = -1000;
             for (double v = Math.Ceiling(plot.SpeedMin / vStep) * vStep; v <= plot.SpeedMax + 1e-9; v += vStep)
             {
@@ -2403,7 +2386,7 @@ namespace FfxTool.Gui
                 {
                     var lbl = new TextBlock
                     {
-                        Text = AxisNum(v, vStep) + "/sec",
+                        Text = AxisNum(v, vStep),
                         FontSize = 10,
                         Foreground = skin.Label,
                         Width = plot.L - 8,
@@ -2416,41 +2399,96 @@ namespace FfxTool.Gui
                 }
             }
 
-            double x0 = XOf(plot, ts[0]), xN = XOf(plot, ts[N - 1]);
-            double zeroY = Math.Round(yOf(0)) + 0.5;
+            // the curve: zero carry -> per-key jumps -> one exact arc per
+            // segment -> zero carry. Neighbors whose one-sided speeds
+            // agree (Easy Ease's zero-to-zero handoff) stay ONE stroke.
+            const int ArcN = 48;
+            // a jump under ~0.75px is just the curve continuing
+            double jumpEps = 0.75 * (plot.SpeedMax - plot.SpeedMin) / Math.Max(plotH, 1e-9);
 
-            // AE's speed area: the soft fill between the curve and zero
-            var area = new StreamGeometry();
-            using (var ctx = area.Open())
+            var strokes = new List<StreamGeometry>();
+            var jumpLines = new List<Line>();
+            var pts = new List<Point>();
+            double lastSp = 0;
+            Action flushStroke = () =>
             {
-                ctx.BeginFigure(new Point(x0, zeroY), true, false);
-                for (int i = 0; i < N; i++)
-                    ctx.LineTo(new Point(XOf(plot, ts[i]), yOf(sp[i])), true, false);
-                ctx.LineTo(new Point(xN, zeroY), true, false);
-            }
-            area.Freeze();
-            if (skin.Fill != null)
-                GraphCanvas.Children.Add(new Path { Data = area, Fill = skin.Fill, StrokeThickness = 0 });
+                if (pts.Count >= 2)
+                {
+                    var g = new StreamGeometry();
+                    using (var cx = g.Open())
+                    {
+                        cx.BeginFigure(pts[0], false, false);
+                        for (int i = 1; i < pts.Count; i++) cx.LineTo(pts[i], true, false);
+                    }
+                    g.Freeze();
+                    strokes.Add(g);
+                }
+                pts = new List<Point>();
+            };
+            void Append(double t, double sp) => pts.Add(new Point(XOf(plot, t), yOf(sp)));
 
-            // the curve - thin, clean, no halo: AE's editor draws a plain
-            // light line on the dark field
-            var line = new StreamGeometry();
-            using (var lctx = line.Open())
+            Append(st0, 0); // the carry before the keyed span
+            for (int i = 0; i < segs.Count; i++)
             {
-                lctx.BeginFigure(new Point(x0, yOf(sp[0])), false, false);
-                for (int i = 1; i < N; i++)
-                    lctx.LineTo(new Point(XOf(plot, ts[i]), yOf(sp[i])), true, false);
+                var s = segs[i];
+                double sIn, sOut;
+                if (s.Mode == PresetCurve.InterpHold) { sIn = 0; sOut = 0; }
+                else if (s.Mode == PresetCurve.InterpLinear)
+                    sIn = sOut = (s.V1 - s.V0) / Math.Max(s.T1 - s.T0, 1e-9);
+                else { sIn = segSpeedAt(i, 0); sOut = segSpeedAt(i, 1); }
+
+                if (Math.Abs(sIn - lastSp) > jumpEps)
+                {
+                    Append(s.T0, lastSp);
+                    flushStroke();
+                    // AE's discontinuity: a vertical line at the key time
+                    double jx = Math.Round(XOf(plot, s.T0)) + 0.5;
+                    jumpLines.Add(new Line
+                    {
+                        X1 = jx, X2 = jx,
+                        Y1 = yOf(lastSp), Y2 = yOf(sIn),
+                        Stroke = skin.Curve, StrokeThickness = 2,
+                        IsHitTestVisible = false
+                    });
+                    Append(s.T0, sIn); // the next stroke starts at the jump's foot
+                }
+                if (s.Mode == PresetCurve.InterpHold)
+                {
+                    Append(s.T1, 0);
+                    lastSp = 0;
+                }
+                else if (s.Mode == PresetCurve.InterpLinear)
+                {
+                    Append(s.T1, sOut);
+                    lastSp = sOut;
+                }
+                else
+                {
+                    for (int k = 1; k <= ArcN; k++)
+                    {
+                        double u = k / (double)ArcN;
+                        double m = 1 - u;
+                        double t = m * m * m * s.T0 + 3 * m * m * u * s.C1T + 3 * m * u * u * s.C2T + u * u * u * s.T1;
+                        Append(t, segSpeedAt(i, u));
+                    }
+                    lastSp = sOut;
+                }
             }
-            line.Freeze();
-            GraphCanvas.Children.Add(new Path
-            {
-                Data = line,
-                Stroke = skin.Curve,
-                StrokeThickness = 2,
-                StrokeLineJoin = PenLineJoin.Round,
-                StrokeStartLineCap = PenLineCap.Round,
-                StrokeEndLineCap = PenLineCap.Round
-            });
+            Append(st1, 0); // the carry after the keyed span
+            flushStroke();
+
+            foreach (var g in strokes)
+                GraphCanvas.Children.Add(new Path
+                {
+                    Data = g,
+                    Stroke = skin.Curve,
+                    StrokeThickness = 2,
+                    StrokeLineJoin = PenLineJoin.Round,
+                    StrokeStartLineCap = PenLineCap.Round,
+                    StrokeEndLineCap = PenLineCap.Round
+                });
+            foreach (var jl in jumpLines)
+                GraphCanvas.Children.Add(jl);
 
             // keyframe markers on the speed curve with AE's icon grammar:
             // circle = bezier/easy-ease, hollow square = linear, half
@@ -2575,12 +2613,11 @@ namespace FfxTool.Gui
         }
 
         /// <summary>
-        /// The selected keyframe, AE Graph Editor style: the editor's
-        /// selection color (yellow on the dark pane, deep teal on the
-        /// light one) - a ring over its marker, plus its tangent handles
-        /// in value mode (thin lines to the two control points with
-        /// hollow dots) or its horizontal influence handles in speed
-        /// mode, exactly when AE shows them.
+        /// The selected keyframe, AE Graph Editor style: the keyframe's
+        /// own icon is painted the editor's selection yellow (AE shows no
+        /// ring), plus its tangent handles in value mode (thin lines to
+        /// the two control points with hollow dots) or its horizontal
+        /// influence handles in speed mode, exactly when AE shows them.
         /// </summary>
         private void DrawSelection(PlotState plot, Func<double, double> yOf, GraphSkin skin)
         {
@@ -2638,30 +2675,27 @@ namespace FfxTool.Gui
                 ? yOf(k.Value)
                 : yOf(Math.Min(Math.Max(SpeedOfKey(plot.Segs, t), plot.SpeedMin), plot.SpeedMax));
             if (double.IsNaN(y)) return;
-            if (plot.Mode == 1)
-            {
-                // AE paints the picked icon itself yellow on the dark pane
-                var cover = new Ellipse
+            // AE paints the picked key's own ICON yellow - a circle in
+            // the speed editor (bezier keys), a square elsewhere; no ring
+            int shape = _selKf + 1 < stream.Keyframes.Count ? k.InterpOut : k.InterpIn;
+            UIElement cover;
+            if (plot.Mode == 1 && shape == PresetCurve.InterpBezier)
+                cover = new Ellipse
                 {
                     Width = 9, Height = 9,
                     Fill = skin.KeySel, Stroke = skin.KeyStroke, StrokeThickness = 1,
                     IsHitTestVisible = false
                 };
-                Canvas.SetLeft(cover, kx - 4.5);
-                Canvas.SetTop(cover, y - 4.5);
-                GraphCanvas.Children.Add(cover);
-            }
-            var ring = new Ellipse
-            {
-                Width = 15,
-                Height = 15,
-                Stroke = skin.KeySel,
-                StrokeThickness = 1.6,
-                IsHitTestVisible = false
-            };
-            Canvas.SetLeft(ring, kx - 7.5);
-            Canvas.SetTop(ring, y - 7.5);
-            GraphCanvas.Children.Add(ring);
+            else
+                cover = new Rectangle
+                {
+                    Width = 9, Height = 9, RadiusX = 1.5, RadiusY = 1.5,
+                    Fill = skin.KeySel, Stroke = skin.KeyStroke, StrokeThickness = 1,
+                    IsHitTestVisible = false
+                };
+            Canvas.SetLeft(cover, kx - 4.5);
+            Canvas.SetTop(cover, y - 4.5);
+            GraphCanvas.Children.Add(cover);
         }
 
         /// <summary>Signed speed at t, NaN-proofed for the one-keyframe stream.</summary>
@@ -2790,19 +2824,6 @@ namespace FfxTool.Gui
             return el;
         }
 
-        /// <summary>A bare direction line - AE's unselected handles carry
-        /// no end dots; degenerate on-screen lengths stay invisible.</summary>
-        private void AddHandleLine(double x0, double y0, double x1, double y1, Brush brush)
-        {
-            if (Math.Abs(x1 - x0) < 2.5 && Math.Abs(y1 - y0) < 2.5) return;
-            GraphCanvas.Children.Add(new Line
-            {
-                X1 = x0, Y1 = y0, X2 = x1, Y2 = y1,
-                Stroke = brush, StrokeThickness = 1, Opacity = 0.9,
-                IsHitTestVisible = false
-            });
-        }
-
         /// <summary>
         /// Hover probe: dashed vertical cursor + floating readout with the
         /// exact time (and its frame number), the interpolated value (value
@@ -2847,7 +2868,7 @@ namespace FfxTool.Gui
                 Canvas.SetLeft(_cursorDot, x - 3.5);
                 Canvas.SetTop(_cursorDot, Math.Round(y) - 3.5);
                 _cursorDot.Visibility = Visibility.Visible;
-                readout = $"{t.ToString("0.##")} s · f{frame} · value {v.ToString("0.###")}{easing}";
+                readout = $"{t.ToString("0.##")} s · f{frame} · {v.ToString("0.###")} units{easing}";
             }
             else
             {
@@ -2860,7 +2881,7 @@ namespace FfxTool.Gui
                 _cursorDot.Visibility = Visibility.Visible;
                 readout = double.IsNaN(s)
                     ? $"{t.ToString("0.##")} s · f{frame}"
-                    : $"{t.ToString("0.##")} s · f{frame} · speed {s.ToString("0.###")}/sec{easing}";
+                    : $"{t.ToString("0.##")} s · f{frame} · {s.ToString("0.###")} units/sec{easing}";
             }
 
             GraphReadoutText.Text = readout;
