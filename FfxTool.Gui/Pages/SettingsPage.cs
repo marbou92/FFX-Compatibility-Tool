@@ -138,8 +138,10 @@ namespace FfxTool.Gui
             try
             {
                 // CatalogPath's getter creates the folder if it never
-                // existed, so Explorer always has something to open
-                System.IO.Process.Start("explorer.exe",
+                // existed, so Explorer always has something to open.
+                // Process lives in System.Diagnostics, not System.IO —
+                // the round-27 build died on exactly that (CS0234).
+                System.Diagnostics.Process.Start("explorer.exe",
                     "\"" + System.IO.Path.GetDirectoryName(PluginCatalog.CatalogPath) + "\"");
             }
             catch { /* Explorer refused — nothing sensible to do */ }

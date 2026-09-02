@@ -299,3 +299,42 @@ Round-25 research pins AE's Graph Editor behavior for a 2D property
 - Dimension 1's tangent block gets the same garbage envelope as
   dimension 0 (ClampHandle2), so one absurd Y slope cannot bend the
   Y curve into an arc AE never draws.
+
+## The ldat time unit is 1/1024 of a 30 fps frame — 30720 ticks per second (round 28)
+
+The worst kind of wrong constant is one that produces *plausible* graphs,
+and the tick base was exactly that: an early revision read ldat's int32
+keyframe times as 1/1024 SECOND, "validated" by fixture times that land on
+round numbers when divided by 1024. Every value graph looked right anyway
+(value shape is scale-free — only the *relative* keyframe times matter),
+and endpoint speeds read the stored slope doubles directly, which are
+value-per-second and independent of any time base. Only the interior of
+the speed graph betrayed the stretch: interior speed is bezier geometry
+divided by real seconds, so a 30× time stretch squashes interior speeds to
+1/30 while endpoints stay put — the lopsided speed curves that "still
+don't look like AE" no matter how the editor was restyled.
+
+An AE-authored preset contributed for side-by-side comparison pinned the
+truth three independent ways (the file stays out of the repository; this
+note records just the method and the numbers):
+
+1. **The file states its base.** The `beso` (basic settings) chunk carries
+   the uint32 30720 — 30 fps × 1024 — alongside its pixel dimensions.
+2. **The area law.** A speed graph plots dv/dt, so integrating AE's own
+   drawn curve must reproduce the stream's total value travel
+   (∫ dv/dt dt = Δv). Column-by-column integration of AE's pixels gives
+   Δv = -365.88 only when the keyed span 13312 ticks = 0.4333 s
+   (= 13312/30720). The old reading (13.0 s) overshoots the travel ~30×;
+   no other candidate base (1024, 65536, 32768) lands within 5%.
+3. **Pixel-exact curve recovery.** With 0.4333 s spans the decoded
+   tangents reproduce AE's speed curve outright: the early notch bottoms
+   at -1636/s (AE's pixels: -1637) and the main valley at -3215/s (AE:
+   -3226), and the keyframe x-ratios (7006 : 6306 = 1.111) match AE's
+   marker positions (93.5 px : 84 px = 1.113).
+
+The old fixture evidence re-reads cleanly under the same constant: its
+times 1877 / 5631 / 11264 / 21504 are whole-or-half FRAMES in
+1024-ticks-per-frame units (1.833 / 5.5 / 11 / 21 frames — 11264 and
+21504 are exactly 11 and 21), which the earlier revision mislabeled as
+seconds. `PresetCurve.TicksPerSecond` is now 30720.0; nothing in the tool
+rewrites ldat bytes, so this remains a display-time conversion only.

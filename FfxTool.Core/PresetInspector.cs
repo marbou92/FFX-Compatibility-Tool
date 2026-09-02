@@ -19,9 +19,11 @@ namespace FfxTool.Core
     ///   they were consecutive keyframes — the value graph zig-zags and
     ///   the speed graph spikes and decays, shapes AE never draws. With
     ///   record size 48 each per-dimension record is:
-    ///     +0  int32  time — raw preset ticks (AE stores these in the comp's
-    ///                    own timebase; no public spec maps them to seconds,
-    ///                    so the UI presents them as relative units)
+    ///     +0  int32  time — raw preset ticks: 1/1024 of a 30 fps frame,
+    ///                    i.e. 30720 per second (proven against AE's own
+    ///                    drawn speed graph; see PresetCurve's TIMEBASE
+    ///                    note — an earlier revision read the tick as
+    ///                    1/1024 second and stretched time 30×)
     ///     +4  byte   interpolation into  this keyframe (1 linear 2 bezier 3 hold)
     ///     +5  byte   interpolation out of this keyframe
     ///     +8  double value (of this dimension)

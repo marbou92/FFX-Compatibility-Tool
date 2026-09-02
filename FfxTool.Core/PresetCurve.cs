@@ -7,17 +7,34 @@ namespace FfxTool.Core
     /// Read-only evaluation of a decoded keyframe stream — the math behind
     /// the Lister's keyframe timing and the AE-style value/speed graphs.
     ///
-    /// TIMEBASE: ldat records carry keyframe times as int32 "ticks". No
-    /// public Adobe spec pins a ticks-per-second constant, so the value
-    /// below was derived empirically from the shipped ground truth
-    /// (FfxTool.Core.Tests/fixtures/sample_1.ffx). The raw times 1877 /
-    /// 5631 / 11264 / 21504 divide by 1024 into 1.833 / 5.5 / 11 / 21
-    /// seconds, and every one of those lands on an EXACT 30 fps frame
-    /// boundary (frames 55 / 165 / 330 / 630) — which is how real
-    /// keyframes get placed. Any other constant produces fractional
-    /// frames for at least one of them, so 1024 is the best-evidence
-    /// mapping. It is a DISPLAY-time conversion only: ldat bytes are
-    /// never read-modified-written by anything in this tool.
+    /// TIMEBASE: ldat records carry keyframe times as int32 "ticks" whose
+    /// unit is 1/1024 of a 30 fps FRAME — i.e. 30 × 1024 = 30720 ticks per
+    /// second (the tick AE's preset writer inherits from its internal
+    /// ticks-per-frame quantization). Three independent proofs from a real
+    /// AE-written preset pinned this after an earlier revision read the
+    /// tick as 1/1024 SECOND (a 30× time stretch that squashed every speed
+    /// graph to 1/30 of AE's values while leaving endpoint speeds — the
+    /// stored slopes — untouched, the exact asymmetry the side-by-side
+    /// screenshots showed):
+    ///   1. The preset's `beso` (basic-settings) chunk carries 30720
+    ///      outright, next to its 65536-based dimensions — the file states
+    ///      its own ticks-per-second.
+    ///   2. Integrating AE's own drawn speed graph column-by-column must
+    ///      reproduce the stream's total value travel (∫dv/dt dt = Δv =
+    ///      -365.88); AE's pixels give that integral only when the keyed
+    ///      span 13312 ticks = 0.4333 s — 13312/30720 — while the old
+    ///      reading (13.0 s) overshoots the travel by ~30×.
+    ///   3. With 0.4333 s spans, the decoded tangents reproduce AE's speed
+    ///      curve to pixel accuracy: the early notch bottoms at -1636/s
+    ///      (AE: -1637) and the main valley at -3215/s (AE: -3226), and
+    ///      the keyframe x-ratios 7006:6306 = 1.111 match AE's markers
+    ///      (93.5 px : 84 px = 1.113).
+    /// The same constant re-explains the older fixture: its times 1877 /
+    /// 5631 / 11264 / 21504 are whole-or-half FRAMES in 1024-ticks-per-
+    /// frame units (1.833 / 5.5 / 11 / 21 × 1024 — 11264 and 21504 are
+    /// exactly 11 and 21 frames), which the earlier revision mislabeled
+    /// as seconds. It remains a DISPLAY-time conversion only: ldat bytes
+    /// are never read-modified-written by anything in this tool.
     ///
     /// EASING: each segment interpolates as a cubic Bezier that mirrors
     /// AE's tangent model — the outgoing handle of keyframe A sits at
@@ -55,7 +72,11 @@ namespace FfxTool.Core
     /// </summary>
     public static class PresetCurve
     {
-        public const double TicksPerSecond = 1024.0;
+        /// <summary>The preset file's tick base: 1024 ticks per 30 fps
+        /// frame = 30720 ticks per second (see the TIMEBASE note — an
+        /// earlier 1024.0 here stretched every curve 30× and flattened
+        /// every speed graph to 1/30 of AE's values).</summary>
+        public const double TicksPerSecond = 30720.0;
         public const int InterpLinear = 1;
         public const int InterpBezier = 2;
         public const int InterpHold = 3;
