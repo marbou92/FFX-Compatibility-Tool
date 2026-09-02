@@ -1791,12 +1791,15 @@ namespace FfxTool.Gui
 
         /// <summary>
         /// The two editor skins, picked by the app theme - AE's own editor
-        /// follows AE's UI brightness the same way. Dark theme: AE's
-        /// sampled Graph Editor palette (#656565 field, #595959 grid,
-        /// #CBCBCB curve, #FFEE00 picked key, #FC0000 current-time line).
-        /// Light theme: the app's own light tokens (surface field,
-        /// outline grid, primary curve) so the editor reads as part of
-        /// the app instead of a dark box glued into a light window.
+        /// follows AE's UI brightness the same way. Both keep AE's editor
+        /// grammar (grid rhythm, emphasized zero line, #FFEE00 picked key,
+        /// #FC0000 current-time line, in-field readout). Light theme:
+        /// the app's own light tokens. Dark theme: AE's anatomy re-derived
+        /// from a neutral dark field (#3B3F41) instead of AE's sampled
+        /// #656565 - the sampled brightness (L*≈41) glares as a mid-gray
+        /// island on this app's near-black dark chrome (surface L*≈6,
+        /// cards L*≈12), which read as broken dark mode; at L*≈25 the pane
+        /// stays unmistakably the editor while belonging to the window.
         /// </summary>
         private sealed class GraphSkin
         {
@@ -1826,20 +1829,23 @@ namespace FfxTool.Gui
 
         private GraphSkin _skinDark, _curSkin;
 
+        /// <summary>The dark editor: AE's anatomy on a field tuned to
+        /// this app's dark chrome (see the class comment for why the
+        /// sampled #656565 was retired).</summary>
         private GraphSkin DarkSkin()
         {
             if (_skinDark != null) return _skinDark;
             _skinDark = new GraphSkin
             {
-                Bg = HexBrush("#656565"),
-                Grid = HexBrush("#595959"),
-                Minor = HexBrush("#5F5F5F"),
-                Zero = HexBrush("#7D7D7D"),
-                Edge = HexBrush("#4E4E4E"),
-                Curve = HexBrush("#CBCBCB"),
+                Bg = HexBrush("#3B3F41"),
+                Grid = HexBrush("#343839"),
+                Minor = HexBrush("#36393B"),
+                Zero = HexBrush("#4E5354"),
+                Edge = HexBrush("#2B2E2F"),
+                Curve = HexBrush("#D6D9DA"),
                 Label = HexBrush("#C4C4C4"),
                 Key = HexBrush("#E6E6E6"),
-                KeyStroke = HexBrush("#4A4A4A"),
+                KeyStroke = HexBrush("#333739"),
                 KeySel = HexBrush("#FFEE00"),
                 Cti = HexBrush("#FC0000"),
                 BgRadius = 4

@@ -133,6 +133,12 @@ namespace FfxTool.Core
         public const int Point = 6;
         public const int Popup = 7;
         public const int FloatSlider = 9;     // BCC-style custom control row
+        public const int BoundedSlider = 10;  // AE's own bounded slider — the
+                                              // kind under Exposure/Offset/Gamma,
+                                              // the audio effects' rows (Reverb,
+                                              // High-Low Pass), Deep Glow's sliders,
+                                              // CSpice, MB Strength; always with
+                                              // tdum/tduM bounds in the pack files
         public const int ArbitraryData = 11;
         public const int Path = 12;
         public const int GroupStart = 13;
@@ -263,9 +269,80 @@ namespace FfxTool.Core
             foreach (var t in tdsps)
                 if (TdmnEffectName(t) != null) realTdsps.Add(t);
 
+            // A property/animator preset (AE's "Apply Animation Preset" onto
+            // a PROPERTY selection — text animators, single-property value
+            // snaps like a S_Shake Amplitude/Frequency panning curve) carries
+            // target-path tdsp entries and their tdgp/tdbs data blocks but NO
+            // sspc snapshot at all. Proven structure of such files (a pack of
+            // 27 real-world presets, 6 of this class): besc children are
+            // [beso, (LIST tdsp path, tdsn display-name) × N, LIST tdsp
+            // sentinel-only, tdgp|tdbs data × N]. Each real tdsp is ONE
+            // property group, so they inspect as one entry per group and the
+            // effect list's N rows keep pairing by position.
+            if (sspcs.Count == 0)
+            {
+                var groupNames = PropertyGroupNames(besc, realTdsps.Count);
+                var dataBlocks = PropertyDataBlocks(besc);
+                if (realTdsps.Count != dataBlocks.Count)
+                    errors?.Add($"{realTdsps.Count} property-path entries but {dataBlocks.Count} data blocks — " +
+                                "unexpected file structure; unpaired entries were skipped");
+                var propResult = new List<PresetEffectDetails>(realTdsps.Count);
+                int pn = Math.Min(realTdsps.Count, dataBlocks.Count);
+                for (int i = 0; i < pn; i++)
+                {
+                    string matchName = TdmnEffectName(realTdsps[i]);
+                    var details = new PresetEffectDetails { MatchName = matchName };
+                    try
+                    {
+                        if (i < groupNames.Count && !string.IsNullOrEmpty(groupNames[i]))
+                            details.ShortName = groupNames[i];
+                        // no parT exists in these files — kinds stay Unknown,
+                        // names come from each tdbs' own tdsn, groups from the
+                        // nested tdgp structure itself
+                        var emptyMeta = new Dictionary<string, ParamMeta>();
+                        var seen = new Dictionary<string, int>();
+                        var blk = dataBlocks[i];
+                        if (Same(blk.Form, RiffFile.Cid("tdgp")))
+                        {
+                            WalkGroup(blk, details, null, seen, emptyMeta);
+                        }
+                        else if (Same(blk.Form, RiffFile.Cid("tdbs")))
+                        {
+                            var p = ParseParameter(blk, TdmnPathDeepest(realTdsps[i]), emptyMeta);
+                            if (!string.IsNullOrEmpty(p.Name) &&
+                                !SkipMatchNames.Contains(p.MatchName) &&
+                                p.Kind != PresetParamKind.ArbitraryData &&
+                                !IsHiddenParam(p))
+                                details.Parameters.Add(p);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // one malformed group must never sink the rest — keep
+                        // the slot (indexes stay aligned) and say what broke
+                        details.Error = ex.GetType().Name + ": " + ex.Message;
+                        errors?.Add($"property group #{i + 1} ({matchName ?? "?"}) couldn't be decoded — {details.Error}");
+                    }
+                    propResult.Add(details);
+                }
+                return propResult;
+            }
+
             if (realTdsps.Count != sspcs.Count)
                 errors?.Add($"{realTdsps.Count} effect index entries but {sspcs.Count} parameter blocks — " +
                             "unexpected file structure; unpaired entries were skipped");
+
+            // AE writes the parT descriptor tree only on the FIRST sspc of an
+            // effect that appears more than once in a preset (the pack's
+            // multi-effect files: S_Sharpen ×2, MB LookSuite3 ×4, BCC Unsharp
+            // Mask ×2, Wave Warp ×2, Drop Shadow ×2...). Every later copy
+            // carries no parT — each of its rows degraded to Unknown kinds,
+            // which un-grouped BCC's whole parameter tree (89 flat rows where
+            // the first copy shows 61 grouped ones), leaked AE-hidden rows and
+            // stripped popup menus. Cache by match name; an empty map (no
+            // parT, or one with no usable entries) falls back to the first
+            // copy's map. A later copy WITH its own parT keeps it.
+            var metaCache = new Dictionary<string, Dictionary<string, ParamMeta>>(StringComparer.Ordinal);
 
             var result = new List<PresetEffectDetails>(realTdsps.Count);
             int n = Math.Min(realTdsps.Count, sspcs.Count);
@@ -284,6 +361,11 @@ namespace FfxTool.Core
                     // additive and guarded — a preset without parT (or with an
                     // unexpected layout) still inspects, just with Unknown kinds.
                     var meta = ParseParamTree(sspcs[i]);
+                    if (meta.Count == 0 && matchName != null &&
+                        metaCache.TryGetValue(matchName, out var cachedMeta))
+                        meta = cachedMeta;
+                    else if (meta.Count > 0 && matchName != null)
+                        metaCache[matchName] = meta;
 
                     // Group-path disambiguation is PER EFFECT: the UI files rows
                     // by path within one effect, so same-named groups in two
@@ -934,6 +1016,73 @@ namespace FfxTool.Core
             var tdmns = RiffFile.FindAll(tdspNode, TDMN);
             if (tdmns.Count < 2) return null;
             return DecodeString(tdmns[1].Content);
+        }
+
+        /// <summary>
+        /// The LAST tdmn of a tdsp path — the deepest property the preset
+        /// targets ('S_Shake-0050' in Effect Parade → S_Shake → S_Shake-0050).
+        /// Only meaningful for property presets, where it becomes the single
+        /// tdbs parameter's match name.
+        /// </summary>
+        static string TdmnPathDeepest(RiffNode tdspNode)
+        {
+            var tdmns = RiffFile.FindAll(tdspNode, TDMN);
+            return tdmns.Count == 0 ? null : DecodeString(tdmns[tdmns.Count - 1].Content);
+        }
+
+        /// <summary>
+        /// Display name of each property group of a property preset: the
+        /// tdsn leaf that immediately follows the group's tdsp path at besc
+        /// level ('Amplitude', 'Path Options', 'Animator 1' — AE shows these
+        /// as the group titles after the preset lands). Collected in path
+        /// order, one per real tdsp.
+        /// </summary>
+        static List<string> PropertyGroupNames(RiffNode besc, int expected)
+        {
+            var names = new List<string>(expected);
+            bool wantName = false;
+            foreach (var c in besc.Children)
+            {
+                if (c.IsContainer && Same(c.Form, TDSP_FORM))
+                {
+                    wantName = TdmnEffectName(c) != null; // the sentinel closes the index section
+                    continue;
+                }
+                if (wantName && !c.IsContainer && Same(c.Cid, TDSN))
+                {
+                    names.Add(DecodeString(c.Content));
+                    wantName = false;
+                }
+                else
+                {
+                    wantName = false; // the name must follow its path directly
+                }
+            }
+            return names;
+        }
+
+        /// <summary>
+        /// The data blocks of a property preset, in path order: every tdgp /
+        /// tdbs container after the sentinel tdsp closes the index section
+        /// ('Amplitude' preset = one bare tdbs; a text animator = one tdgp
+        /// tree per property group).
+        /// </summary>
+        static List<RiffNode> PropertyDataBlocks(RiffNode besc)
+        {
+            var blocks = new List<RiffNode>();
+            bool afterSentinel = false;
+            foreach (var c in besc.Children)
+            {
+                if (c.IsContainer && Same(c.Form, TDSP_FORM))
+                {
+                    if (TdmnEffectName(c) == null) afterSentinel = true;
+                    continue;
+                }
+                if (afterSentinel && c.IsContainer &&
+                    (Same(c.Form, RiffFile.Cid("tdgp")) || Same(c.Form, RiffFile.Cid("tdbs"))))
+                    blocks.Add(c);
+            }
+            return blocks;
         }
 
         /// <summary>

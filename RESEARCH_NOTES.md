@@ -357,3 +357,69 @@ visibility bit). 'Hidden' (0x8), Sapphire's 'mocha' (0x208) and BCC's
 effects never set 0x8. IsHiddenParam now tests 0x200 OR 0x8 — the
 round-23/26 name-based and 0x200-based hiding still holds, they just
 were reading two edges of one bit.
+
+## The no-sspc preset class: property/animator presets (round 30)
+
+A contributed pack of 27 real-world presets (kept out of the repository)
+contains six files that decode to ZERO effects under the previous
+reader: two single-property value snaps and four text-animator presets.
+Their `besc` carries no `sspc` snapshot at all — they are AE's "apply a
+preset to a PROPERTY selection" class. Proven structure, consistent
+across all six:
+
+    besc children = [beso,
+                     (LIST tdsp target-path, tdsn display-name) × N,
+                     LIST tdsp containing only 'ADBE End of path sentinel',
+                     tdgp-or-tdbs data block × N]
+
+Each real `tdsp` is ONE property group: its tdmn chain is the target path
+('ADBE Effect Parade' → 'S_Shake' → 'S_Shake-0050' for a Sapphire
+Amplitude snap; 'ADBE Text Properties' → 'ADBE Text Animators' →
+'ADBE Text Animator' for the text presets), the `tdsn` leaf immediately
+after the path names the group ('Amplitude', 'Frequency', 'Path Options',
+'More Options', 'Animator 1'), and the i-th tdgp/tdbs after the sentinel
+carries that group's values. The panning presets hold one bare `tdbs`
+(static cdat + tdum/tduM bounds); the text presets hold tdgp trees with
+nested 'ADBE Text Selectors'/'ADBE Text Range Advanced' groups. None of
+the six carries lhd3/ldat — the values are static; the animation comes
+from AE's own animator semantics, not from keyframes in the file.
+
+Three consequences, all verified against the pack:
+
+1. `tdix` values in these path entries are NOT sspc indexes: they are
+   0xFFFFFFFF sentinels and small path markers (0, 4, 5). Renumbering
+   them 0..N-1 (the whole-effect invariant) would rewrite the property's
+   own identity, and the contiguity check would false-fail. All three
+   pipeline steps (removal, renumbering, verify) now branch on
+   `sspc count == 0`.
+2. Removing "effects" from such a file has no meaning (there is no
+   snapshot to remove; removing a path entry would orphan its data
+   block), so removal is a no-op and the caller's not-found warning
+   explains the request.
+3. Inspection yields one entry per real tdsp, in path order, so the
+   effect list's N rows keep pairing with the inspection by position.
+
+## parT is written once per repeated effect (round 30)
+
+The same pack shows multi-effect presets where the same effect appears
+two or four times (S_Sharpen ×2, MB LookSuite3 ×4, BCC Unsharp Mask ×2,
+Wave Warp ×2, Drop Shadow ×2). AE writes the parT descriptor tree only
+on the FIRST sspc of that effect; every later copy carries none. Under
+the old reader each later copy degraded to Unknown kinds — which
+un-grouped BCC's parameter tree (a BCC Unsharp Mask copy showed 89 flat
+rows where the first copy shows 61 grouped ones), leaked AE-hidden rows
+past the 0x8/0x200 rules (no flags at all on Unknown rows) and stripped
+popup menus. The reader now caches the parT map by match name and gives
+an empty map the first copy's map; a later copy that does carry its own
+parT keeps it.
+
+## parT kind 10 is AE's own bounded slider (round 30)
+
+Across the pack, kind 10 rows are Exposure/Offset/Gamma (Adobe
+Exposure2), the six Reverb and three High-Low Pass rows (Adobe audio),
+Deep Glow's Radius/Exposure/Threshold/Spread, CSpice Glitchify's
+Amount/Speed, omino's sliders and MB 'Strength' — all flags 0x0, all
+with tdum/tduM bounds in the file. Kind 10 joins Slider(1) /
+FixedSlider(2) / FloatSlider(9) as a bounded-slider kind
+(`PresetParamKind.BoundedSlider`); the value slot already renders it
+through the shared slider path.

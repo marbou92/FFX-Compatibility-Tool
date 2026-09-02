@@ -149,6 +149,14 @@ namespace FfxTool.Core
             var sspcOrder = children.Where(c => c.IsContainer && SequenceEqual(c.Form, SSPC_FORM)).ToList();
             var realTdsp = tdspOrder.Where(c => TdmnEffectName(c) != null).ToList();
 
+            // A property/animator preset (text animator, a single-property
+            // value snap) has target-path tdsp entries but NO sspc snapshot —
+            // there is no effect snapshot to remove, and removing a path
+            // entry would orphan its data block. Say nothing was removed
+            // (the caller's "not found" warning names the requested effects)
+            // instead of aborting the whole conversion.
+            if (sspcOrder.Count == 0) return new List<string>();
+
             if (realTdsp.Count != sspcOrder.Count)
                 throw new InvalidOperationException(
                     $"Effect index count ({realTdsp.Count}) doesn't match parameter block count " +
@@ -208,6 +216,13 @@ namespace FfxTool.Core
         public static int RenumberIndices(RiffNode riffNode)
         {
             var besc = FindBesc(riffNode);
+            // Property presets carry no sspc blocks — their tdix values index
+            // the target path (0xFFFFFFFF sentinels and path markers, proven
+            // against real files), not a parameter block, and renumbering
+            // them 0..N-1 would rewrite the property's own identity.
+            // Nothing to renumber against.
+            if (!besc.Children.Any(c => c.IsContainer && SequenceEqual(c.Form, SSPC_FORM)))
+                return 0;
             var tdsps = besc.Children.Where(c => c.IsContainer && SequenceEqual(c.Form, TDSP_FORM)).ToList();
             uint idx = 0;
 
@@ -316,8 +331,13 @@ namespace FfxTool.Core
             if (utf8Remaining > 0)
                 problems.Add($"{utf8Remaining} chunk(s) still carry the Utf8 prefix.");
 
-            // 2. tdix values are contiguous starting at 0
+            // 2. tdix values are contiguous starting at 0 — for WHOLE-EFFECT
+            // presets, where tdix[1] indexes the sspc blocks. A property
+            // preset carries path-identity tdix values instead (0xFFFFFFFF
+            // sentinels, path markers) with no sspc to index into, so the
+            // whole-effect invariant does not apply there.
             var besc = FindBesc(newTree);
+            var hasSspc = besc.Children.Any(c => c.IsContainer && SequenceEqual(c.Form, SSPC_FORM));
             var tdsps = besc.Children.Where(c => c.IsContainer && SequenceEqual(c.Form, TDSP_FORM)).ToList();
             var seenIndices = new List<uint>();
             foreach (var n in tdsps)
@@ -331,7 +351,7 @@ namespace FfxTool.Core
             bool contiguous = true;
             for (int i = 0; i < seenIndices.Count; i++)
                 if (seenIndices[i] != i) { contiguous = false; break; }
-            if (!contiguous)
+            if (!contiguous && hasSspc)
                 problems.Add($"tdix values are not contiguous: {string.Join(",", seenIndices)}");
 
             // 3. Keyframe data (lhd3/ldat) unchanged wherever it still

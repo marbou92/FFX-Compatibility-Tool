@@ -13,7 +13,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>FfxTool.Gui</AssemblyName>
     <RootNamespace>FfxTool.Gui</RootNamespace>
-    <Version>1.0.29</Version>
+    <Version>1.0.30</Version>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
 
