@@ -525,15 +525,24 @@ namespace FfxTool.Core
 
         /// <summary>
         /// True when the plugin itself marks this parameter invisible:
-        /// the pard's empirically-proven hidden bit (0x200 — BCC
-        /// "placeholder" ×3, Sapphire's mocha blob) or BCC's internal
-        /// padding names, which AE never draws ("Hidden"'s flag word
-        /// (0x8) matches visible sliders, so the name is the only
-        /// signal).
+        /// the pard's hidden bits — 0x200 (BCC "placeholder" ×3,
+        /// Sapphire's mocha blob) and 0x8, the writer's "not in AE's
+        /// Effect Controls" bit — or BCC's internal padding names.
+        /// 0x8 is proven by BCC Directional Blur's superseded legacy
+        /// PixelChooser block: 23 rows (Legacy PixelChooser, Apply
+        /// PixelChooser, PC Intensity, Mask, Shape, Point 1/2 and the
+        /// matte controls From…Invert Matte) ALL carry 0x8, and AE's own
+        /// Effect Controls draws NONE of them — while every row AE does
+        /// draw carries 0x0 (or 0x20 inside groups, which is not a
+        /// visibility bit). Sapphire's 'mocha' (0x208) and 'Hidden'
+        /// (0x8) fall under the same rule (round 23 hid them by name or
+        /// by 0x200 and credited the wrong bit). Adobe's own effects
+        /// never set 0x8, so the rule is free there.
         /// </summary>
         static bool IsHiddenParam(PresetParameter p)
         {
             if ((p.ParamFlags & 0x200) != 0) return true;
+            if ((p.ParamFlags & 0x8) != 0) return true;
             return p.Name == "placeholder" || p.Name == "Hidden";
         }
 

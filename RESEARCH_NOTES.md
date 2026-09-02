@@ -338,3 +338,22 @@ times 1877 / 5631 / 11264 / 21504 are whole-or-half FRAMES in
 21504 are exactly 11 and 21), which the earlier revision mislabeled as
 seconds. `PresetCurve.TicksPerSecond` is now 30720.0; nothing in the tool
 rewrites ldat bytes, so this remains a display-time conversion only.
+
+## The pard flag 0x8 is the writer's "not in AE's Effect Controls" bit (round 29)
+
+Round 23 concluded that BCC's 'Hidden' row "carries 0x8 like visible
+sliders, so it hides by NAME instead" — that retraction goes the other
+way now. The full BCC Directional Blur descriptor walk (side-by-side EC
+screenshots contributed for comparison) shows a 23-row superseded legacy
+PixelChooser block — Legacy PixelChooser, Apply PixelChooser, PC
+Intensity, Mask, Shape, Point 1/2 and the matte controls From, To,
+Scale, Stretch/Direction, Region Blend, Reverse Range, Channel, Matte
+Layer, Type, Black/Threshold/From, White/To, Matte Softness, Color,
+Blur Matte, Choke Matte, Invert Matte — every row carrying 0x8, and AE's
+own Effect Controls drawing NONE of them, while every row AE does draw
+carries 0x0 (rows inside groups carry 0x20, which is therefore not a
+visibility bit). 'Hidden' (0x8), Sapphire's 'mocha' (0x208) and BCC's
+'Mocha Data0' (0x8, kind 11) all fall under the same rule; Adobe's own
+effects never set 0x8. IsHiddenParam now tests 0x200 OR 0x8 — the
+round-23/26 name-based and 0x200-based hiding still holds, they just
+were reading two edges of one bit.

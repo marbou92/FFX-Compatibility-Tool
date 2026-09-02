@@ -1801,6 +1801,8 @@ namespace FfxTool.Gui
         private sealed class GraphSkin
         {
             public Brush Bg, Grid, Zero, Curve, Label, Key, KeyStroke, KeySel, Cti;
+            public Brush Minor;   // faint half-step gridline between the majors
+            public Brush Edge;    // the pane's 1px outline (reads on light theme)
             public double BgRadius;
         }
 
@@ -1812,6 +1814,16 @@ namespace FfxTool.Gui
             return brush;
         }
 
+        /// <summary>A theme brush at reduced opacity, frozen - the minor
+        /// gridlines derive from the palette without hard-coding grays.</summary>
+        private static Brush OpacityBrush(Brush src, double opacity)
+        {
+            var b = src.Clone();
+            b.Opacity = opacity;
+            b.Freeze();
+            return b;
+        }
+
         private GraphSkin _skinDark, _curSkin;
 
         private GraphSkin DarkSkin()
@@ -1821,9 +1833,11 @@ namespace FfxTool.Gui
             {
                 Bg = HexBrush("#656565"),
                 Grid = HexBrush("#595959"),
+                Minor = HexBrush("#5F5F5F"),
                 Zero = HexBrush("#7D7D7D"),
+                Edge = HexBrush("#4E4E4E"),
                 Curve = HexBrush("#CBCBCB"),
-                Label = HexBrush("#9E9E9E"),
+                Label = HexBrush("#C4C4C4"),
                 Key = HexBrush("#E6E6E6"),
                 KeyStroke = HexBrush("#4A4A4A"),
                 KeySel = HexBrush("#FFEE00"),
@@ -1844,7 +1858,9 @@ namespace FfxTool.Gui
             {
                 Bg = (Brush)FindResource("B.Surface"),
                 Grid = (Brush)FindResource("B.OutlineVariant"),
+                Minor = OpacityBrush((Brush)FindResource("B.OutlineVariant"), 0.55),
                 Zero = (Brush)FindResource("B.Outline"),
+                Edge = (Brush)FindResource("B.OutlineVariant"),
                 Curve = (Brush)FindResource("B.Primary"),
                 Label = (Brush)FindResource("B.OnSurfaceVariant"),
                 Key = (Brush)FindResource("B.Primary"),
@@ -2041,12 +2057,8 @@ namespace FfxTool.Gui
                 if (double.IsNaN(sAt)) sAt = 0;
                 readout = sAt.ToString("0.###") + " units/sec";
             }
-            var readoutLbl = new TextBlock { Text = readout, FontSize = 10, Foreground = skin.Label };
-            Canvas.SetLeft(readoutLbl, L);
-            Canvas.SetTop(readoutLbl, 3);
-            GraphCanvas.Children.Add(readoutLbl);
-
-            // the pane itself: a quiet field for grid, curve and markers
+            // the pane itself: a quiet field for grid, curve and markers,
+            // outlined so the light editor reads as a panel on the card
             // (WPF Shapes.Rectangle has no X/Y - a Canvas child is placed
             // with Canvas.SetLeft/SetTop, not object-initializer coordinates)
             var backdrop = new Rectangle
@@ -2054,11 +2066,21 @@ namespace FfxTool.Gui
                 Width = Math.Max(0, w - L - R + 12),
                 Height = Math.Max(0, h - T - Bot + 12),
                 RadiusX = skin.BgRadius, RadiusY = skin.BgRadius,
-                Fill = skin.Bg
+                Fill = skin.Bg,
+                Stroke = skin.Edge,
+                StrokeThickness = 1
             };
             Canvas.SetLeft(backdrop, L - 6);
             Canvas.SetTop(backdrop, T - 6);
             GraphCanvas.Children.Add(backdrop);
+
+            // AE's current-value readout sits top-left INSIDE the editor
+            // field (the reference screenshots' "0 units/sec" corner) -
+            // added after the backdrop so the pane never paints over it
+            var readoutLbl = new TextBlock { Text = readout, FontSize = 10, Foreground = skin.Label };
+            Canvas.SetLeft(readoutLbl, L + 8);
+            Canvas.SetTop(readoutLbl, T + 6);
+            GraphCanvas.Children.Add(readoutLbl);
 
             DrawTimeGrid(w0, w1, xOf, w, h, T, Bot, L, R, skin.Grid, skin.Label);
 
@@ -2209,12 +2231,23 @@ namespace FfxTool.Gui
             double lastLabelY = -1000;
             for (double v = Math.Ceiling(plot.VMin / vStep) * vStep; v <= plot.VMax + 1e-9; v += vStep)
             {
+                bool zero = Math.Abs(v) < vStep * 1e-6;
                 double y = Math.Round(yOf(v)) + 0.5;
                 GraphCanvas.Children.Add(new Line
                 {
                     X1 = plot.L, X2 = plot.W - plot.R, Y1 = y, Y2 = y,
-                    Stroke = skin.Grid, StrokeThickness = 1
+                    Stroke = zero ? skin.Zero : skin.Grid,
+                    StrokeThickness = zero ? 1.2 : 1
                 });
+                // AE's fainter half-step line between the majors - the
+                // rhythm the eye reads grid rhythm from, at half weight
+                double yMid = Math.Round(yOf(v + vStep / 2)) + 0.5;
+                if (v + vStep / 2 <= plot.VMax && yMid > plot.T && yMid < plot.H - plot.Bot)
+                    GraphCanvas.Children.Add(new Line
+                    {
+                        X1 = plot.L, X2 = plot.W - plot.R, Y1 = yMid, Y2 = yMid,
+                        Stroke = skin.Minor, StrokeThickness = 1
+                    });
                 if (Math.Abs(y - lastLabelY) >= 13)
                 {
                     var lbl = new TextBlock
@@ -2522,6 +2555,13 @@ namespace FfxTool.Gui
                     Stroke = zero ? skin.Zero : skin.Grid,
                     StrokeThickness = zero ? 1.2 : 1
                 });
+                double yMid = Math.Round(yOf(v + vStep / 2)) + 0.5;
+                if (v + vStep / 2 <= plot.SpeedMax && yMid > plot.T && yMid < plot.H - plot.Bot)
+                    GraphCanvas.Children.Add(new Line
+                    {
+                        X1 = plot.L, X2 = plot.W - plot.R, Y1 = yMid, Y2 = yMid,
+                        Stroke = skin.Minor, StrokeThickness = 1
+                    });
                 if (Math.Abs(y - lastLabelY) >= 13)
                 {
                     var lbl = new TextBlock
@@ -2596,6 +2636,8 @@ namespace FfxTool.Gui
                         X1 = jx, X2 = jx,
                         Y1 = yOf(lastSp), Y2 = yOf(sIn),
                         Stroke = skin.Curve, StrokeThickness = 2,
+                        StrokeStartLineCap = PenLineCap.Round,
+                        StrokeEndLineCap = PenLineCap.Round,
                         IsHitTestVisible = false
                     });
                     Append(s.T0, sIn); // the next stroke starts at the jump's foot
