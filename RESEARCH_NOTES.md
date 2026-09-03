@@ -423,3 +423,45 @@ with tdum/tduM bounds in the file. Kind 10 joins Slider(1) /
 FixedSlider(2) / FloatSlider(9) as a bounded-slider kind
 (`PresetParamKind.BoundedSlider`); the value slot already renders it
 through the shared slider path.
+
+## The update check is one version file, the batch jobs are one page (round 31)
+
+**Check for Updates.** The About page's placeholder button goes live
+with the smallest possible scheme: the repository root carries a
+one-line `VERSION.txt`, GitHub serves its raw bytes for the default
+branch at a stable URL, and the app fetches exactly that one file
+(HttpWebRequest, TLS 1.2 pinned for Windows 7, 6 s timeout, no
+telemetry). The body must be strictly numeric-dotted ("1.0.31", an
+optional leading v tolerated) — a 404 page or captive-portal HTML
+disqualifies itself and surfaces as an error instead of parsing as a
+version. Comparison is numeric per part (Version.CompareTo), never a
+string compare, so 1.0.9 < 1.0.31. Bumping the version for a new round
+is a one-line edit of the same file, committed with the code it
+announces.
+
+**Batch.** One page, two jobs, one folder in:
+
+- *Inspect* mirrors the effect lister's deep read (PresetInspector
+  with the errors list) into one summary row per file: status, effect /
+  parameter / animated counts, size, first decode notes. A file whose
+  effects all fail to decode shows FAILED; a file that yields zero
+  effects or carries decode warnings shows WARN — round 30 proved both
+  states are legitimate file shapes, never reasons to abort the run.
+- *Convert* runs Pipeline.Convert per file: version patch to the
+  chosen target, optional removal of effects whose match name resolves
+  (system scan first, reference tables second — the same recognition
+  chain as the single-file page) as not-installed under the active
+  profile. Three explicit output modes: a "converted" subfolder inside
+  the source, a version suffix beside each original, or an in-place
+  overwrite that demands a Yes/No first. Derived outputs overwrite
+  their own previous result (re-runs stay idempotent); the one guarded
+  edge is a derived name colliding with the INPUT file, which falls
+  back to a numbered suffix instead of destroying the source.
+
+The folder walk is hand-rolled (per-directory try/catch) because
+.NET Framework's Directory.EnumerateFiles with AllDirectories throws
+mid-enumeration on the first locked subtree and loses every file after
+it. Per-file work runs on one worker thread with a cancellation token
+checked between files; UI rows marshal through the dispatcher; progress
+is a determinate 0..N fraction. The CSV report quotes every field
+(doubled quotes), UTF-8 with BOM so Excel reads it correctly.

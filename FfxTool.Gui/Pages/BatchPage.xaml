@@ -1,0 +1,246 @@
+<UserControl x:Class="FfxTool.Gui.BatchPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:FfxTool.Gui"
+             AllowDrop="True" DragEnter="Page_DragEnter" DragLeave="Page_DragLeave" Drop="Page_Drop">
+    <!-- Batch: one folder in, one of two jobs across every .ffx inside.
+         Top-down: mode pills (Inspect / Convert), the source card, the
+         per-mode options card, the job CTA, the progress row, and the
+         result table (which scrolls in its own flexible row). -->
+    <Grid Margin="32,24,32,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Batch Tools" Style="{StaticResource TitlePage}" Margin="0,0,0,14"/>
+
+        <!-- mode pills -->
+        <ListBox x:Name="ModeNav" Grid.Row="1" SelectionChanged="ModeNav_SelectionChanged" Margin="0,0,0,16"
+                 HorizontalAlignment="Left">
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal"/>
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBoxItem x:Name="ModeInspect" IsSelected="True" Padding="14,8" Margin="0,0,8,0"
+                         ToolTip="Deep-read every preset: effects, parameters, keyframe streams — changes nothing">
+                <StackPanel Orientation="Horizontal">
+                    <controls:IconGlyph IconName="List" Width="17" Height="17" VerticalAlignment="Center"/>
+                    <TextBlock Text="Inspect" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </ListBoxItem>
+            <ListBoxItem x:Name="ModeConvert" Padding="14,8" Margin="0,0,8,0"
+                         ToolTip="Run the conversion pipeline across the whole folder">
+                <StackPanel Orientation="Horizontal">
+                    <controls:IconGlyph IconName="SwapHoriz" Width="17" Height="17" VerticalAlignment="Center"/>
+                    <TextBlock Text="Convert" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </ListBoxItem>
+        </ListBox>
+
+        <!-- source card -->
+        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="18,14,18,14" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Margin="0,0,24,0" VerticalAlignment="Center">
+                    <Button Content="Choose Folder…" Style="{StaticResource OutlinedButton}" MinWidth="150"
+                            Click="PickFolder_Click"
+                            ToolTip="Every .ffx inside this folder becomes one job item"/>
+                    <TextBlock Text="…or drop .ffx files / folders onto this page" Style="{StaticResource Caption}"
+                               Opacity="0.8" Margin="0,7,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock x:Name="SourcePathText" Text="No source chosen" Style="{StaticResource Body}"
+                               FontWeight="Medium" TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+                    <TextBlock x:Name="SourceCountText" Style="{StaticResource Caption}"
+                               Foreground="{DynamicResource B.OnSurfaceVariant}" Opacity="0.85"
+                               Margin="0,2,0,0" Text="Pick a folder or drop presets to begin"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- options card -->
+        <Border Grid.Row="3" Style="{StaticResource Card}" Padding="18,14,18,14" Margin="0,0,0,14">
+            <StackPanel Orientation="Horizontal">
+                <!-- inspect mode: the folder walk -->
+                <StackPanel x:Name="OptRecursive" Margin="0,0,28,0">
+                    <TextBlock Text="Scan" Style="{StaticResource FieldLabel}"/>
+                    <CheckBox x:Name="RecursiveCheck" Style="{StaticResource Md3CheckBox}" IsChecked="True"
+                              Content="Include subfolders" Checked="SourceOption_Changed" Unchecked="SourceOption_Changed"/>
+                </StackPanel>
+                <!-- convert mode: target version -->
+                <StackPanel x:Name="OptTarget" Visibility="Collapsed" Margin="0,0,28,0">
+                    <TextBlock Text="Target version" Style="{StaticResource FieldLabel}"/>
+                    <ComboBox x:Name="TargetCombo" Width="190" HorizontalAlignment="Left"/>
+                </StackPanel>
+                <!-- convert mode: effect handling -->
+                <StackPanel x:Name="OptEffects" Visibility="Collapsed" Margin="0,0,28,0">
+                    <TextBlock Text="Effects" Style="{StaticResource FieldLabel}"/>
+                    <ComboBox x:Name="EffectsCombo" Width="260" HorizontalAlignment="Left">
+                        <ComboBoxItem Content="Keep all effects"/>
+                        <ComboBoxItem Content="Remove effects missing from my profile"/>
+                    </ComboBox>
+                </StackPanel>
+                <!-- convert mode: output -->
+                <StackPanel x:Name="OptOutput" Visibility="Collapsed">
+                    <TextBlock Text="Output" Style="{StaticResource FieldLabel}"/>
+                    <ComboBox x:Name="OutputCombo" Width="260" HorizontalAlignment="Left">
+                        <ComboBoxItem Content="Subfolder &quot;converted&quot; inside the source"/>
+                        <ComboBoxItem Content="Beside originals, with a version suffix"/>
+                        <ComboBoxItem Content="Overwrite the original files"/>
+                    </ComboBox>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- job CTA — content doubles as the job summary -->
+        <Button x:Name="RunBtn" Grid.Row="4" Content="Choose a source to start the scan" Height="48"
+                IsEnabled="False" Click="Run_Click"/>
+
+        <!-- progress row -->
+        <Grid Grid.Row="5" Margin="0,12,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <TextBlock x:Name="ProgressText" Text="Ready — choose a source and run a job."
+                           Style="{StaticResource Caption}" Foreground="{DynamicResource B.OnSurfaceVariant}"/>
+                <Border Height="4" CornerRadius="2" Background="{DynamicResource B.SC}" Margin="0,6,0,0">
+                    <Rectangle RadiusX="2" RadiusY="2" Fill="{DynamicResource B.Primary}"
+                               HorizontalAlignment="Stretch" RenderTransformOrigin="0,0">
+                        <Rectangle.RenderTransform>
+                            <ScaleTransform x:Name="ProgScale" ScaleX="0"/>
+                        </Rectangle.RenderTransform>
+                    </Rectangle>
+                </Border>
+            </StackPanel>
+            <TextBlock x:Name="CancelLink" Grid.Column="1" Text="Cancel" Style="{StaticResource M3Link}" Cursor="Hand"
+                       Visibility="Collapsed" Margin="16,0,0,0" VerticalAlignment="Center"
+                       MouseLeftButtonUp="Cancel_Click" ToolTip="Stops after the preset currently being processed"/>
+        </Grid>
+
+        <!-- results -->
+        <Grid Grid.Row="6">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock x:Name="SummaryText" Grid.Row="0" Style="{StaticResource BodySecondary}" Margin="0,0,0,8"/>
+
+            <!-- column headers (fixed widths keep them aligned with the rows) -->
+            <Grid Grid.Row="1" Margin="12,0,12,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="58"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="74"/>
+                    <ColumnDefinition Width="74"/>
+                    <ColumnDefinition Width="74"/>
+                    <ColumnDefinition Width="66"/>
+                    <ColumnDefinition Width="230"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Status" Style="{StaticResource Caption}"/>
+                <TextBlock Grid.Column="1" Text="File" Style="{StaticResource Caption}"/>
+                <TextBlock x:Name="HdCol1" Grid.Column="2" Text="Effects" Style="{StaticResource Caption}"/>
+                <TextBlock x:Name="HdCol2" Grid.Column="3" Text="Params" Style="{StaticResource Caption}"/>
+                <TextBlock x:Name="HdCol3" Grid.Column="4" Text="Animated" Style="{StaticResource Caption}"/>
+                <TextBlock Grid.Column="5" Text="Size" Style="{StaticResource Caption}"/>
+                <TextBlock Grid.Column="6" Text="Notes" Style="{StaticResource Caption}"/>
+            </Grid>
+
+            <ListBox x:Name="ResultList" Grid.Row="2" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     VirtualizingPanel.ScrollUnit="Pixel">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="{DynamicResource B.SC}" CornerRadius="10" Padding="12,8" Margin="0,2">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="58"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="74"/>
+                                    <ColumnDefinition Width="74"/>
+                                    <ColumnDefinition Width="74"/>
+                                    <ColumnDefinition Width="66"/>
+                                    <ColumnDefinition Width="230"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{Binding Status}" VerticalAlignment="Top">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+                                            <Setter Property="Foreground" Value="{DynamicResource B.Primary}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Status}" Value="FAILED">
+                                                    <Setter Property="Foreground" Value="{DynamicResource B.Error}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Status}" Value="WARN">
+                                                    <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <StackPanel Grid.Column="1" ToolTip="{Binding Folder}">
+                                    <TextBlock Text="{Binding FileName}" Style="{StaticResource Body}" FontWeight="Medium"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding Folder}" Style="{StaticResource Caption}" Opacity="0.7"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                                <TextBlock Grid.Column="2" Text="{Binding Effects}" Style="{StaticResource Caption}"
+                                           VerticalAlignment="Top"/>
+                                <TextBlock Grid.Column="3" Text="{Binding Params}" Style="{StaticResource Caption}"
+                                           VerticalAlignment="Top"/>
+                                <TextBlock Grid.Column="4" Text="{Binding Animated}" Style="{StaticResource Caption}"
+                                           VerticalAlignment="Top"/>
+                                <TextBlock Grid.Column="5" Text="{Binding Size}" Style="{StaticResource Caption}"
+                                           VerticalAlignment="Top"/>
+                                <TextBlock Grid.Column="6" Text="{Binding Note}" Style="{StaticResource Caption}"
+                                           Opacity="0.9" TextTrimming="CharacterEllipsis" VerticalAlignment="Top"
+                                           ToolTip="{Binding Note}"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="4,10,0,0">
+                <TextBlock x:Name="ExportCsvLink" Text="Export CSV" Style="{StaticResource M3Link}" Cursor="Hand"
+                           Visibility="Collapsed" Margin="0,0,24,0" MouseLeftButtonUp="ExportCsv_Click"
+                           ToolTip="Writes the table above as a spreadsheet-friendly CSV report"/>
+                <TextBlock x:Name="OpenOutLink" Text="Open Output Folder" Style="{StaticResource M3Link}" Cursor="Hand"
+                           Visibility="Collapsed" MouseLeftButtonUp="OpenOut_Click"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- drag feedback overlay (visual only — drop is handled by the page root) -->
+        <Border x:Name="DragOverlay" Grid.Row="0" Grid.RowSpan="7" Visibility="Collapsed" IsHitTestVisible="False"
+                CornerRadius="26" Background="{DynamicResource B.PrimaryContainer}" Opacity="0.95">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="28" ShadowDepth="6" Opacity="0.22"/>
+            </Border.Effect>
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <controls:IconGlyph IconName="Upload" Width="54" Height="54"
+                                    Foreground="{DynamicResource B.OnPrimaryContainer}" HorizontalAlignment="Center"
+                                    Margin="0,0,0,14"/>
+                <TextBlock Text="Release to batch-process the presets" FontSize="19" FontWeight="SemiBold"
+                           Foreground="{DynamicResource B.OnPrimaryContainer}" HorizontalAlignment="Center"
+                           Margin="0,0,0,6"/>
+                <TextBlock Text=".ffx files and whole folders both work"
+                           FontSize="12" Foreground="{DynamicResource B.OnPrimaryContainer}"
+                           Opacity="0.8" HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

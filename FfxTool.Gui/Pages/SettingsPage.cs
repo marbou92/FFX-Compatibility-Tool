@@ -157,6 +157,35 @@ namespace FfxTool.Gui
         private void Logs_Click(object sender, RoutedEventArgs e) =>
             LogService.RevealLatest();
 
+        // ---------- update check ----------
+
+        /// <summary>
+        /// One GET of the repository's one-line VERSION.txt on a worker
+        /// thread; the answer lands back on the UI dispatcher. The button
+        /// disables itself for the flight so a slow network can't stack
+        /// two checks.
+        /// </summary>
+        private void CheckUpdates_Click(object sender, RoutedEventArgs e)
+        {
+            CheckUpdatesButton.IsEnabled = false;
+            CheckUpdatesButton.Content = "Checking…";
+            UpdateStatusText.Text = "Contacting the version file…";
+            UpdateLink.Visibility = Visibility.Collapsed;
+
+            UpdateChecker.CheckAsync(result => Dispatcher.BeginInvoke(new Action(() =>
+            {
+                CheckUpdatesButton.IsEnabled = true;
+                CheckUpdatesButton.Content = "Check for Updates";
+                UpdateStatusText.Text = result.Message;
+                if (result.Status == UpdateCheckStatus.UpdateAvailable)
+                    UpdateLink.Visibility = Visibility.Visible;
+                LogService.Append("update check: " + result.Message);
+            })));
+        }
+
+        private void UpdateLink_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) =>
+            OpenUrl(RepoUrl + "/releases");
+
         private static void OpenUrl(string url)
         {
             try

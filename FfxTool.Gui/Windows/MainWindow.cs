@@ -69,6 +69,7 @@ namespace FfxTool.Gui
         private readonly PluginProfile _profile;
         private readonly ConvertPage _convert;
         private readonly ListerPage _lister;
+        private readonly BatchPage _batch;
         private readonly ProfilePage _profilePage;
         private readonly SettingsPage _settings;
 
@@ -88,6 +89,7 @@ namespace FfxTool.Gui
             _profile = PluginProfile.Load();
 
             _lister = new ListerPage(_profile);
+            _batch = new BatchPage(_profile);
             _profilePage = new ProfilePage(_profile, OnProfileChanged);
             _convert = new ConvertPage(_profile);
             _settings = new SettingsPage(_profilePage);
@@ -95,7 +97,8 @@ namespace FfxTool.Gui
             // Convert-first: it's the main thing this tool does.
             Rail.AddItem("Convert", "SwapHoriz", "Convert Preset · Ctrl+1");
             Rail.AddItem("Effect Lister", "List", "Effect Lister · Ctrl+2");
-            Rail.AddItem("Settings", "Settings", "Settings · Ctrl+3");
+            Rail.AddItem("Batch", "FilterList", "Batch Tools · Ctrl+3");
+            Rail.AddItem("Settings", "Settings", "Settings · Ctrl+4");
             Rail.SelectionChanged += i => ShowSection(i);
             // the + is the upload button: jump to Convert and pick a file
             Rail.FabClicked += () =>
@@ -130,6 +133,7 @@ namespace FfxTool.Gui
             {
                 case 0: return _convert;
                 case 1: return _lister;
+                case 2: return _batch;
                 default: return null;
             }
         }
@@ -140,7 +144,8 @@ namespace FfxTool.Gui
             {
                 case 0: PageHost.Content = _convert; break;
                 case 1: PageHost.Content = _lister; break;
-                case 2: PageHost.Content = _settings; break;
+                case 2: PageHost.Content = _batch; break;
+                case 3: PageHost.Content = _settings; break;
             }
             AnimateSectionIn();
             (PageHost.Content as ISection)?.OnShown();
@@ -170,6 +175,7 @@ namespace FfxTool.Gui
         {
             _convert.OnProfileChanged();
             _lister.OnProfileChanged();
+            _batch.OnProfileChanged();
         }
 
         protected override void OnPreviewKeyDown(KeyEventArgs e)
@@ -180,7 +186,7 @@ namespace FfxTool.Gui
                 ActiveSection()?.OpenFile();
                 e.Handled = true;
             }
-            else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key >= Key.D1 && e.Key <= Key.D3)
+            else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key >= Key.D1 && e.Key <= Key.D4)
             {
                 int index = (int)e.Key - (int)Key.D1;
                 Rail.SelectWithoutNotify(index);

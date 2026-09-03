@@ -250,12 +250,19 @@
                                 <Border Height="1" Background="{DynamicResource B.OutlineVariant}" Opacity="0.6" Margin="0,0,0,14"/>
 
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="Check for Updates" Width="170" IsEnabled="False" Margin="0,0,10,0"
-                                            ToolTip="Not yet implemented — no update server exists for this app yet"/>
+                                    <Button x:Name="CheckUpdatesButton" Content="Check for Updates" Width="170" Margin="0,0,10,0"
+                                            Click="CheckUpdates_Click"
+                                            ToolTip="Compares this build against the latest version published in the project's repository — one small download, nothing is sent"/>
                                     <Button Content="Logs" Style="{StaticResource OutlinedButton}" Width="90"
                                             Click="Logs_Click"
                                             ToolTip="Opens the folder where console output is saved"/>
                                 </StackPanel>
+                                <TextBlock x:Name="UpdateStatusText" Style="{StaticResource Caption}" Margin="0,12,0,0"
+                                           Opacity="0.85" TextWrapping="Wrap"
+                                           Text="Not checked yet — the check reads a one-line version file from the project's repository; nothing else leaves this machine."/>
+                                <TextBlock x:Name="UpdateLink" Text="Open the releases page" Style="{StaticResource M3Link}" Cursor="Hand"
+                                           Visibility="Collapsed" Margin="0,8,0,0" MouseLeftButtonUp="UpdateLink_Click"
+                                           ToolTip="Opens the repository's releases page in your browser"/>
                                 <TextBlock Text="Every conversion session is journaled to %APPDATA%\FFXCompatibilityTool\logs."
                                            Style="{StaticResource Caption}" Margin="0,12,0,0" Opacity="0.85"/>
                             </StackPanel>
