@@ -13,7 +13,7 @@ namespace FfxTool.Gui
     /// untouched) and About (with real project links). Theme changes apply
     /// instantly via ThemeService.
     /// </summary>
-    public partial class SettingsPage : UserControl
+    public partial class SettingsPage : UserControl, ISection
     {
         private const string RepoUrl = "https://github.com/marbou92/FFX-Compatibility-Tool";
 
@@ -44,6 +44,14 @@ namespace FfxTool.Gui
             // (Restore Defaults) — previously a stale-switch desync bug
             ThemeService.Changed += SyncFromTheme;
         }
+
+        // MainWindow drives the active page through ISection (Ctrl+O and
+        // the per-section OnShown). Settings never had either behavior —
+        // before round 33 ActiveSection() simply returned null for it —
+        // so both stay deliberate no-ops rather than growing semantics.
+        public void OpenFile() { }
+
+        public void OnShown() { }
 
         private void SubNav_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {

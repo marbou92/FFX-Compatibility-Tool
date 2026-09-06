@@ -858,6 +858,10 @@ namespace FfxTool.Gui
                 }
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
+                    // always release the report button: a queue
+                    // reload mid-scan invalidates the run (gen)
+                    // but must not leave the button dead
+                    _scanRunning = false;
                     if (gen != _scanGen) return;
                     int bad = _scanRows.Count(r => r.Status == "FAILED");
                     int warn = _scanRows.Count(r => r.Status == "WARN");
