@@ -22,6 +22,11 @@ on:
       - "v*"
   workflow_dispatch:
 
+# the release step publishes with the default token — without this block
+# a read-only default would 403 the very first v* tag's release
+permissions:
+  contents: write
+
 jobs:
   build:
     # windows-latest specifically: has the .NET Framework 4.8 targeting
