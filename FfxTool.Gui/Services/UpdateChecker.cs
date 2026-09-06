@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Net;
 
 namespace FfxTool.Gui
@@ -22,20 +21,22 @@ namespace FfxTool.Gui
     }
 
     /// <summary>
-    /// The tiniest possible update check. The repository root carries a
-    /// one-line VERSION.txt (served raw by GitHub for the default branch);
-    /// this class fetches that one file on a worker thread and compares it
-    /// against the running build. No telemetry, no installers, no payload,
-    /// no phone-home beyond the single GET — the user decides what to do
-    /// with the answer.
+    /// The tiniest possible update check. The project's own releases page
+    /// is the single source of truth: this class resolves the
+    /// releases/latest redirect — which always points at the newest full
+    /// release (prereleases like the rolling nightly never answer) — and
+    /// reads the version out of the redirect target's tag. Publishing a
+    /// release IS the announcement; there is no version file to keep in
+    /// sync anywhere. No telemetry, no installers, no payload, no
+    /// phone-home beyond the single redirect lookup — the user decides
+    /// what to do with the answer.
     /// </summary>
     public static class UpdateChecker
     {
-        // GitHub serves the raw bytes of the default branch at this stable
-        // URL; bumping the version for a new round is a one-line file edit
-        // in the same commit as the code.
-        private const string VersionUrl =
-            "https://raw.githubusercontent.com/marbou92/FFX-Compatibility-Tool/main/VERSION.txt";
+        // GitHub answers this URL with a 302 to /releases/tag/<tag> when a
+        // full release exists, and with 404 when none does.
+        private const string LatestReleaseUrl =
+            "https://github.com/marbou92/FFX-Compatibility-Tool/releases/latest";
 
         /// <summary>
         /// Runs the check on a worker thread; the callback fires on that
@@ -55,29 +56,41 @@ namespace FfxTool.Gui
                 // machines whose OS-level defaults predate it still connect.
                 ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
 
-                var req = (HttpWebRequest)WebRequest.Create(VersionUrl);
+                var req = (HttpWebRequest)WebRequest.Create(LatestReleaseUrl);
                 req.Method = "GET";
+                req.AllowAutoRedirect = false; // the redirect IS the answer
                 req.UserAgent = "FFXCompatibilityTool/" + current;
                 req.Timeout = 6000;
                 req.ReadWriteTimeout = 6000;
                 req.CachePolicy = new System.Net.Cache.RequestCachePolicy(
                     System.Net.Cache.RequestCacheLevel.BypassCache);
 
-                string body;
+                string location;
                 using (var resp = (HttpWebResponse)req.GetResponse())
-                using (var reader = new StreamReader(resp.GetResponseStream()))
-                    body = reader.ReadToEnd();
+                    location = resp.Headers["Location"];
 
-                var latest = (body ?? "").Trim();
-                // a 404 page or captive-portal HTML must not parse as a version
+                // a redirect to the releases LIST (no /tag/ segment) means no
+                // full release exists yet — this build is then the newest
+                // thing the project offers
+                if (location != null && !location.Contains("/releases/tag/"))
+                    return new UpdateCheckResult
+                    {
+                        Status = UpdateCheckStatus.UpToDate,
+                        CurrentVersion = current,
+                        Message = "No release has been published yet — this build is current."
+                    };
+
+                string tag = TagFromLocation(location);
+
+                // a captive portal or proxy page must not parse as a version
                 Version v;
-                if (latest.Length == 0 || latest.Length > 32 || !TryParseVersion(latest, out v))
+                if (tag == null || !TryParseVersion(tag, out v))
                     return new UpdateCheckResult
                     {
                         Status = UpdateCheckStatus.Error,
                         CurrentVersion = current,
-                        Message = "The version file online doesn't look like a version" +
-                                  (latest.Length > 0 ? " (got \"" + Truncate(latest, 24) + "\")." : " (empty response).")
+                        Message = "The release page's answer didn't look like a version tag" +
+                                  (string.IsNullOrEmpty(tag) ? "." : " (got \"" + Truncate(tag, 24) + "\").")
                     };
 
                 if (v != null && IsNewer(v, current))
@@ -85,32 +98,54 @@ namespace FfxTool.Gui
                     {
                         Status = UpdateCheckStatus.UpdateAvailable,
                         CurrentVersion = current,
-                        LatestVersion = latest,
-                        Message = "Update available — v" + latest + " is out (you're on v" + current + ")."
+                        LatestVersion = tag.TrimStart('v', 'V'),
+                        Message = "Update available — " + tag + " is out (you're on v" + current + ")."
                     };
 
                 return new UpdateCheckResult
                 {
                     Status = UpdateCheckStatus.UpToDate,
                     CurrentVersion = current,
-                    LatestVersion = latest,
+                    LatestVersion = tag.TrimStart('v', 'V'),
                     Message = "You're up to date — v" + current + " is the latest published version."
                 };
             }
             catch (Exception ex)
             {
                 string reason = ex.Message;
+                bool noRelease = false;
                 var web = ex as WebException;
                 var http = web != null ? web.Response as HttpWebResponse : null;
                 if (http != null)
+                {
                     reason = "HTTP " + (int)http.StatusCode + " " + http.StatusDescription;
+                    // no full release published yet — this build is then the
+                    // newest thing the project offers (prereleases don't count)
+                    noRelease = http.StatusCode == HttpStatusCode.NotFound;
+                }
                 return new UpdateCheckResult
                 {
-                    Status = UpdateCheckStatus.Error,
+                    Status = noRelease ? UpdateCheckStatus.UpToDate : UpdateCheckStatus.Error,
                     CurrentVersion = current,
-                    Message = "Couldn't check for updates — " + reason
+                    Message = noRelease
+                        ? "No release has been published yet — this build is current."
+                        : "Couldn't check for updates — " + reason
                 };
             }
+        }
+
+        /// <summary>Extracts the tag from a releases/latest redirect target
+        /// ("…/releases/tag/v0.1.0" → "v0.1.0"); null when the header is
+        /// missing or not a release-tag URL.</summary>
+        private static string TagFromLocation(string location)
+        {
+            if (string.IsNullOrEmpty(location)) return null;
+            const string marker = "/releases/tag/";
+            int i = location.LastIndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (i < 0) return null;
+            string tag = Uri.UnescapeDataString(location.Substring(i + marker.Length));
+            if (tag.Length == 0 || tag.Length > 32) return null;
+            return tag;
         }
 
         /// <summary>Strict "is the online version newer" — numeric on every

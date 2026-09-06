@@ -11,7 +11,7 @@
 
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="40" ResizeBorderThickness="8"
-                            GlassFrameThickness="0" CornerRadius="0"
+                            GlassFrameThickness="1" CornerRadius="0"
                             UseAeroCaptionButtons="False"/>
     </shell:WindowChrome.WindowChrome>
 
@@ -23,6 +23,15 @@
          strips it - that is exactly why minimizing used to snap shut with
          no animation. WindowChrome still keeps the client area covering the
          whole window via WM_NCCALCSIZE, so the native frame is never drawn.
+
+         THE WINDOWS 7 SHADOW: GlassFrameThickness="1" extends the DWM
+         frame one pixel into the client area, which is what makes the
+         DWM draw its drop shadow around the window again (the Aero glass
+         shadow on Windows 7, the standard window shadow on 8/10/11 -
+         GlassFrameThickness="0" is what suppressed it). The 1px glass
+         edge itself is painted over by the window background, so the
+         silhouette is unchanged; on Windows 7 Basic (DWM off) no shadow
+         is drawn, exactly like a stock window.
 
          SQUARE CORNERS, DELIBERATELY: rounds 5-9 chased a rounded silhouette
          with an OS-level region cut (SetWindowRgn) plus an anti-aliased rim

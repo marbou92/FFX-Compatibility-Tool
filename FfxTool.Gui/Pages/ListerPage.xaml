@@ -641,6 +641,47 @@
                 </Grid>
             </Border>
 
+            <!-- folder file manager: shown when a folder (or a multi-file
+                 selection) is loaded and no preset is open — click a preset
+                 to open it with the full single-preset anatomy -->
+            <Border x:Name="FolderHost" Visibility="Collapsed" CornerRadius="24"
+                    Background="{DynamicResource B.SCLow}" Margin="8">
+                <Grid Margin="22,18">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Orientation="Horizontal">
+                        <controls:IconGlyph IconName="FolderOpen" Width="22" Height="22"
+                                            Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
+                        <TextBlock Text="Folder presets" Style="{StaticResource Body}" FontWeight="Medium"
+                                   Margin="10,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <ListBox x:Name="FolderList" Grid.Row="1" Margin="2,12,2,4"
+                             Focusable="False" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             VirtualizingPanel.ScrollUnit="Pixel"
+                             SelectionChanged="FolderList_SelectionChanged">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="2,3" Cursor="Hand" ToolTip="{Binding Path=Path}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="Medium"
+                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Size}" Style="{StaticResource Caption}"
+                                               Opacity="0.75" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock Grid.Row="2" Style="{StaticResource Caption}" Opacity="0.8" Margin="2,8,0,0"
+                               Text="Click a preset to open it — Folder report deep-reads every file into one table."/>
+                </Grid>
+            </Border>
+
             <!-- loaded state: effect list + inspector side by side -->
             <Grid x:Name="SplitHost" Visibility="Collapsed">
                 <Grid.ColumnDefinitions>
@@ -1062,16 +1103,22 @@
                         Style="{StaticResource OutlinedButton}" MinWidth="118" Height="40"
                         ToolTip="Load every .ffx in a folder — flip through them here, or scan the whole folder into one report"/>
                 <!-- folder queue: only visible when a folder (or a multi-file
-                     selection) is loaded — the combo switches the workspace
-                     between the folder's presets -->
+                     selection) is loaded — "All presets" returns to the
+                     folder's file manager -->
                 <StackPanel x:Name="QueuePanel" Orientation="Horizontal" Visibility="Collapsed" Margin="12,0,0,0">
-                    <ComboBox x:Name="QueueCombo" Width="290" VerticalAlignment="Center"
-                              SelectionChanged="QueueCombo_SelectionChanged"
-                              ToolTip="The presets of the loaded folder — pick one to open it"/>
+                    <TextBlock x:Name="QueueLink" Text="All presets" Style="{StaticResource M3Link}" Cursor="Hand"
+                               VerticalAlignment="Center" MouseLeftButtonUp="QueueLink_Click"
+                               ToolTip="Back to the folder's file manager"/>
                     <TextBlock x:Name="ScanLink" Text="Folder report" Style="{StaticResource M3Link}" Cursor="Hand"
                                Margin="14,0,0,0" VerticalAlignment="Center" MouseLeftButtonUp="Scan_Click"
                                ToolTip="Deep-read every preset in the folder into one report — exportable as CSV"/>
                 </StackPanel>
+                <!-- hands the open preset to the Convert section (visible once
+                     any preset is loaded) -->
+                <Button x:Name="SendConvertBtn" Content="Convert this preset…" Margin="12,0,0,0" Height="40"
+                        MinWidth="170" Visibility="Collapsed" Click="SendConvertBtn_Click"
+                        Style="{StaticResource OutlinedButton}"
+                        ToolTip="Switches to Convert with this preset loaded"/>
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
                 <TextBlock x:Name="StatusBarLeft" Text="" Style="{StaticResource Caption}"/>

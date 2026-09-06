@@ -47,6 +47,8 @@ namespace FfxTool.Gui
         private string _queueRoot;                 // the source folder, for output derivation
         private CancellationTokenSource _cts;
         private volatile bool _running;
+        // the file manager rows of the loaded queue (same order as _queue)
+        private readonly ObservableCollection<QueueFileVm> _queueRows = new ObservableCollection<QueueFileVm>();
 
         private sealed class QueueResult
         {
@@ -55,6 +57,33 @@ namespace FfxTool.Gui
             public int Kept;
             public int Removed;
             public string Note;
+        }
+
+        /// <summary>One row of the folder file manager: name and size while
+        /// queued, status + note filling in live as the batch runs.</summary>
+        private sealed class QueueFileVm : System.ComponentModel.INotifyPropertyChanged
+        {
+            public string Name { get; set; }
+            public string Size { get; set; }
+
+            string _status = "";
+            public string Status
+            {
+                get { return _status; }
+                set { _status = value; Raise(nameof(Status)); }
+            }
+
+            string _note = "";
+            public string Note
+            {
+                get { return _note; }
+                set { _note = value; Raise(nameof(Note)); }
+            }
+
+            public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
+
+            void Raise(string prop) =>
+                PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(prop));
         }
 
         // DragEnter/DragLeave fire on every child boundary crossing; a depth
@@ -102,6 +131,11 @@ namespace FfxTool.Gui
             if (dlg.FileNames.Length == 1) { LoadFile(dlg.FileNames[0]); return; }
             LoadQueue(dlg.FileNames.Where(File.Exists).ToList(), null);
         }
+
+        /// <summary>Handoff target for the Effect Lister's “Convert this
+        /// preset…” button — MainWindow switches the section and loads the
+        /// file here.</summary>
+        public void LoadExternal(string path) => LoadFile(path);
 
         private void Hero_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => OpenFile();
 
@@ -237,6 +271,18 @@ namespace FfxTool.Gui
             QueueCard.Visibility = Visibility.Visible;
             QueueText.Text = root ?? files.Count + " presets queued";
             if (QueueOutput.SelectedIndex < 0) QueueOutput.SelectedIndex = 0;
+
+            // the file manager: one row per preset with its size; each
+            // row's status fills in live as the batch runs
+            _queueRows.Clear();
+            foreach (var f in files)
+            {
+                string size = "—";
+                try { size = FolderScan.FmtSize(new FileInfo(f).Length); }
+                catch { /* unreadable metadata — the size stays “—” */ }
+                _queueRows.Add(new QueueFileVm { Name = Path.GetFileName(f), Size = size });
+            }
+            QueueFileList.ItemsSource = _queueRows;
 
             StatusText.Text = files.Count + " preset" + (files.Count == 1 ? "" : "s") + " queued";
             Console.Log($"[INFO] Queue loaded: {files.Count} preset(s)" +
@@ -423,10 +469,13 @@ namespace FfxTool.Gui
             {
                 await Task.Run(() =>
                 {
-                    foreach (var path in files)
+                    for (int i = 0; i < files.Count; i++)
                     {
                         _cts.Token.ThrowIfCancellationRequested();
+                        string path = files[i];
                         string name = Path.GetFileName(path);
+                        var row = _queueRows[i];
+                        Dispatcher.BeginInvoke(new Action(() => row.Status = "Converting…"));
                         ((IProgress<(int, string)>)reporter).Report((done,
                             "Converting… " + (done + 1) + "/" + total + " — " + name));
                         var r = QueueConvertOne(path, targetKey, removeMissing, output, outDir);
@@ -434,6 +483,10 @@ namespace FfxTool.Gui
                         if (!r.Ok) failed++;
                         else { ok++; if (r.Warn) warned++; }
                         removedTotal += r.Removed;
+                        string rowStatus = !r.Ok ? "FAILED" : r.Warn ? "WARN" : "OK";
+                        string rowNote = r.Note ?? "";
+                        Dispatcher.BeginInvoke(new Action(() =>
+                        { row.Status = rowStatus; row.Note = rowNote; }));
                         string line = !r.Ok
                             ? "[ERROR] " + name + " — " + r.Note
                             : "[OK] " + name + " — " + r.Kept + " effect(s) kept"

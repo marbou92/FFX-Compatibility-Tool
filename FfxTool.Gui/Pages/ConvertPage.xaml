@@ -79,20 +79,64 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
                     <!-- folder queue: swaps in for the hero/checklist when a
-                         whole folder (or several files) is loaded — one
-                         conversion job per .ffx, settings below apply to all -->
+                         whole folder (or several files) is loaded — the file
+                         manager lists every preset with its live conversion
+                         status, the settings below apply to all -->
                     <Border x:Name="QueueCard" Visibility="Collapsed" CornerRadius="24"
                             Background="{DynamicResource B.SCLow}" Margin="4" Padding="22,18">
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <controls:IconGlyph IconName="FolderOpen" Width="22" Height="22"
-                                                    Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
-                                <TextBlock x:Name="QueueText" Text="Folder queue" Style="{StaticResource Body}" FontWeight="Medium"
-                                           Margin="10,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Grid.Row="0">
+                                <StackPanel Orientation="Horizontal">
+                                    <controls:IconGlyph IconName="FolderOpen" Width="22" Height="22"
+                                                        Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="QueueText" Text="Folder queue" Style="{StaticResource Body}" FontWeight="Medium"
+                                               Margin="10,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                                <TextBlock x:Name="QueueSub" Style="{StaticResource Caption}" Opacity="0.85" Margin="32,4,0,0"
+                                           Text="One conversion per preset — the settings here apply to every file."/>
                             </StackPanel>
-                            <TextBlock x:Name="QueueSub" Style="{StaticResource Caption}" Opacity="0.85" Margin="32,4,0,0"
-                                       Text="One conversion per preset — the settings here apply to every file."/>
-                            <StackPanel Orientation="Horizontal" Margin="32,14,0,0">
+                            <ListBox x:Name="QueueFileList" Grid.Row="1" Margin="10,12,2,4"
+                                     Focusable="False" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                     VirtualizingPanel.ScrollUnit="Pixel">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="2,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="Medium"
+                                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding Note}"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Size}" Style="{StaticResource Caption}"
+                                                       Opacity="0.75" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="StatusCell" Grid.Column="2" Text="{Binding Status}" Margin="18,0,0,0"
+                                                       VerticalAlignment="Center" ToolTip="{Binding Note}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+                                                        <Setter Property="Foreground" Value="{DynamicResource B.Primary}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Status}" Value="WARN">
+                                                                <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Status}" Value="FAILED">
+                                                                <Setter Property="Foreground" Value="{DynamicResource B.Error}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="32,12,0,0">
                                 <StackPanel Margin="0,0,28,0">
                                     <TextBlock Text="Scan" Style="{StaticResource FieldLabel}"/>
                                     <CheckBox x:Name="QueueRecursive" Style="{StaticResource Md3CheckBox}" Content="Include subfolders"
@@ -112,7 +156,7 @@
                                     </ComboBox>
                                 </StackPanel>
                             </StackPanel>
-                        </StackPanel>
+                        </Grid>
                     </Border>
                 </Grid>
 

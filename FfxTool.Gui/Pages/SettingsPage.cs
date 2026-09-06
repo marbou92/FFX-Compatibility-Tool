@@ -174,16 +174,16 @@ namespace FfxTool.Gui
         // ---------- update check ----------
 
         /// <summary>
-        /// One GET of the repository's one-line VERSION.txt on a worker
-        /// thread; the answer lands back on the UI dispatcher. The button
-        /// disables itself for the flight so a slow network can't stack
-        /// two checks.
+        /// One redirect lookup of the project's releases/latest on a
+        /// worker thread; the answer lands back on the UI dispatcher. The
+        /// button disables itself for the flight so a slow network can't
+        /// stack two checks.
         /// </summary>
         private void CheckUpdates_Click(object sender, RoutedEventArgs e)
         {
             CheckUpdatesButton.IsEnabled = false;
             CheckUpdatesButton.Content = "Checking…";
-            UpdateStatusText.Text = "Contacting the version file…";
+            UpdateStatusText.Text = "Contacting GitHub releases…";
             UpdateLink.Visibility = Visibility.Collapsed;
 
             UpdateChecker.CheckAsync(result => Dispatcher.BeginInvoke(new Action(() =>

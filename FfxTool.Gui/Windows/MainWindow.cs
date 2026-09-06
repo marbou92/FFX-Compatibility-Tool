@@ -105,6 +105,13 @@ namespace FfxTool.Gui
                 Rail.Select(0);
                 _convert.OpenFile();
             };
+            // the Effect Lister's "Convert this preset…" hands the open
+            // preset over: switch to the Convert section and load it there
+            _lister.ConvertRequested += path =>
+            {
+                Rail.Select(0);
+                _convert.LoadExternal(path);
+            };
 
             MinBtn.Click += (s, e) => WindowState = WindowState.Minimized;
             MaxBtn.Click += (s, e) => ToggleMaximize();

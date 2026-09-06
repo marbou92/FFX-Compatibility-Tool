@@ -259,7 +259,7 @@
                                 </StackPanel>
                                 <TextBlock x:Name="UpdateStatusText" Style="{StaticResource Caption}" Margin="0,12,0,0"
                                            Opacity="0.85" TextWrapping="Wrap"
-                                           Text="Not checked yet — the check reads a one-line version file from the project's repository; nothing else leaves this machine."/>
+                                           Text="Not checked yet — the check resolves the project's latest release on GitHub; nothing else leaves this machine."/>
                                 <TextBlock x:Name="UpdateLink" Text="Open the releases page" Style="{StaticResource M3Link}" Cursor="Hand"
                                            Visibility="Collapsed" Margin="0,8,0,0" MouseLeftButtonUp="UpdateLink_Click"
                                            ToolTip="Opens the repository's releases page in your browser"/>

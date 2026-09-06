@@ -482,6 +482,15 @@ namespace FfxTool.Gui
             public string Note { get; set; }
         }
 
+        /// <summary>One row of the folder file manager (the queue's list
+        /// view): the preset's name, size and full path.</summary>
+        public class FolderRowVm
+        {
+            public string Name { get; set; }
+            public string Size { get; set; }
+            public string Path { get; set; }
+        }
+
         private readonly PluginProfile _profile;
         private List<Pipeline.EffectInfo> _currentEffects = new List<Pipeline.EffectInfo>();
         private List<PresetEffectDetails> _details = new List<PresetEffectDetails>();
@@ -529,6 +538,15 @@ namespace FfxTool.Gui
         // scan so its rows can never mix into the new folder's report
         private int _scanGen;
         private readonly ObservableCollection<ScanRowVm> _scanRows = new ObservableCollection<ScanRowVm>();
+
+        // folder view state: true while the file manager is showing (no
+        // preset open), false once a preset from the queue is on screen
+        private bool _folderView;
+        private string _currentPath;
+        private readonly ObservableCollection<FolderRowVm> _folderRows = new ObservableCollection<FolderRowVm>();
+
+        // MainWindow wires this: switch to Convert and load the preset there
+        public event Action<string> ConvertRequested;
 
         // ---------- view modes: AE Effect Controls panel vs. split inspector ----------
         // 0 = Effect Controls (the AE-style panel, the default), 1 = split
@@ -688,20 +706,58 @@ namespace FfxTool.Gui
             _queueIndex = 0;
             _scanGen++; // any in-flight report belongs to the OLD queue
             QueuePanel.Visibility = Visibility.Visible;
-            QueueCombo.ItemsSource = files.Select(System.IO.Path.GetFileName).ToList();
-            QueueCombo.SelectedIndex = 0; // fires QueueCombo_SelectionChanged → LoadFile
+
+            // the file manager: the folder shows as a list of presets;
+            // clicking one opens it with the full single-preset anatomy
+            _folderRows.Clear();
+            foreach (var f in files)
+            {
+                string size = "—";
+                try { size = FolderScan.FmtSize(new FileInfo(f).Length); }
+                catch { /* unreadable metadata — the size stays “—” */ }
+                _folderRows.Add(new FolderRowVm
+                {
+                    Name = System.IO.Path.GetFileName(f),
+                    Size = size,
+                    Path = f
+                });
+            }
+            FolderList.ItemsSource = _folderRows;
+            ShowFolderView();
         }
 
-        private void QueueCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        /// <summary>Folder mode's list view: hide the open preset, show the
+        /// folder's presets; picking one returns to the normal anatomy.</summary>
+        private void ShowFolderView()
         {
-            // the combo only ever receives items in code, after the page is
-            // built — but guard anyway, per the round-32 parse-order lesson
+            _folderView = true;
+            FolderList.SelectedIndex = -1; // so re-clicking the same row re-fires
+            EmptyState.Visibility = Visibility.Collapsed; // the list replaces it
+            SetView(_viewMode);
+        }
+
+        private void QueueLink_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (_queue != null) ShowFolderView();
+        }
+
+        private void FolderList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // items only ever arrive in code, after the page is built — but
+            // guard anyway, per the round-32 parse-order lesson
             if (!IsInitialized || _queue == null) return;
-            int i = QueueCombo.SelectedIndex;
+            int i = FolderList.SelectedIndex;
             if (i < 0 || i >= _queue.Count) return;
             _queueIndex = i;
             LoadFile(_queue[i]);
         }
+
+        private void SendConvertBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrEmpty(_currentPath)) return;
+            ConvertRequested?.Invoke(this, _currentPath);
+        }
+
 
         // ---------- drag feedback ----------
         private void Page_DragEnter(object sender, DragEventArgs e)
@@ -749,6 +805,8 @@ namespace FfxTool.Gui
 
         private void LoadFile(string path)
         {
+            _currentPath = path;
+            _folderView = false; // the file manager gives way to the opened preset
             try
             {
                 // a fresh file invalidates every index the inspector holds —
@@ -773,6 +831,7 @@ namespace FfxTool.Gui
                 FileChipText.Text = _queue != null
                     ? (_queueIndex + 1) + " / " + _queue.Count + " — " + System.IO.Path.GetFileName(path)
                     : System.IO.Path.GetFileName(path);
+                SendConvertBtn.Visibility = Visibility.Visible;
                 byte[] bytes = File.ReadAllBytes(path);
                 _currentEffects = Pipeline.ListEffects(bytes);
 
@@ -1077,7 +1136,8 @@ namespace FfxTool.Gui
             }
 
             bool hasContent = _currentEffects.Any(e => !e.IsSentinel);
-            EmptyState.Visibility = hasContent ? Visibility.Collapsed : Visibility.Visible;
+            EmptyState.Visibility = !hasContent && !_folderView
+                ? Visibility.Visible : Visibility.Collapsed;
             SetView(_viewMode); // shows/hides EcHost + SplitHost for the active view
 
             if (hasContent && shown > 0)
@@ -1124,6 +1184,18 @@ namespace FfxTool.Gui
         {
             _viewMode = mode;
             if (ViewEcBtn == null) return; // XAML not loaded yet (design-time)
+
+            // the folder file manager outranks both preset views while no
+            // preset is open; it is left by opening a preset (LoadFile)
+            if (_folderView)
+            {
+                FolderHost.Visibility = Visibility.Visible;
+                ViewSwitcher.Visibility = Visibility.Collapsed;
+                EcHost.Visibility = Visibility.Collapsed;
+                SplitHost.Visibility = Visibility.Collapsed;
+                return;
+            }
+            FolderHost.Visibility = Visibility.Collapsed;
             bool has = _currentEffects.Any(x => !x.IsSentinel);
             ViewEcBtn.IsChecked = mode == 0;
             ViewInspectorBtn.IsChecked = mode == 1;

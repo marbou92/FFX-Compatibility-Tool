@@ -1,71 +1,117 @@
-# FFX Compatibility Tool — C# / .NET Framework 4.8 port
+# FFX Compatibility Tool
 
-A from-scratch port of the Python `ffx_core` engine to C#, targeting
-**.NET Framework 4.8** specifically for real Windows 7 compatibility —
-see the repo's earlier history for why: Python 3.9+, Qt6 (PySide6), and
-even PySide2's available wheel range all independently stopped supporting
-Win7, and chasing each one individually stopped being productive.
+[![CI](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/test.yml/badge.svg)](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/test.yml)
 
-## Important: what's verified and what isn't yet
+A small Windows desktop tool for After Effects **.ffx** presets: it
+downgrades presets to older After Effects versions, removes effects whose
+plugins you don't own, and lets you inspect what is really inside a preset —
+all offline, in one portable exe.
 
-**I could not compile or run this C# code myself** — this sandbox has no
-.NET SDK installed and no way to install one (network access here is
-locked to a handful of package registries, not Microsoft's). Every line
-was written by careful manual translation from the Python version that
-*was* fully tested against your real preset files across this whole
-project, but **the C# port itself has not been executed by anyone yet.**
+Built for **.NET Framework 4.8 / WPF**, so it runs on Windows 7 SP1 through
+Windows 11. No installer, no runtime download on Windows 10/11.
 
-`.github/workflows/test.yml` is set up to build and run the full test
-suite (a port of every meaningful test from `tests/test_riff.py` and
-`tests/test_pipeline.py`, including a real-file round-trip using the same
-`sample_1.ffx` fixture) on `windows-latest` the moment you push this. That
-CI run is the actual first real test of this code — please check it
-before trusting the logic, the same discipline the Python version went
-through before any of it got called "confirmed."
+## Download & install
 
-If it fails, the most likely culprits, roughly in order of likelihood:
-1. A typo or off-by-one in the manual translation (most likely — this is
-   hand-ported, not machine-translated)
-2. `System.Text.Json` version pin needing adjustment for net48 compat
-3. Something about the `<None Include>` linked-file paths for
-   `plugin_table.json` / the `.ffx` fixture not resolving the way I
-   expect across `dotnet build`'s output structure
+Grab **FFXCompatibilityTool-windows.zip** from the
+[latest release](https://github.com/marbou92/FFX-Compatibility-Tool/releases/latest),
+unzip it anywhere and run **FfxTool.Gui.exe**.
 
-None of these would be surprising for a first-pass port — flag whatever
-the CI output shows and I'll fix it directly rather than guess further.
+- **Windows 10/11** — .NET Framework 4.8 is preinstalled, nothing to install.
+- **Windows 7 SP1** — needs the .NET 4.8 runtime installed once
+  ([download](https://dotnet.microsoft.com/download/dotnet-framework/net48)).
 
-## Structure
+Every release zip carries its SHA-256 on the release page. The app's own
+**Settings → About → Check for Updates** resolves the project's latest
+release on GitHub — that single lookup is the only network traffic the app
+ever makes. A rolling **nightly** pre-release (built from every push to
+main) is published at the `nightly` tag for testing new features early.
+
+## What it does
+
+### Convert
+
+- Drop presets — or a whole folder of them — anywhere onto the window, or
+  browse. A folder shows up as a **file manager** listing every preset with
+  its size, and each row fills in with its live conversion status
+  (`Converting…` → `OK` / `WARN` / `FAILED`).
+- A single preset shows its effects as a checklist against your plugin
+  profile: what you don't own is pre-marked for removal.
+- Conversion applies the target version, optionally removes the marked
+  effects, and **verifies** the output (structure, effect indices and
+  keyframe data) before anything is written.
+- Folder mode converts every `.ffx` in one pass — one console line per
+  file — with three output modes: a `converted` subfolder inside the
+  source, a version suffix beside the originals, or an in-place overwrite
+  that asks first. Derived outputs can never overwrite the input file.
+
+### Effect Lister
+
+- Open a preset to read it the way AE's Effect Controls panel draws it:
+  parameter groups, popups, sliders with ranges, color swatches, stopwatch
+  states, keyframe navigators.
+- The split inspector adds a compatibility list (which effects are likely
+  missing on this machine) plus a keyframe view with AE-style timecodes and
+  the value/speed graph pair.
+- Open a folder and the workspace becomes a **file manager**: click a
+  preset to open it with the full anatomy, or use **All presets** to come
+  back to the list. The **Folder report** deep-reads every preset into one
+  table — status, effect/parameter/animated counts, size, decode notes —
+  exportable as CSV.
+- **Convert this preset…** hands the preset you are reading straight to
+  the Convert section.
+
+### Settings
+
+- **Plugin profile** — which plugin suites you own; the compatibility list
+  and the "remove effects missing from my profile" option key off it.
+- **Appearance** — four color palettes, light and dark, applied live.
+- **Storage** — inspect and delete the plugin-scan catalog and the
+  recently-opened history.
+- **About** — build version and Check for Updates.
+
+## Privacy
+
+No telemetry, no analytics, no crash uploads. Crash reports and session
+logs stay in `%LOCALAPPDATA%\FFXCompatibilityTool` (and
+`%APPDATA%\FFXCompatibilityTool` for the journal) and never leave the
+machine unless you paste them somewhere yourself.
+
+## Building from source
 
 ```
-FfxTool.Core/              # port of ffx_core — RiffNode.cs, Pipeline.cs, PluginLookup.cs
-FfxTool.Core.Tests/         # xUnit port of test_riff.py / test_pipeline.py (incl. fixtures/sample_1.ffx)
-FfxTool.Gui/               # WPF GUI — MainWindow, ConvertPage (single preset or a whole folder), ListerPage (single preset or a folder queue + report), ProfilePage, SettingsPage + MD3 theme
-data/plugin_table.json      # shared verbatim — copied to output via <None Include Link> (Core + Gui)
-.github/workflows/test.yml  # dotnet build + test on windows-latest (Core + Gui)
-.github/workflows/build.yml # Release zip of FfxTool.Gui.exe + dependencies + data/plugin_table.json
-.github/workflows/nightly.yml # rolling "nightly" pre-release of main (every push + daily) for feature testing
-```
-
-`FfxTool.sln` includes all three projects (`Core`, `Core.Tests`, `Gui`) so a single `dotnet build FfxTool.sln` builds the entire repo. Each csproj links `../data/plugin_table.json` with `CopyToOutputDirectory=PreserveNewest`; `Core.Tests` additionally links `fixtures/*.ffx`.
-
-## What was deliberately preserved from the Python version
-
-Every hard-won detail from `RESEARCH_NOTES.md` carried over as-is:
-- `fnam` chunks get padded to a fixed 48 bytes; `tdsn`/`pdnm` stay
-  variable-length — these are NOT the same treatment (this distinction
-  was Mistake #3 in the original derivation; getting it wrong crashes AE).
-- Effect removal matches `sspc` blocks to `tdsp` entries by **position**,
-  not name, and always renumbers `tdix` afterward.
-- Keyframe (`lhd3`/`ldat`) and third-party plugin blob data is never
-  touched by any pipeline step, and `Pipeline.Verify()` checks this holds
-  after every conversion — same verification discipline as the Python
-  version, not weakened for the port.
-
-## Running locally
-
-```bash
 dotnet restore FfxTool.sln
-dotnet build FfxTool.sln --configuration Release
 dotnet test FfxTool.sln --configuration Release
-# GUI: FfxTool.Gui\bin\Release\net48\FfxTool.Gui.exe (+ data\plugin_table.json alongside it)
+dotnet build FfxTool.sln --configuration Release
+# → FfxTool.Gui\bin\Release\net48\FfxTool.Gui.exe (+ dependency DLLs + data\)
 ```
+
+Building `net48` needs the .NET Framework 4.8 targeting pack (GitHub's
+`windows-latest` runners have it preinstalled). CI (`.github/workflows/test.yml`)
+builds and tests every push. Tagging `v*` runs `.github/workflows/build.yml`,
+which tests, packages the Release output and publishes the release with a
+description written automatically from the commit history.
+
+## Repository layout
+
+```
+FfxTool.Core/        # the RIFX/FaFX engine: parsing, conversion, verification
+FfxTool.Core.Tests/  # xUnit suite (round-trip tests on real fixtures)
+FfxTool.Gui/         # the WPF app (MD3-styled): Convert, Effect Lister, Settings
+data/                # plugin_table.json + effect_names.json (recognition tables)
+```
+
+`RESEARCH_NOTES.md` documents the file-format findings the engine is built
+on — chunk layout, effect/parameter descriptors, keyframe timing — with the
+evidence for each.
+
+## Preset compatibility notes
+
+Hard-won rules from the format research, preserved by the engine:
+
+- `fnam` chunks are padded to a fixed 48 bytes; `tdsn`/`pdnm` stay
+  variable-length — treating these the same crashes After Effects.
+- Effect removal matches `sspc` blocks to `tdsp` entries by **position**,
+  never by name, and renumbers `tdix` afterward.
+- The keyframe tick is 1/1024 of a 30 fps frame (30720 ticks/second).
+- Keyframe streams and third-party plugin blobs are never rewritten;
+  `Pipeline.Verify()` checks that holds after every conversion.
