@@ -1,0 +1,115 @@
+name: Nightly Build
+
+# The rolling test channel. Every push to main (i.e. every uploaded
+# round) plus a daily schedule builds the whole solution and publishes
+# the result as a pre-release tagged "nightly" — so new features can be
+# tested the moment they land, without hand-making a portable zip.
+# Tagged releases (v*) are still handled by build.yml; this channel is
+# deliberately separate and always marked as a pre-release.
+#
+# Same toolchain as build.yml: windows-latest carries the .NET Framework
+# 4.8 targeting pack (required to build net48 at all), and the .NET 8
+# SDK drives restore/build/test for it.
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "30 2 * * *" # 02:30 UTC daily — refreshes the channel even when main is quiet
+  workflow_dispatch:
+
+# publishing the rolling release needs release + tag write access
+permissions:
+  contents: write
+
+# one nightly at a time: a newer main supersedes the build of an older one,
+# and two pushes landing close together must not race the release swap
+concurrency:
+  group: nightly
+  cancel-in-progress: true
+
+jobs:
+  nightly:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore FfxTool.sln
+
+      - name: Run tests before packaging
+        # a red test run stops the nightly here — the previous nightly
+        # stays published until main is green again
+        run: dotnet test FfxTool.sln --configuration Release
+
+      - name: Build (Release)
+        run: dotnet build FfxTool.sln --configuration Release --no-restore
+
+      - name: Locate build output
+        id: locate
+        shell: pwsh
+        run: |
+          $outDir = Get-ChildItem -Path "FfxTool.Gui\bin\Release" -Recurse -Filter "FfxTool.Gui.exe" |
+            Select-Object -First 1 -ExpandProperty DirectoryName
+          if (-not $outDir) { throw "Could not find FfxTool.Gui.exe under FfxTool.Gui\bin\Release" }
+          echo "outdir=$outDir" >> $env:GITHUB_OUTPUT
+
+      - name: Zip nightly build
+        id: zip
+        shell: pwsh
+        run: |
+          # the portable zip is the whole output folder, as-is: the exe,
+          # its dependency DLLs and data/plugin_table.json (copied there
+          # by the csproj). Name carries the UTC stamp + short SHA so one
+          # nightly can always be told from the next.
+          $stamp = (Get-Date).ToUniversalTime().ToString("yyyyMMdd-HHmm")
+          $sha = "${{ github.sha }}".Substring(0, 7)
+          $name = "FFXCompatibilityTool-nightly-$stamp-$sha"
+          Compress-Archive -Path "${{ steps.locate.outputs.outdir }}\*" -DestinationPath "$name.zip"
+          echo "zipname=$name.zip" >> $env:GITHUB_OUTPUT
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FFXCompatibilityTool-nightly
+          path: ${{ steps.zip.outputs.zipname }}
+          retention-days: 14
+
+      - name: Publish the rolling "nightly" release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ZIPNAME: ${{ steps.zip.outputs.zipname }}
+        run: |
+          SHA7="${GITHUB_SHA:0:7}"
+          DATE="$(date -u +%Y-%m-%d)"
+          {
+            echo "Automated portable build of main — ${DATE} (${SHA7})."
+            echo ""
+            echo "This is the rolling test channel for new features. It is built"
+            echo "straight from the repository head and may be less stable than a"
+            echo "tagged release. Tests ran green before this was packaged."
+            echo ""
+            echo "The version stamp inside matches the latest release; the build"
+            echo "date and commit in the file name are what distinguish one"
+            echo "nightly from the next."
+            echo ""
+            echo "If it crashes, the app writes a readable report to"
+            echo "%LOCALAPPDATA%\FFXCompatibilityTool\crash.log — include it when"
+            echo "reporting."
+          } > nightly_notes.md
+
+          # one rolling pre-release: remove yesterday's (release + tag),
+          # then re-tag at the commit that was just built and tested
+          gh release delete nightly --yes --cleanup-tag || echo "no previous nightly to replace"
+          git push origin :refs/tags/nightly || echo "tag already gone"
+          gh release create nightly "$ZIPNAME" \
+            --title "Nightly build — ${DATE} (${SHA7})" \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --notes-file nightly_notes.md
