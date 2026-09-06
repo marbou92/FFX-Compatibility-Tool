@@ -1,7 +1,14 @@
 name: Build & Release
 
 # Builds a distributable Windows build of FfxTool.Gui and attaches it to a
-# GitHub Release. Runs on version tags (e.g. v1.0.0) or manual dispatch.
+# GitHub Release. Runs on version tags (v*) or manual dispatch.
+#
+# On a tag push the release description is written by the notes bot: it
+# reads the commit subjects between the previous tag and this one, splits
+# the repo's multi-entry commit messages (entries are joined by " and
+# <type>(") so every change becomes its own bullet, and adds install
+# steps plus the SHA-256 of the attached zip. GitHub's own generated
+# notes (the compare link) are appended on top of that body.
 #
 # Note on why this is simpler than the old Python/PyInstaller build.yml:
 # .NET Framework (net48) apps don't need PyInstaller-style bundling — a
@@ -22,6 +29,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # the notes bot walks the history between the previous tag and
+          # this one — a shallow clone would have nothing to read
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -59,9 +70,53 @@ jobs:
           name: FFXCompatibilityTool-windows
           path: FFXCompatibilityTool-windows.zip
 
+      - name: Generate the release description
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          # nearest tag reachable from the new tag's parent commit — empty
+          # when this is the first tag ever (then the range is the whole
+          # history, which is honest for a first release)
+          PREV="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
+          RANGE="$TAG"
+          if [ -n "$PREV" ]; then RANGE="${PREV}..${TAG}"; fi
+          SUM="$(sha256sum FFXCompatibilityTool-windows.zip | cut -d' ' -f1)"
+          {
+            echo "FFX Compatibility Tool ${TAG} — the portable Windows build."
+            echo ""
+            echo "## What's changed"
+            echo ""
+            git log "$RANGE" --format='%s' \
+              | sed -E 's/ and (chore|feat|fix|ci|docs|test|build|refactor|perf)\(/\n\1(/g' \
+              | sed 's/^/- /' > release_commits.txt
+            if [ -s release_commits.txt ]; then
+              cat release_commits.txt
+            else
+              echo "- (no commit notes could be read for this range)"
+            fi
+            echo ""
+            echo "## Install"
+            echo ""
+            echo "1. Download **FFXCompatibilityTool-windows.zip** below and unzip it anywhere."
+            echo "2. Run **FfxTool.Gui.exe** — no installer."
+            echo "3. Requires .NET Framework 4.8 (preinstalled on Windows 10/11; Windows 7 SP1 needs the 4.8 runtime installed once)."
+            echo ""
+            echo "## Verify"
+            echo ""
+            echo '```'
+            echo "SHA-256  ${SUM}  FFXCompatibilityTool-windows.zip"
+            echo '```'
+            echo ""
+            echo "The in-app **Check for Updates** (Settings → About) compares against VERSION.txt on the default branch — bump that one-line file in the same commit as the code it announces."
+          } > release_notes.md
+
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          name: FFX Compatibility Tool ${{ github.ref_name }}
+          body_path: release_notes.md
           files: FFXCompatibilityTool-windows.zip
+          fail_on_unmatched_files: true
           generate_release_notes: true
