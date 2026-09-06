@@ -114,7 +114,7 @@ namespace FfxTool.Gui
         }
 
         /// <summary>Strict "is the online version newer" — numeric on every
-        /// part, never a string compare (so 1.0.9 &lt; 1.0.31).</summary>
+        /// part, never a string compare (so 0.1.9 &lt; 0.1.10).</summary>
         private static bool IsNewer(Version online, string local)
         {
             Version mine;
@@ -122,7 +122,7 @@ namespace FfxTool.Gui
             return online.CompareTo(mine) > 0;
         }
 
-        /// <summary>Accepts only a plain numeric version ("1.0.31", "v1.0.31").
+        /// <summary>Accepts only a plain numeric version ("0.1.0", "v0.1.0").
         /// Any letter, space or dash disqualifies the whole string.</summary>
         private static bool TryParseVersion(string text, out Version v)
         {

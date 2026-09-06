@@ -39,10 +39,11 @@ the CI output shows and I'll fix it directly rather than guess further.
 ```
 FfxTool.Core/              # port of ffx_core — RiffNode.cs, Pipeline.cs, PluginLookup.cs
 FfxTool.Core.Tests/         # xUnit port of test_riff.py / test_pipeline.py (incl. fixtures/sample_1.ffx)
-FfxTool.Gui/               # WinForms GUI — MainForm, ListerTab, ProfileTab, ConvertTab, SettingsTab + MD3 theme
+FfxTool.Gui/               # WPF GUI — MainWindow, ConvertPage, ListerPage, BatchPage, ProfilePage, SettingsPage + MD3 theme
 data/plugin_table.json      # shared verbatim — copied to output via <None Include Link> (Core + Gui)
 .github/workflows/test.yml  # dotnet build + test on windows-latest (Core + Gui)
 .github/workflows/build.yml # Release zip of FfxTool.Gui.exe + dependencies + data/plugin_table.json
+.github/workflows/nightly.yml # rolling "nightly" pre-release of main (every push + daily) for feature testing
 ```
 
 `FfxTool.sln` includes all three projects (`Core`, `Core.Tests`, `Gui`) so a single `dotnet build FfxTool.sln` builds the entire repo. Each csproj links `../data/plugin_table.json` with `CopyToOutputDirectory=PreserveNewest`; `Core.Tests` additionally links `fixtures/*.ffx`.

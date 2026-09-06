@@ -92,7 +92,11 @@ namespace FfxTool.Gui
 
         private void ModeNav_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (OptTarget == null) return; // XAML not fully loaded yet
+            // ModeInspect is IsSelected="True" in the XAML, so this fires
+            // while the BAML is still being applied. IsInitialized is the
+            // one guard that cannot be defeated by declaration order —
+            // it only turns true after the whole tree exists.
+            if (!IsInitialized) return;
             _mode = ModeNav.SelectedIndex == 1 ? JobMode.Convert : JobMode.Inspect;
             ApplyModeVisuals();
         }
@@ -137,7 +141,16 @@ namespace FfxTool.Gui
 
         private void SourceOption_Changed(object sender, RoutedEventArgs e)
         {
-            if (SourceCountText == null) return; // XAML not fully loaded yet
+            // RecursiveCheck is IsChecked="True" in the XAML, so this fires
+            // mid-BAML-load (ToggleButton.OnIsCheckedChanged raises it right
+            // inside the parse) — before controls declared further down
+            // even exist. Guard on IsInitialized, never on "some control
+            // that happens to be null yet": that is exactly how v1.0.31
+            // crashed at startup on every machine (the old guard checked
+            // SourceCountText, which is declared BEFORE this checkbox, so
+            // it passed — and then UpdateCta touched RunBtn, declared
+            // AFTER it, which did not exist yet).
+            if (!IsInitialized) return;
             if (_droppedFiles == null) UpdateCta(); // recount for the new depth
         }
 
@@ -174,7 +187,11 @@ namespace FfxTool.Gui
 
         private void UpdateCta()
         {
-            if (_running || SourcePathText == null) return;
+            // IsInitialized: see SourceOption_Changed — during BAML load
+            // this is reached with RunBtn still null; after load the
+            // constructor calls ApplyModeVisuals() → here, so the initial
+            // CTA state is computed anyway.
+            if (!IsInitialized || _running || SourcePathText == null) return;
             int n = CountFiles();
             if (n == 0)
             {

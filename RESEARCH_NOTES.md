@@ -465,3 +465,59 @@ it. Per-file work runs on one worker thread with a cancellation token
 checked between files; UI rows marshal through the dispatcher; progress
 is a determinate 0..N fraction. The CSV report quotes every field
 (doubled quotes), UTF-8 with BOM so Excel reads it correctly.
+
+## Round 32 — the startup crash, the 0.1.0 release scheme, the nightly channel
+
+**The BAML parse-order crash.** WPF raises `ToggleButton.OnIsCheckedChanged`
+*inside* the BAML parse the moment the parser applies `IsChecked="True"` —
+before `InitializeComponent()` returns, and before any control declared
+further down the XAML exists. BatchPage's pre-checked "Include subfolders"
+checkbox fired its `Checked` handler mid-parse; the handler's guard checked
+`SourceCountText` (declared *before* the checkbox in the XAML, so non-null)
+and passed, and `UpdateCta` then dereferenced `RunBtn` (declared *after*,
+still null). NullReferenceException in `BatchPage.UpdateCta`, thrown from
+`BatchPage..ctor` inside `MainWindow..ctor` inside `App.OnStartup` — a
+deterministic crash on every machine, on every 1.0.31 start. The crash
+funnel did its job (readable problem report, full trace in
+%LOCALAPPDATA%\FFXCompatibilityTool\crash.log) — which is how the fix was
+located without a repro machine. The guard that cannot be defeated by
+declaration order is `FrameworkElement.IsInitialized`: false for the whole
+parse, true only after EndInit — by the time `InitializeComponent()`
+returns. All three parse-time-firing handlers in the app (BatchPage's
+ModeNav + SourceOption, SettingsPage's SubNav — `IsSelected="True"` on the
+first ListBoxItem raises SelectionChanged the same way) now guard on it,
+and the initial state each of them would compute is already applied
+without them (the constructor's `ApplyModeVisuals()` for BatchPage; the
+XAML's own static visibilities for SettingsPage), so behavior is exactly
+what it would have been without the crash. Audit of every other
+event-wired control: `IsChecked="True" Click="…"` (the Effect Lister's
+three segmented toggles) cannot fire during parse — Click is a
+user-gesture event, only Checked/Unchecked ride OnIsCheckedChanged; the
+remaining `{Binding …}` toggles are runtime bindings. That closes the
+class, not just the instance.
+
+**The version scheme.** The internal round counter (1.0.31) becomes the
+release scheme 0.1.0: the assembly `<Version>` and the About / crash
+report / session-log stamps all read AppInfo (one source), and VERSION.txt
+— the live update endpoint — moves to 0.1.0 in the same commit, so a fresh
+release install compares 0.1.0 vs 0.1.0 and reports up-to-date. The
+comparison is numeric per part (System.Version), so 0.1.9 < 0.1.10 when
+the first patch lands. The same-commit rule is non-negotiable here:
+VERSION.txt is served raw from the default branch the moment the commit
+lands, while installed builds only see it when the user checks.
+
+**The nightly channel.** A new workflow publishes the rolling test build
+the release is shipped through instead of hand-made portable zips: every
+push to main (i.e. every uploaded round), plus a 02:30 UTC daily schedule,
+plus manual dispatch. Same toolchain as the release workflow
+(windows-latest's 4.8 targeting pack, .NET 8 SDK driving). Tests run
+before packaging — a red test run stops the pipeline and the previous
+nightly stays published. The artifact is the Release output folder zipped
+whole (exe + dependency DLLs + data/plugin_table.json), named with the UTC
+date and the short commit SHA, kept 14 days. Publishing replaces one
+rolling pre-release tagged `nightly`: the previous release and tag are
+deleted, the tag is re-pointed at the commit that was just built and
+tested, and a new pre-release is created with the zip attached — tagged
+v* releases keep their separate "Latest" slot. A workflow-level
+concurrency group serializes runs so two pushes landing close together
+cannot race the release replacement.

@@ -47,7 +47,13 @@ namespace FfxTool.Gui
 
         private void SubNav_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (AppearanceView == null) return; // XAML not loaded yet
+            // NavAppearance is IsSelected="True" in the XAML, so this fires
+            // while the BAML is still being applied. IsInitialized only
+            // turns true after the whole tree exists — the initial views
+            // carry their visibility in the XAML itself, so skipping the
+            // parse-time firing changes nothing and removes the reliance
+            // on declaration order (the BatchPage startup-crash lesson).
+            if (!IsInitialized) return;
             AppearanceView.Visibility = SubNav.SelectedIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
             StorageView.Visibility = SubNav.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
             ProfileHost.Visibility = SubNav.SelectedIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
