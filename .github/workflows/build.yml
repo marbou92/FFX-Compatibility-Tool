@@ -113,7 +113,7 @@ jobs:
             echo "SHA-256  ${SUM}  FFXCompatibilityTool-windows.zip"
             echo '```'
             echo ""
-            echo "The in-app **Check for Updates** (Settings → About) compares against VERSION.txt on the default branch — bump that one-line file in the same commit as the code it announces."
+            echo "The in-app **Check for Updates** (Settings → About) resolves this releases page — publishing a release is what announces the new version to installed builds."
           } > release_notes.md
 
       - name: Create GitHub Release
