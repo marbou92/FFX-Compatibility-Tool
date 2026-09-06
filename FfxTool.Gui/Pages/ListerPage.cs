@@ -755,7 +755,7 @@ namespace FfxTool.Gui
         private void SendConvertBtn_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrEmpty(_currentPath)) return;
-            ConvertRequested?.Invoke(this, _currentPath);
+            ConvertRequested?.Invoke(_currentPath);
         }
 
 
