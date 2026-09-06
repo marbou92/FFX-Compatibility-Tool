@@ -614,10 +614,15 @@
                         </Border>
                         <TextBlock Text="No preset loaded" FontSize="20" FontWeight="SemiBold"
                                    Foreground="{DynamicResource B.OnSurface}" HorizontalAlignment="Center" Margin="0,0,0,8"/>
-                        <TextBlock Text="Open a .ffx file to see its effects and check them against your plugin profile. You can also drag and drop a file directly into this workspace."
+                        <TextBlock Text="Open an .ffx file — or a whole folder of them — to see effects and check them against your plugin profile. You can also drag and drop files or folders directly into this workspace."
                                    Style="{StaticResource BodySecondary}" TextAlignment="Center" MaxWidth="460"
                                    TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,0,0,18"/>
-                        <Button Content="Open .ffx file" Width="170" Click="Open_Click" HorizontalAlignment="Center" Margin="0,0,0,22"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,22">
+                            <Button Content="Open .ffx file" Width="170" Click="Open_Click"/>
+                            <Button Content="Open folder…" Width="170" Margin="10,0,0,0" Click="FolderBtn_Click"
+                                    Style="{StaticResource OutlinedButton}"
+                                    ToolTip="Load every .ffx in a folder — flip through them here, or scan the whole folder into one report"/>
+                        </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                             <Border x:Name="RecentCard" Style="{StaticResource Card}" Width="220" Padding="16"
                                     MouseLeftButtonUp="Recent_Click" Cursor="Hand">
@@ -1053,6 +1058,20 @@
                         Style="{StaticResource OutlinedButton}" Padding="0" ToolTip="Toggle sort direction (by effect name)">
                     <controls:IconGlyph x:Name="SortIcon" IconName="SortArrows" Width="20" Height="20"/>
                 </Button>
+                <Button x:Name="FolderBtn" Content="Open folder…" Margin="12,0,0,0" Click="FolderBtn_Click"
+                        Style="{StaticResource OutlinedButton}" MinWidth="118" Height="40"
+                        ToolTip="Load every .ffx in a folder — flip through them here, or scan the whole folder into one report"/>
+                <!-- folder queue: only visible when a folder (or a multi-file
+                     selection) is loaded — the combo switches the workspace
+                     between the folder's presets -->
+                <StackPanel x:Name="QueuePanel" Orientation="Horizontal" Visibility="Collapsed" Margin="12,0,0,0">
+                    <ComboBox x:Name="QueueCombo" Width="290" VerticalAlignment="Center"
+                              SelectionChanged="QueueCombo_SelectionChanged"
+                              ToolTip="The presets of the loaded folder — pick one to open it"/>
+                    <TextBlock x:Name="ScanLink" Text="Folder report" Style="{StaticResource M3Link}" Cursor="Hand"
+                               Margin="14,0,0,0" VerticalAlignment="Center" MouseLeftButtonUp="Scan_Click"
+                               ToolTip="Deep-read every preset in the folder into one report — exportable as CSV"/>
+                </StackPanel>
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
                 <TextBlock x:Name="StatusBarLeft" Text="" Style="{StaticResource Caption}"/>
@@ -1092,6 +1111,99 @@
                                Foreground="{DynamicResource B.OnSurface}"
                                Margin="0,6,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
+            </Border>
+        </Popup>
+
+        <!-- folder report flyout (the baked-in batch inspect): the whole
+             queue deep-read into one table — status, counts, size, first
+             decode notes — exportable as CSV; nothing is ever written -->
+        <Popup x:Name="ScanFlyout" PlacementTarget="{Binding ElementName=ScanLink}"
+               Placement="Top" VerticalOffset="-8" StaysOpen="False" AllowsTransparency="True"
+               PopupAnimation="Fade">
+            <Border Background="{DynamicResource B.SCLowest}" CornerRadius="14"
+                    BorderBrush="{DynamicResource B.OutlineVariant}" BorderThickness="1"
+                    Width="600" MaxHeight="400" Margin="4,4,12,12" Padding="10">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.25"/>
+                </Border.Effect>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Margin="6,4,6,6">
+                        <TextBlock Text="FOLDER REPORT" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                        <Grid Margin="0,7,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="54"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="34"/>
+                                <ColumnDefinition Width="34"/>
+                                <ColumnDefinition Width="34"/>
+                                <ColumnDefinition Width="56"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="STATUS" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="1" Text="FILE" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="2" Text="EFF" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="3" Text="PAR" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="4" Text="ANIM" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="5" Text="SIZE" Style="{StaticResource Caption}" FontWeight="SemiBold"/>
+                        </Grid>
+                    </StackPanel>
+                    <ListBox x:Name="ScanList" Grid.Row="1" Focusable="False" Margin="2,0,2,4"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             VirtualizingPanel.ScrollUnit="Pixel">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="4,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="54"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="34"/>
+                                        <ColumnDefinition Width="34"/>
+                                        <ColumnDefinition Width="34"/>
+                                        <ColumnDefinition Width="56"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding Status}" VerticalAlignment="Top">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+                                                <Setter Property="Foreground" Value="{DynamicResource B.Primary}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Status}" Value="FAILED">
+                                                        <Setter Property="Foreground" Value="{DynamicResource B.Error}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="WARN">
+                                                        <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Grid.Column="1" Text="{Binding FileName}" Style="{StaticResource Body}"
+                                               FontWeight="Medium" VerticalAlignment="Top" TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding Note}"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding Effects}" Style="{StaticResource Caption}" VerticalAlignment="Top"/>
+                                    <TextBlock Grid.Column="3" Text="{Binding Params}" Style="{StaticResource Caption}" VerticalAlignment="Top"/>
+                                    <TextBlock Grid.Column="4" Text="{Binding Animated}" Style="{StaticResource Caption}" VerticalAlignment="Top"/>
+                                    <TextBlock Grid.Column="5" Text="{Binding Size}" Style="{StaticResource Caption}" VerticalAlignment="Top"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <Grid Grid.Row="2" Margin="6,2,6,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="ScanSummary" Style="{StaticResource Caption}" Opacity="0.85"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <TextBlock x:Name="ScanCsvLink" Grid.Column="1" Text="Export CSV" Style="{StaticResource M3Link}"
+                                   Cursor="Hand" Margin="14,0,0,0" MouseLeftButtonUp="ScanCsv_Click"
+                                   ToolTip="Writes the report as a spreadsheet-friendly CSV (UTF-8 with BOM for Excel)"/>
+                    </Grid>
+                </Grid>
             </Border>
         </Popup>
     </Grid>

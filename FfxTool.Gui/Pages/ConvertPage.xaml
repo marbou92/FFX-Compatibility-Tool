@@ -53,9 +53,9 @@
                             </Border>
                             <TextBlock Text="Drop a preset to begin" Style="{StaticResource SectionTitle}"
                                        FontSize="17" HorizontalAlignment="Center" Margin="0,0,0,8"/>
-                            <TextBlock Text="Drag an After Effects .ffx file anywhere onto this window, or click to browse."
+                            <TextBlock Text="Drag an After Effects .ffx file — or a whole folder of them — anywhere onto this window, or click to browse."
                                        Style="{StaticResource BodySecondary}" TextAlignment="Center"
-                                       MaxWidth="400" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                                       MaxWidth="420" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,0,0,10"/>
                             <TextBlock Text="Ctrl+O works from anywhere too" Style="{StaticResource Caption}"
                                        HorizontalAlignment="Center" Opacity="0.75"/>
                         </StackPanel>
@@ -78,6 +78,42 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
+                    <!-- folder queue: swaps in for the hero/checklist when a
+                         whole folder (or several files) is loaded — one
+                         conversion job per .ffx, settings below apply to all -->
+                    <Border x:Name="QueueCard" Visibility="Collapsed" CornerRadius="24"
+                            Background="{DynamicResource B.SCLow}" Margin="4" Padding="22,18">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <controls:IconGlyph IconName="FolderOpen" Width="22" Height="22"
+                                                    Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="QueueText" Text="Folder queue" Style="{StaticResource Body}" FontWeight="Medium"
+                                           Margin="10,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                            <TextBlock x:Name="QueueSub" Style="{StaticResource Caption}" Opacity="0.85" Margin="32,4,0,0"
+                                       Text="One conversion per preset — the settings here apply to every file."/>
+                            <StackPanel Orientation="Horizontal" Margin="32,14,0,0">
+                                <StackPanel Margin="0,0,28,0">
+                                    <TextBlock Text="Scan" Style="{StaticResource FieldLabel}"/>
+                                    <CheckBox x:Name="QueueRecursive" Style="{StaticResource Md3CheckBox}" Content="Include subfolders"
+                                              IsChecked="True" Checked="QueueOption_Changed" Unchecked="QueueOption_Changed"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,28,0">
+                                    <TextBlock Text="Effects" Style="{StaticResource FieldLabel}"/>
+                                    <CheckBox x:Name="RemoveMissingCheck" Style="{StaticResource Md3CheckBox}"
+                                              Content="Remove effects missing from my profile"/>
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Text="Output" Style="{StaticResource FieldLabel}"/>
+                                    <ComboBox x:Name="QueueOutput" Width="270" HorizontalAlignment="Left">
+                                        <ComboBoxItem Content="Subfolder &quot;converted&quot; inside the source"/>
+                                        <ComboBoxItem Content="Beside originals, with a version suffix"/>
+                                        <ComboBoxItem Content="Overwrite the original files"/>
+                                    </ComboBox>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
                 </Grid>
 
                 <!-- file status row -->
@@ -90,6 +126,9 @@
                                        Margin="8,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Border>
+                    <Button x:Name="FolderBtn" Content="Open folder…" Style="{StaticResource OutlinedButton}"
+                            MinWidth="118" Margin="10,0,0,0" Click="FolderBtn_Click" VerticalAlignment="Center"
+                            ToolTip="Load every .ffx in a folder and convert them all in one pass"/>
                 </StackPanel>
 
                 <!-- options card -->
@@ -113,9 +152,20 @@
                     </Grid>
                 </Border>
 
-                <!-- full-width expressive CTA — content doubles as a summary of the pending job -->
-                <Button x:Name="ConvertBtn" Grid.Row="3" Content="Load a preset to start conversion" Height="48"
-                        IsEnabled="False" Click="Convert_Click"/>
+                <!-- full-width expressive CTA — content doubles as a summary of the pending job;
+                     the cancel link only shows while a folder job is running -->
+                <Grid Grid.Row="3">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Button x:Name="ConvertBtn" Content="Load a preset to start conversion" Height="48"
+                            IsEnabled="False" Click="Convert_Click"/>
+                    <TextBlock x:Name="CancelLink" Grid.Column="1" Text="Cancel" Style="{StaticResource M3Link}" Cursor="Hand"
+                               Visibility="Collapsed" Margin="16,0,0,0" VerticalAlignment="Center"
+                               MouseLeftButtonUp="Cancel_Click"
+                               ToolTip="Stops after the preset currently being processed"/>
+                </Grid>
 
                 <!-- success banner: what happened + one-click handoff to Explorer -->
                 <Border x:Name="SaveBanner" Grid.Row="4" Visibility="Collapsed" CornerRadius="14"
@@ -130,7 +180,7 @@
                                             Foreground="{DynamicResource B.OnPrimaryContainer}"
                                             VerticalAlignment="Center" Margin="0,0,12,0"/>
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="Conversion saved" FontSize="13" FontWeight="SemiBold"
+                            <TextBlock x:Name="SaveBannerTitle" Text="Conversion saved" FontSize="13" FontWeight="SemiBold"
                                        Foreground="{DynamicResource B.OnPrimaryContainer}"/>
                             <TextBlock x:Name="SavedToText" Style="{StaticResource Caption}" Foreground="{DynamicResource B.OnPrimaryContainer}"
                                        Opacity="0.8" TextTrimming="CharacterEllipsis"/>
@@ -187,10 +237,10 @@
                     <controls:IconGlyph IconName="Upload" Width="54" Height="54"
                                         Foreground="{DynamicResource B.OnPrimaryContainer}" HorizontalAlignment="Center"
                                         Margin="0,0,0,14"/>
-                    <TextBlock Text="Release to load the preset" FontSize="19" FontWeight="SemiBold"
+                    <TextBlock Text="Release to load the presets" FontSize="19" FontWeight="SemiBold"
                                Foreground="{DynamicResource B.OnPrimaryContainer}" HorizontalAlignment="Center"
                                Margin="0,0,0,6"/>
-                    <TextBlock Text=".ffx · analyzed against your plugin profile on arrival"
+                    <TextBlock Text=".ffx files and whole folders both work"
                                FontSize="12" Foreground="{DynamicResource B.OnPrimaryContainer}"
                                Opacity="0.8" HorizontalAlignment="Center"/>
                 </StackPanel>

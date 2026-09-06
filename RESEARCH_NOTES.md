@@ -521,3 +521,48 @@ tested, and a new pre-release is created with the zip attached — tagged
 v* releases keep their separate "Latest" slot. A workflow-level
 concurrency group serializes runs so two pushes landing close together
 cannot race the release replacement.
+
+## Round 33 — the release-notes bot, and the Batch section dissolves into its users
+
+**The tag workflow's description bot.** The release workflow now writes
+the release description itself before publishing: it walks the commit
+subjects between the previous tag and the new one (full clone — a
+shallow checkout has nothing to read; the first tag ever reads the
+whole history, which is honest for a first release), splits the repo's
+multi-entry commit messages at their " and <type>(" joins so every
+change becomes its own bullet, and appends install steps (unzip
+anywhere, run the exe; .NET Framework 4.8 — preinstalled on Windows
+10/11, a one-time install on Windows 7 SP1), the SHA-256 of the
+attached zip, and the Check-for-Updates note. GitHub's generated notes
+(the compare link) ride on top of that body. A manual dispatch — no
+tag — skips both steps and just produces the artifact.
+
+**Batch dissolves.** The Batch section is gone from the nav; its two
+jobs return to where their results are actually used:
+
+- *Convert* accepts a whole folder ("Open folder…" beside the status
+  chip, folder drops, and a multi-select file dialog — one entry point
+  each for the queue). The queue card carries the three settings the
+  batch page had (include subfolders / remove effects missing from the
+  profile / the three output modes) and the CTA converts every .ffx in
+  one pass, streaming one console line per file and reusing the save
+  banner as a batch-completion handoff to the output folder. The
+  single-preset checklist flow is untouched — a single file behaves
+  exactly as before, and loading one file while a queue is showing
+  returns to the checklist.
+- *Effect Lister* takes the same folder inputs and turns them into a
+  queue: a combo in the header lists the folder's presets, picking one
+  deep-reads it with the exact single-preset anatomy, and the file chip
+  reads "3 / 27 — name.ffx". The batch-inspect table survives as the
+  "Folder report" flyout: every preset deep-read into one row (status,
+  effect/parameter/animated counts, size, decode notes), exportable as
+  the same quoted UTF-8-BOM CSV.
+
+The folder walk and the size formatter moved to one shared helper
+(FolderScan) so the two pages cannot drift; the per-directory
+try/catch stands (one locked subtree contributes nothing). Loading a
+new queue bumps a scan generation so an in-flight report can never mix
+the old folder's rows into the new one. Every new state-event handler
+guards on IsInitialized — the round-32 lesson is now house style: the
+queue's pre-checked subfolder box fires during the BAML parse, exactly
+like its BatchPage ancestor did.

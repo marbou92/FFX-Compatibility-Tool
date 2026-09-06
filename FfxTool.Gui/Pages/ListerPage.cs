@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -467,6 +469,19 @@ namespace FfxTool.Gui
             public string AnimText => Animated + " animated";
         }
 
+        /// <summary>One row of the folder report (the baked-in batch
+        /// inspect): status, counts, size, first decode notes.</summary>
+        public class ScanRowVm
+        {
+            public string FileName { get; set; }
+            public string Status { get; set; }
+            public string Effects { get; set; }
+            public string Params { get; set; }
+            public string Animated { get; set; }
+            public string Size { get; set; }
+            public string Note { get; set; }
+        }
+
         private readonly PluginProfile _profile;
         private List<Pipeline.EffectInfo> _currentEffects = new List<Pipeline.EffectInfo>();
         private List<PresetEffectDetails> _details = new List<PresetEffectDetails>();
@@ -501,6 +516,19 @@ namespace FfxTool.Gui
         // DragEnter/DragLeave fire on every child boundary crossing; a depth
         // counter is the only flicker-free way to know the drag truly left.
         private int _dragDepth;
+
+        // folder / multi-file queue: when a folder (or a multi-file selection)
+        // is loaded, the page keeps the file list and deep-reads one file at a
+        // time — selection via the queue combo in the header. The folder
+        // report (the baked-in batch inspect) runs the deep read across the
+        // whole queue into the ScanFlyout table, exportable as CSV.
+        private List<string> _queue;
+        private int _queueIndex;
+        private volatile bool _scanRunning;
+        // scan generation: loading a new queue invalidates an in-flight
+        // scan so its rows can never mix into the new folder's report
+        private int _scanGen;
+        private readonly ObservableCollection<ScanRowVm> _scanRows = new ObservableCollection<ScanRowVm>();
 
         // ---------- view modes: AE Effect Controls panel vs. split inspector ----------
         // 0 = Effect Controls (the AE-style panel, the default), 1 = split
@@ -538,6 +566,7 @@ namespace FfxTool.Gui
             InitializeComponent();
             _profile = profile;
             EffectList.ItemsSource = _rows;
+            ScanList.ItemsSource = _scanRows;
             StatusBarVersion.Text = $"FFX Compatibility Tool {AppInfo.DisplayVersion}";
             UpdateRecentCard();
             GraphCanvas.SizeChanged += (s, e) => ScheduleGraphRedraw();
@@ -622,16 +651,62 @@ namespace FfxTool.Gui
         // ---------- loading ----------
         public void OpenFile()
         {
-            var dlg = new OpenFileDialog { Filter = "After Effects Presets (*.ffx)|*.ffx" };
-            if (dlg.ShowDialog() == true) LoadFile(dlg.FileName);
+            var dlg = new OpenFileDialog { Filter = "After Effects Presets (*.ffx)|*.ffx", Multiselect = true };
+            if (dlg.ShowDialog() != true) return;
+            if (dlg.FileNames.Length == 1) { LoadFile(dlg.FileNames[0]); return; }
+            LoadQueue(dlg.FileNames.Where(File.Exists).ToList());
         }
 
         private void Open_Click(object sender, RoutedEventArgs e) => OpenFile();
 
+        private void FolderBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new System.Windows.Forms.FolderBrowserDialog
+            {
+                Description = "Pick the folder that holds the .ffx presets.",
+                ShowNewFolderButton = false
+            };
+            if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+            LoadQueue(FolderScan.Collect(dlg.SelectedPath, true));
+        }
+
+        // ---------- folder queue ----------
+
+        /// <summary>Folder / multi-file mode: the queue drives the workspace —
+        /// the combo lists every file and picking one deep-reads it with the
+        /// exact single-preset anatomy (LoadFile).</summary>
+        private void LoadQueue(List<string> files)
+        {
+            if (files == null || files.Count == 0)
+            {
+                MessageBox.Show(Window.GetWindow(this),
+                    "No .ffx presets were found there.", "Nothing to load",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            _queue = files;
+            _queueIndex = 0;
+            _scanGen++; // any in-flight report belongs to the OLD queue
+            QueuePanel.Visibility = Visibility.Visible;
+            QueueCombo.ItemsSource = files.Select(System.IO.Path.GetFileName).ToList();
+            QueueCombo.SelectedIndex = 0; // fires QueueCombo_SelectionChanged → LoadFile
+        }
+
+        private void QueueCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // the combo only ever receives items in code, after the page is
+            // built — but guard anyway, per the round-32 parse-order lesson
+            if (!IsInitialized || _queue == null) return;
+            int i = QueueCombo.SelectedIndex;
+            if (i < 0 || i >= _queue.Count) return;
+            _queueIndex = i;
+            LoadFile(_queue[i]);
+        }
+
         // ---------- drag feedback ----------
         private void Page_DragEnter(object sender, DragEventArgs e)
         {
-            if (!HasFfx(e.Data)) return;
+            if (!HasPayload(e.Data)) return;
             _dragDepth++;
             DragOverlay.Visibility = Visibility.Visible;
             e.Effects = DragDropEffects.Copy;
@@ -648,20 +723,29 @@ namespace FfxTool.Gui
             _dragDepth = 0;
             DragOverlay.Visibility = Visibility.Collapsed;
 
-            if (e.Data.GetData(DataFormats.FileDrop) is string[] files)
+            if (e.Data.GetData(DataFormats.FileDrop) is string[] items && items.Length > 0)
             {
-                var ffx = files.FirstOrDefault(f => f.EndsWith(".ffx", StringComparison.OrdinalIgnoreCase));
-                if (ffx != null) { LoadFile(ffx); return; }
+                // a folder drop loads the whole folder, subfolders included
+                string folder = items.FirstOrDefault(Directory.Exists);
+                if (folder != null) { LoadQueue(FolderScan.Collect(folder, true)); return; }
+
+                var dropped = items.Where(f => f.EndsWith(".ffx", StringComparison.OrdinalIgnoreCase) && File.Exists(f))
+                                   .Distinct(StringComparer.OrdinalIgnoreCase)
+                                   .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+                                   .ToList();
+                if (dropped.Count == 1) { LoadFile(dropped[0]); return; }
+                if (dropped.Count > 1) { LoadQueue(dropped); return; }
             }
             MessageBox.Show(Window.GetWindow(this),
                 "No .ffx preset was found in the dropped items.",
                 "Unsupported file", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private static bool HasFfx(IDataObject data) =>
+        private static bool HasPayload(IDataObject data) =>
             data.GetDataPresent(DataFormats.FileDrop) &&
             data.GetData(DataFormats.FileDrop) is string[] files &&
-            files.Any(f => f.EndsWith(".ffx", StringComparison.OrdinalIgnoreCase));
+            files.Any(f => Directory.Exists(f) ||
+                           f.EndsWith(".ffx", StringComparison.OrdinalIgnoreCase));
 
         private void LoadFile(string path)
         {
@@ -686,7 +770,9 @@ namespace FfxTool.Gui
                 // workspace), regardless of the view the old file was in
                 _viewMode = 1;
 
-                FileChipText.Text = System.IO.Path.GetFileName(path);
+                FileChipText.Text = _queue != null
+                    ? (_queueIndex + 1) + " / " + _queue.Count + " — " + System.IO.Path.GetFileName(path)
+                    : System.IO.Path.GetFileName(path);
                 byte[] bytes = File.ReadAllBytes(path);
                 _currentEffects = Pipeline.ListEffects(bytes);
 
@@ -740,6 +826,123 @@ namespace FfxTool.Gui
                 Refresh();
             }
         }
+
+        // ---------- folder report ----------
+
+        /// <summary>The baked-in batch inspect: deep-read every preset in the
+        /// queue into the report flyout — one row per file, nothing written.</summary>
+        private void Scan_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (_queue == null || _scanRunning) return;
+            _scanRunning = true;
+            int gen = ++_scanGen;
+            var files = new List<string>(_queue);
+            _scanRows.Clear();
+            ScanCsvLink.Visibility = Visibility.Collapsed;
+            ScanSummary.Text = "Reading 0 / " + files.Count + "\u2026";
+            ScanFlyout.IsOpen = true;
+
+            int total = files.Count;
+            var reporter = new Progress<(int done, string text)>(v => ScanSummary.Text = v.text);
+            Task.Run(() =>
+            {
+                int done = 0;
+                foreach (var path in files)
+                {
+                    var captured = ScanOne(path);
+                    done++;
+                    ((IProgress<(int, string)>)reporter).Report((done,
+                        "Reading " + done + " / " + total + "\u2026 " + captured.FileName));
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    { if (gen == _scanGen) _scanRows.Add(captured); }));
+                }
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (gen != _scanGen) return;
+                    int bad = _scanRows.Count(r => r.Status == "FAILED");
+                    int warn = _scanRows.Count(r => r.Status == "WARN");
+                    int good = _scanRows.Count - bad - warn;
+                    ScanSummary.Text = _scanRows.Count + " preset(s) — " + good + " ok · " +
+                                       warn + " warning" + (warn == 1 ? "" : "s") + " · " +
+                                       bad + " failed";
+                    ScanCsvLink.Visibility = Visibility.Visible;
+                    _scanRunning = false;
+                    LogService.Append("folder report: " + _scanRows.Count + " file(s) — " +
+                                      good + " ok, " + warn + " warn, " + bad + " failed");
+                }));
+            });
+        }
+
+        /// <summary>The read-only deep read the Effect Lister gives one
+        /// preset, summarized as one report row.</summary>
+        private ScanRowVm ScanOne(string path)
+        {
+            var row = new ScanRowVm
+            {
+                FileName = System.IO.Path.GetFileName(path),
+                Status = "OK", Effects = "—", Params = "—",
+                Animated = "—", Size = "—", Note = ""
+            };
+            try { row.Size = FolderScan.FmtSize(new FileInfo(path).Length); }
+            catch { /* unreadable metadata — the size stays "—" */ }
+            try
+            {
+                byte[] data = File.ReadAllBytes(path);
+                var errors = new List<string>();
+                var effects = PresetInspector.Inspect(data, errors);
+                int par = 0, anim = 0;
+                foreach (var e in effects) { par += e.Parameters.Count; anim += e.AnimatedCount; }
+                row.Effects = effects.Count.ToString();
+                row.Params = par.ToString();
+                row.Animated = anim.ToString();
+                if (errors.Count > 0)
+                {
+                    row.Status = "WARN";
+                    row.Note = string.Join(" | ", errors.Take(2)) + (errors.Count > 2 ? " …" : "");
+                }
+                else if (effects.Count == 0)
+                {
+                    row.Status = "WARN";
+                    row.Note = "No effects or property groups decoded";
+                }
+            }
+            catch (Exception ex)
+            {
+                row.Status = "FAILED";
+                row.Effects = "—"; row.Params = "—"; row.Animated = "—";
+                row.Note = ex.Message;
+            }
+            return row;
+        }
+
+        private void ScanCsv_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (_scanRows.Count == 0) return;
+            var dlg = new SaveFileDialog { Filter = "CSV report (*.csv)|*.csv", FileName = "folder_report.csv" };
+            if (dlg.ShowDialog() != true) return;
+            try
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine("File,Status,Effects,Params,Animated,Size,Note");
+                foreach (var r in _scanRows)
+                    sb.AppendLine(string.Join(",",
+                        Q(r.FileName), Q(r.Status), Q(r.Effects), Q(r.Params), Q(r.Animated), Q(r.Size), Q(r.Note)));
+                // UTF-8 with BOM: Excel on Windows reads it correctly
+                File.WriteAllText(dlg.FileName, sb.ToString(), new UTF8Encoding(true));
+                ScanSummary.Text = "CSV written: " + dlg.FileName;
+                LogService.Append("folder report: " + _scanRows.Count + " row(s) → " + dlg.FileName);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(Window.GetWindow(this),
+                    "Could not write the CSV:\n" + ex.Message,
+                    "Export failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>CSV field quoting: wrap in quotes and double any inner
+        /// quote — commas inside file names/notes can never split a cell.</summary>
+        private static string Q(string s) => "\"" + (s ?? "").Replace("\"", "\"\"") + "\"";
 
         // ---------- filter / sort / refresh ----------
         private void Filter_Click(object sender, RoutedEventArgs e)
