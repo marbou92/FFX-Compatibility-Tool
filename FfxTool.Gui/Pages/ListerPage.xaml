@@ -661,7 +661,22 @@
                     <ListBox x:Name="FolderList" Grid.Row="1" Margin="2,12,2,4"
                              Focusable="False" ScrollViewer.VerticalScrollBarVisibility="Auto"
                              VirtualizingPanel.ScrollUnit="Pixel"
+                             SelectionMode="Extended"
                              SelectionChanged="FolderList_SelectionChanged">
+                        <ListBox.GroupStyle>
+                            <GroupStyle>
+                                <GroupStyle.HeaderTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Margin="0,8,0,2">
+                                            <controls:IconGlyph IconName="FolderOpen" Width="14" Height="14"
+                                                                Foreground="{DynamicResource B.OnSurfaceVariant}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Name}" Style="{StaticResource Caption}" FontWeight="SemiBold"
+                                                       Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </GroupStyle.HeaderTemplate>
+                            </GroupStyle>
+                        </ListBox.GroupStyle>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Grid Margin="2,3" Cursor="Hand" ToolTip="{Binding Path=Path}">
@@ -677,8 +692,8 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
-                    <TextBlock Grid.Row="2" Style="{StaticResource Caption}" Opacity="0.8" Margin="2,8,0,0"
-                               Text="Click a preset to open it — Folder report deep-reads every file into one table."/>
+                    <TextBlock Grid.Row="2" Style="{StaticResource Caption}" Opacity="0.8" Margin="2,8,0,0" TextWrapping="Wrap"
+                               Text="Click a preset to open it — Ctrl+click picks several for the Convert handoff. Folder report deep-reads every file into one table."/>
                 </Grid>
             </Border>
 
@@ -1079,9 +1094,17 @@
             </Popup>
         </Grid>
 
-        <!-- ============ header + status bar ============ -->
+        <!-- ============ header + status bar ============
+             TWO stacked rows on purpose: the status captions used to share
+             this grid cell with the toolbar and painted over its buttons
+             whenever the window narrowed — their own row makes the overlap
+             structurally impossible -->
         <Grid Grid.Row="2" Margin="0,14,0,0">
-            <StackPanel Orientation="Horizontal">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <StackPanel Grid.Row="0" Orientation="Horizontal">
                 <Button x:Name="OpenBtn" Content="Open .ffx file…" Width="170" Click="Open_Click"/>
                 <Border Style="{StaticResource Chip}" Margin="12,0,0,0">
                     <StackPanel Orientation="Horizontal">
@@ -1120,7 +1143,7 @@
                         Style="{StaticResource OutlinedButton}"
                         ToolTip="Switches to Convert with this preset loaded"/>
             </StackPanel>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
                 <TextBlock x:Name="StatusBarLeft" Text="" Style="{StaticResource Caption}"/>
                 <TextBlock x:Name="StatusSep" Text="    ·    " Style="{StaticResource Caption}" Visibility="Collapsed"/>
                 <TextBlock x:Name="StatusBarVersion" Style="{StaticResource Caption}"/>
@@ -1200,10 +1223,12 @@
                     </StackPanel>
                     <ListBox x:Name="ScanList" Grid.Row="1" Focusable="False" Margin="2,0,2,4"
                              ScrollViewer.VerticalScrollBarVisibility="Auto"
-                             VirtualizingPanel.ScrollUnit="Pixel">
+                             VirtualizingPanel.ScrollUnit="Pixel"
+                             MouseDoubleClick="ScanList_DoubleClick"
+                             ToolTip="Double-click a row to open that preset">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Grid Margin="4,3">
+                                <Grid Margin="4,3" ToolTip="{Binding Path}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="54"/>
                                         <ColumnDefinition Width="*"/>

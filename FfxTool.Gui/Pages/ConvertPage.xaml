@@ -98,11 +98,27 @@
                                                Margin="10,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
                                 <TextBlock x:Name="QueueSub" Style="{StaticResource Caption}" Opacity="0.85" Margin="32,4,0,0"
-                                           Text="One conversion per preset — the settings here apply to every file."/>
+                                           Text="One conversion per preset — the settings here apply to every file. Double-click a preset to open its effects and toggle them."/>
                             </StackPanel>
                             <ListBox x:Name="QueueFileList" Grid.Row="1" Margin="10,12,2,4"
                                      Focusable="False" ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                     VirtualizingPanel.ScrollUnit="Pixel">
+                                     VirtualizingPanel.ScrollUnit="Pixel"
+                                     MouseDoubleClick="QueueFileList_DoubleClick"
+                                     ToolTip="Double-click a preset to open its effects — toggle the ones you don't want, then run the batch">
+                                <ListBox.GroupStyle>
+                                    <GroupStyle>
+                                        <GroupStyle.HeaderTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" Margin="0,8,0,2">
+                                                    <controls:IconGlyph IconName="FolderOpen" Width="14" Height="14"
+                                                                        Foreground="{DynamicResource B.OnSurfaceVariant}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Name}" Style="{StaticResource Caption}" FontWeight="SemiBold"
+                                                               Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </GroupStyle.HeaderTemplate>
+                                    </GroupStyle>
+                                </ListBox.GroupStyle>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <Grid Margin="2,3">
@@ -149,11 +165,16 @@
                                 </StackPanel>
                                 <StackPanel>
                                     <TextBlock Text="Output" Style="{StaticResource FieldLabel}"/>
-                                    <ComboBox x:Name="QueueOutput" Width="270" HorizontalAlignment="Left">
+                                    <ComboBox x:Name="QueueOutput" Width="300" HorizontalAlignment="Left">
                                         <ComboBoxItem Content="Subfolder &quot;converted&quot; inside the source"/>
                                         <ComboBoxItem Content="Beside originals, with a version suffix"/>
                                         <ComboBoxItem Content="Overwrite the original files"/>
+                                        <ComboBoxItem Content="One ZIP that mirrors the subfolders"/>
+                                        <ComboBoxItem Content="One folder that mirrors the subfolders"/>
                                     </ComboBox>
+                                    <TextBlock Style="{StaticResource Caption}" Opacity="0.85" Margin="0,6,0,0"
+                                               MaxWidth="300" TextWrapping="Wrap"
+                                               Text="The two mirror modes rebuild the source folder's subfolder layout — as one ZIP or as a plain folder — placed next to the source folder."/>
                                 </StackPanel>
                             </StackPanel>
                         </Grid>
@@ -173,6 +194,14 @@
                     <Button x:Name="FolderBtn" Content="Open folder…" Style="{StaticResource OutlinedButton}"
                             MinWidth="118" Margin="10,0,0,0" Click="FolderBtn_Click" VerticalAlignment="Center"
                             ToolTip="Load every .ffx in a folder and convert them all in one pass"/>
+                    <!-- folder queue: only visible when a folder (or a multi-file
+                         selection) is loaded — "All presets" returns to the
+                         file manager from an opened preset -->
+                    <StackPanel x:Name="QueuePanel" Orientation="Horizontal" Visibility="Collapsed" Margin="10,0,0,0">
+                        <TextBlock x:Name="QueueLink" Text="All presets" Style="{StaticResource M3Link}" Cursor="Hand"
+                                   VerticalAlignment="Center" MouseLeftButtonUp="QueueLink_Click"
+                                   ToolTip="Back to the folder's file manager"/>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- options card -->

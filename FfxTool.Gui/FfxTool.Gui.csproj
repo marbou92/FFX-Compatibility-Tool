@@ -29,6 +29,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- the mirrored-output ZIP (System.IO.Compression.ZipFile) -->
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="..\data\plugin_table.json" CopyToOutputDirectory="PreserveNewest" Link="data\plugin_table.json" />
     <None Include="..\data\effect_names.json" CopyToOutputDirectory="PreserveNewest" Link="data\effect_names.json" />
   </ItemGroup>

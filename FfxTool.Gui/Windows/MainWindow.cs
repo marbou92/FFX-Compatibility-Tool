@@ -105,12 +105,17 @@ namespace FfxTool.Gui
                 Rail.Select(0);
                 _convert.OpenFile();
             };
-            // the Effect Lister's "Convert this preset…" hands the open
-            // preset over: switch to the Convert section and load it there
-            _lister.ConvertRequested += path =>
+            // the Effect Lister's convert button hands its selection over:
+            // switch to the Convert section — one preset opens the checklist,
+            // a selection or a whole folder opens the file manager with the
+            // subfolder layout intact
+            _lister.ConvertRequested += (root, files) =>
             {
                 Rail.Select(0);
-                _convert.LoadExternal(path);
+                if (files != null && files.Count == 1)
+                    _convert.LoadExternal(files[0]);
+                else
+                    _convert.LoadExternalQueue(files, root);
             };
 
             MinBtn.Click += (s, e) => WindowState = WindowState.Minimized;

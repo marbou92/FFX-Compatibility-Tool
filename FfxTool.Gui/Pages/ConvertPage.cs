@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using FfxTool.Core;
 using Microsoft.Win32;
 
@@ -42,9 +43,19 @@ namespace FfxTool.Gui
         private string _lastOutput;
 
         // folder / multi-file queue (the baked-in batch): null = single preset
-        private enum QueueOutputMode { Subfolder, Suffix, Overwrite }
+        private enum QueueOutputMode { Subfolder, Suffix, Overwrite, ZipTree, FolderTree }
         private List<string> _queue;
         private string _queueRoot;                 // the source folder, for output derivation
+        // per-file effect removals toggled by hand (double-click a file
+        // manager row → the checklist) — keyed by full path, applied on
+        // top of the profile-driven recognition chain during a queue run
+        private readonly Dictionary<string, HashSet<string>> _queueRemovals =
+            new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        // the queued preset currently open for editing (null = file manager)
+        private string _queueEditPath;
+        // file rows in _queue order — the worker indexes these; the display
+        // collection interleaves the subfolder group headers
+        private readonly List<QueueFileVm> _queueRowFiles = new List<QueueFileVm>();
         private CancellationTokenSource _cts;
         private volatile bool _running;
         // the file manager rows of the loaded queue (same order as _queue)
@@ -65,6 +76,10 @@ namespace FfxTool.Gui
         {
             public string Name { get; set; }
             public string Size { get; set; }
+            // full path (double-click opens the preset) and the display
+            // folder the row groups under when the queue came from a folder
+            public string Path { get; set; }
+            public string Group { get; set; }
 
             string _status = "";
             public string Status
@@ -105,9 +120,10 @@ namespace FfxTool.Gui
             TargetCombo.SelectedIndex = 0;
 
             EffectList.ItemsSource = _rows;
-            // checkbox events bubble to the list — re-count whenever a row toggles
-            EffectList.AddHandler(CheckBox.CheckedEvent, new RoutedEventHandler((s, e) => UpdateCta()));
-            EffectList.AddHandler(CheckBox.UncheckedEvent, new RoutedEventHandler((s, e) => UpdateCta()));
+            // checkbox events bubble to the list — re-count and remember
+            // the edits whenever a row toggles
+            EffectList.AddHandler(CheckBox.CheckedEvent, new RoutedEventHandler((s, e) => QueueEditToggled()));
+            EffectList.AddHandler(CheckBox.UncheckedEvent, new RoutedEventHandler((s, e) => QueueEditToggled()));
 
             Console.Log("[SYSTEM] Engine initialized.");
             Console.Log("[INFO] Waiting for file input…");
@@ -136,6 +152,11 @@ namespace FfxTool.Gui
         /// preset…” button — MainWindow switches the section and loads the
         /// file here.</summary>
         public void LoadExternal(string path) => LoadFile(path);
+
+        /// <summary>Handoff target for the Effect Lister's convert button
+        /// when a whole selection (or an untouched folder) goes over — the
+        /// file manager here keeps the folder's subfolder layout.</summary>
+        public void LoadExternalQueue(List<string> files, string root) => LoadQueue(files, root);
 
         private void Hero_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => OpenFile();
 
@@ -211,7 +232,13 @@ namespace FfxTool.Gui
             files.Any(f => Directory.Exists(f) ||
                            f.EndsWith(".ffx", StringComparison.OrdinalIgnoreCase));
 
-        private void LoadFile(string path)
+        private void LoadFile(string path) => LoadFile(path, false);
+
+        /// <summary>inQueue: the preset was opened from the folder file
+        /// manager (double-click) — the queue survives so "All presets"
+        /// returns to it, and the checklist's hand toggles are remembered
+        /// for exactly this file.</summary>
+        private void LoadFile(string path, bool inQueue)
         {
             if (_running)
             {
@@ -220,11 +247,18 @@ namespace FfxTool.Gui
             }
             try
             {
-                // a single-preset load leaves folder mode — the queue card
-                // swaps out for the hero / checklist
-                _queue = null;
-                _queueRoot = null;
+                // a plain single-preset load leaves folder mode — the queue
+                // card swaps out for the hero / checklist
+                if (inQueue) _queueEditPath = path;
+                else
+                {
+                    _queue = null;
+                    _queueRoot = null;
+                    _queueEditPath = null;
+                }
                 QueueCard.Visibility = Visibility.Collapsed;
+                QueuePanel.Visibility = inQueue && _queue != null
+                    ? Visibility.Visible : Visibility.Collapsed;
                 SaveBannerTitle.Text = "Conversion saved";
                 SaveBanner.Visibility = Visibility.Collapsed; // fresh run clears the last result
 
@@ -242,6 +276,7 @@ namespace FfxTool.Gui
             }
             catch (Exception ex)
             {
+                _queueEditPath = null; // the open failed — nothing is being edited
                 Console.Log($"[ERROR] Failed to read '{System.IO.Path.GetFileName(path)}': {ex.Message}");
                 MessageBox.Show(this.FindWindow(),
                     $"Failed to read '{System.IO.Path.GetFileName(path)}':\n{ex.Message}",
@@ -253,7 +288,11 @@ namespace FfxTool.Gui
         /// single-preset workspace; every .ffx becomes one conversion job.</summary>
         private void LoadQueue(List<string> files, string root)
         {
-            if (_running) return;
+            if (_running)
+            {
+                Console.Log("[INFO] Finish or cancel the running batch first.");
+                return;
+            }
             files = files ?? new List<string>();
             if (files.Count == 0)
             {
@@ -262,6 +301,14 @@ namespace FfxTool.Gui
                     MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
+            // group order follows the files; sort by (rel folder, name) so
+            // each subfolder forms ONE contiguous group — and so the
+            // worker's per-file status lands on the matching row
+            if (root != null)
+                files = files.OrderBy(
+                        f => FolderScan.RelUnder(root, f), StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
             _queue = files;
             _queueRoot = root;
 
@@ -273,16 +320,43 @@ namespace FfxTool.Gui
             if (QueueOutput.SelectedIndex < 0) QueueOutput.SelectedIndex = 0;
 
             // the file manager: one row per preset with its size; each
-            // row's status fills in live as the batch runs
+            // row's status fills in live as the batch runs. A folder queue
+            // groups its rows under the subfolders they came from.
             _queueRows.Clear();
+            _queueRowFiles.Clear();
+            _queueRemovals.Clear();
+            _queueEditPath = null;
+            bool grouped = root != null && files.Any(
+                f => FolderScan.RelUnder(root, f).Length > 0);
+            string leaf = root != null ? FolderScan.LeafName(root) : "";
             foreach (var f in files)
             {
                 string size = "—";
                 try { size = FolderScan.FmtSize(new FileInfo(f).Length); }
                 catch { /* unreadable metadata — the size stays “—” */ }
-                _queueRows.Add(new QueueFileVm { Name = Path.GetFileName(f), Size = size });
+                string rel = root != null ? FolderScan.RelUnder(root, f) : "";
+                var vm = new QueueFileVm
+                {
+                    Name = Path.GetFileName(f),
+                    Size = size,
+                    Path = f,
+                    Group = !grouped ? null
+                        : (rel.Length == 0 ? leaf : leaf + "\\" + rel)
+                };
+                _queueRows.Add(vm);
+                _queueRowFiles.Add(vm);
             }
-            QueueFileList.ItemsSource = _queueRows;
+            if (grouped)
+            {
+                var view = new ListCollectionView(_queueRows);
+                view.GroupDescriptions.Add(new PropertyGroupDescription("Group"));
+                QueueFileList.ItemsSource = view;
+            }
+            else
+            {
+                QueueFileList.ItemsSource = _queueRows;
+            }
+            QueuePanel.Visibility = Visibility.Visible;
 
             StatusText.Text = files.Count + " preset" + (files.Count == 1 ? "" : "s") + " queued";
             Console.Log($"[INFO] Queue loaded: {files.Count} preset(s)" +
@@ -294,6 +368,11 @@ namespace FfxTool.Gui
         {
             var table = PluginLookup.LoadTable();
             var names = EffectNameLookup.Load();
+            // a preset opened from the file manager keeps its hand toggles:
+            // the checked set recorded for it re-applies over the defaults
+            HashSet<string> kept = null;
+            if (_queueEditPath != null)
+                _queueRemovals.TryGetValue(_queueEditPath, out kept);
             _rows.Clear();
             foreach (var eff in _currentEffects.Where(e => !e.IsSentinel))
             {
@@ -306,7 +385,7 @@ namespace FfxTool.Gui
                 {
                     MatchName = eff.MatchName,
                     VendorLabel = $"({match.Vendor ?? "unknown vendor"})",
-                    IsChecked = missing
+                    IsChecked = kept != null ? kept.Contains(eff.MatchName) : missing
                 });
             }
             bool hasEffects = _rows.Count > 0;
@@ -314,12 +393,26 @@ namespace FfxTool.Gui
             EffectList.Visibility = hasEffects ? Visibility.Visible : Visibility.Collapsed;
         }
 
+        /// <summary>A checklist toggle while a queued preset is open for
+        /// editing: the checked match names are remembered for exactly this
+        /// file and ride into the queue run on top of the profile chain.</summary>
+        private void QueueEditToggled()
+        {
+            if (_queueEditPath == null) { UpdateCta(); return; }
+            var checkedNow = new HashSet<string>(
+                _rows.Where(r => r.IsChecked).Select(r => r.MatchName),
+                StringComparer.OrdinalIgnoreCase);
+            if (checkedNow.Count > 0) _queueRemovals[_queueEditPath] = checkedNow;
+            else _queueRemovals.Remove(_queueEditPath);
+            UpdateCta();
+        }
+
         /// <summary>Cta text doubles as a job summary: kept vs marked-for-removal
         /// (single preset) or the queue size (folder mode).</summary>
         private void UpdateCta()
         {
             if (_running) return;
-            if (_queue != null)
+            if (_queue != null && _queueEditPath == null)
             {
                 ConvertBtn.IsEnabled = true;
                 ConvertBtn.Content = "Convert · " + _queue.Count +
@@ -344,7 +437,7 @@ namespace FfxTool.Gui
         private void Convert_Click(object sender, RoutedEventArgs e)
         {
             if (_running) return;
-            if (_queue != null) { RunQueue(); return; }
+            if (_queue != null && _queueEditPath == null) { RunQueue(); return; }
             if (_inputData == null) return;
 
             var toRemove = new HashSet<string>(
@@ -451,6 +544,48 @@ namespace FfxTool.Gui
                 }
             }
 
+            // tree modes: the converted set mirrors the source folder's
+            // subfolders — one ZIP beside the source folder, or a plain
+            // folder next to it. The derived output reuses (overwrites) its
+            // own previous result, never the inputs.
+            string outBase = null;
+            string zipPath = null;
+            string staging = null;
+            if (output == QueueOutputMode.ZipTree || output == QueueOutputMode.FolderTree)
+            {
+                string baseName = _queueRoot != null
+                    ? FolderScan.LeafName(_queueRoot) + " (converted)"
+                    : "Converted presets";
+                string parent = _queueRoot != null ? Path.GetDirectoryName(_queueRoot) : root;
+                if (string.IsNullOrEmpty(parent)) parent = ".";
+                if (output == QueueOutputMode.FolderTree)
+                {
+                    outBase = Path.Combine(parent, baseName);
+                    try { Directory.CreateDirectory(outBase); }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(this.FindWindow(),
+                            "Could not create the output folder:\n" + ex.Message,
+                            "Output folder failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+                }
+                else
+                {
+                    zipPath = Path.Combine(parent, baseName + ".zip");
+                    staging = Path.Combine(Path.GetTempPath(),
+                        "FFX-Convert-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+                    try { Directory.CreateDirectory(staging); }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(this.FindWindow(),
+                            "Could not create the staging folder:\n" + ex.Message,
+                            "Output failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+                }
+            }
+
             _running = true;
             _cts = new CancellationTokenSource();
             ConvertBtn.IsEnabled = false;
@@ -474,11 +609,24 @@ namespace FfxTool.Gui
                         _cts.Token.ThrowIfCancellationRequested();
                         string path = files[i];
                         string name = Path.GetFileName(path);
-                        var row = _queueRows[i];
+                        var row = _queueRowFiles[i];
                         Dispatcher.BeginInvoke(new Action(() => row.Status = "Converting…"));
                         ((IProgress<(int, string)>)reporter).Report((done,
                             "Converting… " + (done + 1) + "/" + total + " — " + name));
-                        var r = QueueConvertOne(path, targetKey, removeMissing, output, outDir);
+                        _queueRemovals.TryGetValue(path, out var userRemove);
+                        string forcedOut = null;
+                        if (output == QueueOutputMode.ZipTree || output == QueueOutputMode.FolderTree)
+                        {
+                            // the mirrored relative path keeps the source
+                            // folder's subfolder layout inside the output
+                            string rel = FolderScan.RelUnder(_queueRoot, path);
+                            string baseDir = output == QueueOutputMode.ZipTree ? staging : outBase;
+                            forcedOut = rel.Length == 0
+                                ? Path.Combine(baseDir, Path.GetFileName(path))
+                                : Path.Combine(baseDir, rel, Path.GetFileName(path));
+                        }
+                        var r = QueueConvertOne(path, targetKey, removeMissing, output, outDir,
+                                                userRemove, forcedOut);
                         done++;
                         if (!r.Ok) failed++;
                         else { ok++; if (r.Warn) warned++; }
@@ -524,12 +672,38 @@ namespace FfxTool.Gui
                         : "[SUCCESS] " + summary);
             LogService.Append("batch convert: " + summary);
 
-            if (done > 0)
+            if (output == QueueOutputMode.ZipTree && staging != null)
+            {
+                // whatever converted cleanly becomes the ZIP — a cancelled
+                // or failed run contributes less but never a broken archive;
+                // nothing converted means there is nothing to hand over
+                if (ok > 0 && !cancelled && fatal == null)
+                {
+                    try
+                    {
+                        if (File.Exists(zipPath)) File.Delete(zipPath);
+                        System.IO.Compression.ZipFile.CreateFromDirectory(
+                            staging, zipPath,
+                            System.IO.Compression.CompressionLevel.Optimal, false);
+                        Console.Log("[SUCCESS] ZIP written: " + zipPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Log("[ERROR] The ZIP could not be written: " + ex.Message);
+                        zipPath = null;
+                    }
+                }
+                else zipPath = null;
+                try { Directory.Delete(staging, true); } catch { }
+            }
+            if (done > 0 && (output != QueueOutputMode.ZipTree || zipPath != null))
             {
                 SavedToText.Text = summary;
                 ShowBanner();
             }
-            _lastOutput = output == QueueOutputMode.Subfolder ? outDir : root;
+            if (output == QueueOutputMode.ZipTree) _lastOutput = zipPath;
+            else if (output == QueueOutputMode.FolderTree) _lastOutput = outBase;
+            else _lastOutput = output == QueueOutputMode.Subfolder ? outDir : root;
         }
 
         /// <summary>The proven single-file pipeline applied to one queued
@@ -538,7 +712,8 @@ namespace FfxTool.Gui
         /// the single-preset checklist (system scan first, reference tables
         /// second).</summary>
         private QueueResult QueueConvertOne(string path, string targetKey, bool removeMissing,
-                                            QueueOutputMode output, string outDir)
+                                            QueueOutputMode output, string outDir,
+                                            HashSet<string> userRemove, string forcedOutPath)
         {
             var res = new QueueResult { Ok = true, Note = "" };
             try
@@ -560,10 +735,20 @@ namespace FfxTool.Gui
                     }
                 }
 
+                if (userRemove != null && userRemove.Count > 0)
+                {
+                    // hand-toggled effects (the file manager's double-click
+                    // checklist) ride on top of the profile-driven chain
+                    toRemove = toRemove ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var n in userRemove) toRemove.Add(n);
+                }
+
                 var result = Pipeline.Convert(data, targetKey,
                     toRemove != null && toRemove.Count > 0 ? toRemove : null);
 
-                string outPath = OutputPathFor(path, output, outDir, targetKey);
+                string outPath = forcedOutPath ?? OutputPathFor(path, output, outDir, targetKey);
+                var outFolder = Path.GetDirectoryName(outPath);
+                if (!string.IsNullOrEmpty(outFolder)) Directory.CreateDirectory(outFolder);
                 File.WriteAllBytes(outPath, result.Data);
 
                 res.Removed = result.RemovedEffects != null ? result.RemovedEffects.Count : 0;
@@ -605,6 +790,38 @@ namespace FfxTool.Gui
             if (string.Equals(candidate, path, StringComparison.OrdinalIgnoreCase))
                 candidate = Path.Combine(Path.GetDirectoryName(path), name + "_" + suffix + "_1.ffx");
             return candidate;
+        }
+
+        /// <summary>Back to the folder file manager from an opened preset
+        /// (the "All presets" link) — the queue survives untouched, its rows
+        /// keep whatever statuses the last run left.</summary>
+        private void ShowQueueView()
+        {
+            _queueEditPath = null;
+            _inputData = null;
+            _inputPath = null;
+            Hero.Visibility = Visibility.Collapsed;
+            EffectList.Visibility = Visibility.Collapsed;
+            QueueCard.Visibility = Visibility.Visible;
+            SaveBanner.Visibility = Visibility.Collapsed;
+            StatusText.Text = _queue.Count + " preset" + (_queue.Count == 1 ? "" : "s") + " queued";
+            Console.Log("[INFO] Back to the file manager.");
+            UpdateCta();
+        }
+
+        private void QueueLink_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (_queue != null) ShowQueueView();
+        }
+
+        /// <summary>Double-click a file manager row: the preset opens in
+        /// the checklist — its effects with their plugins (match names),
+        /// each toggleable — while the queue waits behind "All presets".</summary>
+        private void QueueFileList_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            var vm = QueueFileList.SelectedItem as QueueFileVm;
+            if (vm == null || string.IsNullOrEmpty(vm.Path)) return;
+            LoadFile(vm.Path, true);
         }
 
         private void Cancel_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)

@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
@@ -474,6 +475,8 @@ namespace FfxTool.Gui
         public class ScanRowVm
         {
             public string FileName { get; set; }
+            public string Folder { get; set; } // relative subfolder ("sub\inner", "" at the root)
+            public string Path { get; set; }   // full path — the report row opens the preset
             public string Status { get; set; }
             public string Effects { get; set; }
             public string Params { get; set; }
@@ -489,6 +492,8 @@ namespace FfxTool.Gui
             public string Name { get; set; }
             public string Size { get; set; }
             public string Path { get; set; }
+            // display folder the row groups under ("Presets", "Presets\sub")
+            public string Group { get; set; }
         }
 
         private readonly PluginProfile _profile;
@@ -543,10 +548,14 @@ namespace FfxTool.Gui
         // preset open), false once a preset from the queue is on screen
         private bool _folderView;
         private string _currentPath;
+        // where the queue came from: null for a loose multi-file selection —
+        // rides along on the Convert handoff so subfolder layouts survive
+        private string _queueRoot;
         private readonly ObservableCollection<FolderRowVm> _folderRows = new ObservableCollection<FolderRowVm>();
 
-        // MainWindow wires this: switch to Convert and load the preset there
-        public event Action<string> ConvertRequested;
+        // MainWindow wires this: switch to Convert and load the selection
+        // there — (folder root, files); root is null for loose selections
+        public event Action<string, List<string>> ConvertRequested;
 
         // ---------- view modes: AE Effect Controls panel vs. split inspector ----------
         // 0 = Effect Controls (the AE-style panel, the default), 1 = split
@@ -672,7 +681,7 @@ namespace FfxTool.Gui
             var dlg = new OpenFileDialog { Filter = "After Effects Presets (*.ffx)|*.ffx", Multiselect = true };
             if (dlg.ShowDialog() != true) return;
             if (dlg.FileNames.Length == 1) { LoadFile(dlg.FileNames[0]); return; }
-            LoadQueue(dlg.FileNames.Where(File.Exists).ToList());
+            LoadQueue(dlg.FileNames.Where(File.Exists).ToList(), null);
         }
 
         private void Open_Click(object sender, RoutedEventArgs e) => OpenFile();
@@ -685,15 +694,17 @@ namespace FfxTool.Gui
                 ShowNewFolderButton = false
             };
             if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
-            LoadQueue(FolderScan.Collect(dlg.SelectedPath, true));
+            LoadQueue(FolderScan.Collect(dlg.SelectedPath, true), dlg.SelectedPath);
         }
 
         // ---------- folder queue ----------
 
-        /// <summary>Folder / multi-file mode: the queue drives the workspace —
-        /// the combo lists every file and picking one deep-reads it with the
-        /// exact single-preset anatomy (LoadFile).</summary>
-        private void LoadQueue(List<string> files)
+        /// <summary>Folder / multi-file mode: the queue drives the workspace
+        /// — the file manager lists every preset grouped under its
+        /// subfolders, a click deep-reads it with the exact single-preset
+        /// anatomy (LoadFile), ctrl/shift builds a selection for the
+        /// Convert handoff.</summary>
+        private void LoadQueue(List<string> files, string root)
         {
             if (files == null || files.Count == 0)
             {
@@ -702,27 +713,52 @@ namespace FfxTool.Gui
                     MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
+            // display order: sorted by (rel folder, name) so each
+            // subfolder forms ONE contiguous group in the file manager
+            if (root != null)
+                files = files.OrderBy(
+                        f => FolderScan.RelUnder(root, f), StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(System.IO.Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
             _queue = files;
+            _queueRoot = root;
             _queueIndex = 0;
             _scanGen++; // any in-flight report belongs to the OLD queue
             QueuePanel.Visibility = Visibility.Visible;
 
-            // the file manager: the folder shows as a list of presets;
-            // clicking one opens it with the full single-preset anatomy
+
+            // the file manager: the folder shows as a list of presets
+            // grouped under their subfolders; a plain click opens one with
+            // the full single-preset anatomy, ctrl/shift picks a selection
             _folderRows.Clear();
+            bool grouped = root != null && files.Any(
+                f => FolderScan.RelUnder(root, f).Length > 0);
+            string leaf = root != null ? FolderScan.LeafName(root) : "";
             foreach (var f in files)
             {
                 string size = "—";
                 try { size = FolderScan.FmtSize(new FileInfo(f).Length); }
                 catch { /* unreadable metadata — the size stays “—” */ }
+                string rel = root != null ? FolderScan.RelUnder(root, f) : "";
                 _folderRows.Add(new FolderRowVm
                 {
                     Name = System.IO.Path.GetFileName(f),
                     Size = size,
-                    Path = f
+                    Path = f,
+                    Group = !grouped ? null
+                        : (rel.Length == 0 ? leaf : leaf + "\\" + rel)
                 });
             }
-            FolderList.ItemsSource = _folderRows;
+            if (grouped)
+            {
+                var view = new ListCollectionView(_folderRows);
+                view.GroupDescriptions.Add(new PropertyGroupDescription("Group"));
+                FolderList.ItemsSource = view;
+            }
+            else
+            {
+                FolderList.ItemsSource = _folderRows;
+            }
             ShowFolderView();
         }
 
@@ -733,7 +769,28 @@ namespace FfxTool.Gui
             _folderView = true;
             FolderList.SelectedIndex = -1; // so re-clicking the same row re-fires
             EmptyState.Visibility = Visibility.Collapsed; // the list replaces it
+            UpdateSendButton();
             SetView(_viewMode);
+        }
+
+        /// <summary>The handoff button's label tracks what a click would
+        /// send: the open preset, the picked selection, or the whole
+        /// folder with its subfolders when nothing is picked.</summary>
+        private void UpdateSendButton()
+        {
+            if (_folderView)
+            {
+                int n = 0;
+                var sel = FolderList.SelectedItems;
+                if (sel != null)
+                    foreach (var it in sel)
+                        if (it is FolderRowVm) n++;
+                SendConvertBtn.Content = n > 0 ? "Convert selection…" : "Convert folder…";
+            }
+            else
+            {
+                SendConvertBtn.Content = "Convert this preset…";
+            }
         }
 
         private void QueueLink_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -746,16 +803,40 @@ namespace FfxTool.Gui
             // items only ever arrive in code, after the page is built — but
             // guard anyway, per the round-32 parse-order lesson
             if (!IsInitialized || _queue == null) return;
-            int i = FolderList.SelectedIndex;
-            if (i < 0 || i >= _queue.Count) return;
+            UpdateSendButton();
+            // ctrl/shift multi-select: the click only grows the selection —
+            // a plain click still opens the preset (the round-35 behavior)
+            if (System.Windows.Input.Keyboard.Modifiers !=
+                System.Windows.Input.ModifierKeys.None) return;
+            var row = FolderList.SelectedItem as FolderRowVm;
+            if (row == null) return;
+            int i = _queue.IndexOf(row.Path);
+            if (i < 0) return;
             _queueIndex = i;
             LoadFile(_queue[i]);
         }
 
         private void SendConvertBtn_Click(object sender, RoutedEventArgs e)
         {
+            if (_queue != null && _folderView)
+            {
+                // the picked rows — or, when nothing is picked, the whole
+                // folder; the root rides along so Convert can mirror the
+                // subfolders either way
+                var picked = new List<string>();
+                var sel = FolderList.SelectedItems;
+                if (sel != null)
+                    foreach (var it in sel)
+                        if (it is FolderRowVm r) picked.Add(r.Path);
+                if (picked.Count > 0)
+                    ConvertRequested?.Invoke(_queueRoot, picked);
+                else
+                    ConvertRequested?.Invoke(_queueRoot, new List<string>(_queue));
+                return;
+            }
+            // a preset is open (or no folder at all): hand over exactly it
             if (string.IsNullOrEmpty(_currentPath)) return;
-            ConvertRequested?.Invoke(_currentPath);
+            ConvertRequested?.Invoke(_queueRoot, new List<string> { _currentPath });
         }
 
 
@@ -783,14 +864,14 @@ namespace FfxTool.Gui
             {
                 // a folder drop loads the whole folder, subfolders included
                 string folder = items.FirstOrDefault(Directory.Exists);
-                if (folder != null) { LoadQueue(FolderScan.Collect(folder, true)); return; }
+                if (folder != null) { LoadQueue(FolderScan.Collect(folder, true), folder); return; }
 
                 var dropped = items.Where(f => f.EndsWith(".ffx", StringComparison.OrdinalIgnoreCase) && File.Exists(f))
                                    .Distinct(StringComparer.OrdinalIgnoreCase)
                                    .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
                                    .ToList();
                 if (dropped.Count == 1) { LoadFile(dropped[0]); return; }
-                if (dropped.Count > 1) { LoadQueue(dropped); return; }
+                if (dropped.Count > 1) { LoadQueue(dropped, null); return; }
             }
             MessageBox.Show(Window.GetWindow(this),
                 "No .ffx preset was found in the dropped items.",
@@ -832,6 +913,7 @@ namespace FfxTool.Gui
                     ? (_queueIndex + 1) + " / " + _queue.Count + " — " + System.IO.Path.GetFileName(path)
                     : System.IO.Path.GetFileName(path);
                 SendConvertBtn.Visibility = Visibility.Visible;
+                UpdateSendButton();
                 byte[] bytes = File.ReadAllBytes(path);
                 _currentEffects = Pipeline.ListEffects(bytes);
 
@@ -896,6 +978,7 @@ namespace FfxTool.Gui
             _scanRunning = true;
             int gen = ++_scanGen;
             var files = new List<string>(_queue);
+            var scanRoot = _queueRoot; // stable for the whole report run
             _scanRows.Clear();
             ScanCsvLink.Visibility = Visibility.Collapsed;
             ScanSummary.Text = "Reading 0 / " + files.Count + "\u2026";
@@ -908,7 +991,7 @@ namespace FfxTool.Gui
                 int done = 0;
                 foreach (var path in files)
                 {
-                    var captured = ScanOne(path);
+                    var captured = ScanOne(path, scanRoot);
                     done++;
                     ((IProgress<(int, string)>)reporter).Report((done,
                         "Reading " + done + " / " + total + "\u2026 " + captured.FileName));
@@ -938,11 +1021,13 @@ namespace FfxTool.Gui
 
         /// <summary>The read-only deep read the Effect Lister gives one
         /// preset, summarized as one report row.</summary>
-        private ScanRowVm ScanOne(string path)
+        private ScanRowVm ScanOne(string path, string root)
         {
             var row = new ScanRowVm
             {
                 FileName = System.IO.Path.GetFileName(path),
+                Folder = root != null ? FolderScan.RelUnder(root, path) : "",
+                Path = path,
                 Status = "OK", Effects = "—", Params = "—",
                 Animated = "—", Size = "—", Note = ""
             };
@@ -986,10 +1071,10 @@ namespace FfxTool.Gui
             try
             {
                 var sb = new StringBuilder();
-                sb.AppendLine("File,Status,Effects,Params,Animated,Size,Note");
+                sb.AppendLine("File,Folder,Status,Effects,Params,Animated,Size,Note");
                 foreach (var r in _scanRows)
                     sb.AppendLine(string.Join(",",
-                        Q(r.FileName), Q(r.Status), Q(r.Effects), Q(r.Params), Q(r.Animated), Q(r.Size), Q(r.Note)));
+                        Q(r.FileName), Q(r.Folder), Q(r.Status), Q(r.Effects), Q(r.Params), Q(r.Animated), Q(r.Size), Q(r.Note)));
                 // UTF-8 with BOM: Excel on Windows reads it correctly
                 File.WriteAllText(dlg.FileName, sb.ToString(), new UTF8Encoding(true));
                 ScanSummary.Text = "CSV written: " + dlg.FileName;
@@ -1006,6 +1091,22 @@ namespace FfxTool.Gui
         /// <summary>CSV field quoting: wrap in quotes and double any inner
         /// quote — commas inside file names/notes can never split a cell.</summary>
         private static string Q(string s) => "\"" + (s ?? "").Replace("\"", "\"\"") + "\"";
+
+        /// <summary>Double-click a report row: that preset opens in the
+        /// workspace (the flyout closes) — the report becomes a way in,
+        /// not just a readout.</summary>
+        private void ScanList_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            var row = ScanList.SelectedItem as ScanRowVm;
+            if (row == null || string.IsNullOrEmpty(row.Path)) return;
+            ScanFlyout.IsOpen = false;
+            if (_queue != null)
+            {
+                int i = _queue.IndexOf(row.Path);
+                if (i >= 0) _queueIndex = i;
+            }
+            LoadFile(row.Path);
+        }
 
         // ---------- filter / sort / refresh ----------
         private void Filter_Click(object sender, RoutedEventArgs e)

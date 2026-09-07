@@ -47,5 +47,29 @@ namespace FfxTool.Gui
             if (bytes >= 1024) return ((double)bytes / 1024).ToString("0.#") + " KB";
             return bytes + " B";
         }
+
+        /// <summary>The path under root ("sub\inner"), "" when the file sits
+        /// directly in root (or root isn't a prefix of the path). This is
+        /// the tree mirroring primitive: the grouped file managers and the
+        /// ZIP / mirrored-folder outputs are all derived from it.</summary>
+        public static string RelUnder(string root, string path)
+        {
+            if (string.IsNullOrEmpty(root) || string.IsNullOrEmpty(path)) return "";
+            string prefix = root.TrimEnd('\\', '/').Replace('/', '\\') + "\\";
+            string p = path.Replace('/', '\\');
+            if (p.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return p.Substring(prefix.Length);
+            return "";
+        }
+
+        /// <summary>The folder's own name ("Presets" in C:\Users\me\Presets)
+        /// — names the mirrored ZIP / output folder and the file managers'
+        /// root group header. Never empty ("presets" for drive roots).</summary>
+        public static string LeafName(string dir)
+        {
+            if (string.IsNullOrEmpty(dir)) return "presets";
+            string leaf = Path.GetFileName(dir.TrimEnd('\\', '/'));
+            return string.IsNullOrEmpty(leaf) ? "presets" : leaf;
+        }
     }
 }
