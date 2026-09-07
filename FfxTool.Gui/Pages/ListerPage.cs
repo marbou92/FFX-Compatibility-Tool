@@ -20,6 +20,35 @@ using Microsoft.Win32;
 
 namespace FfxTool.Gui
 {
+    /// <summary>One row of the folder file manager (the explorer tree's
+    /// preset leaves): the preset's name, size and full path, plus the
+    /// Picked flag the ctrl/shift handoff selection toggles.
+    /// Namespace-level (not nested in the page) because XAML templates
+    /// target it with x:Type, and nested types can't be referenced
+    /// there.</summary>
+    public class FolderRowVm : System.ComponentModel.INotifyPropertyChanged
+    {
+        public string Name { get; set; }
+        public string Size { get; set; }
+        public string Path { get; set; }
+
+        bool _picked;
+        /// <summary>Ctrl/shift handoff selection — drives the row tint
+        /// and what "Convert selection…" sends.</summary>
+        public bool Picked
+        {
+            get { return _picked; }
+            set
+            {
+                _picked = value;
+                PropertyChanged?.Invoke(this,
+                    new System.ComponentModel.PropertyChangedEventArgs(nameof(Picked)));
+            }
+        }
+
+        public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
+    }
+
     /// <summary>
     /// Effect Lister: read-only compatibility view of a preset's effects —
     /// filter/sort toolbar, status-colored rows in a unified list card,
@@ -485,17 +514,6 @@ namespace FfxTool.Gui
             public string Note { get; set; }
         }
 
-        /// <summary>One row of the folder file manager (the queue's list
-        /// view): the preset's name, size and full path.</summary>
-        public class FolderRowVm
-        {
-            public string Name { get; set; }
-            public string Size { get; set; }
-            public string Path { get; set; }
-            // display folder the row groups under ("Presets", "Presets\sub")
-            public string Group { get; set; }
-        }
-
         private readonly PluginProfile _profile;
         private List<Pipeline.EffectInfo> _currentEffects = new List<Pipeline.EffectInfo>();
         private List<PresetEffectDetails> _details = new List<PresetEffectDetails>();
@@ -552,6 +570,8 @@ namespace FfxTool.Gui
         // rides along on the Convert handoff so subfolder layouts survive
         private string _queueRoot;
         private readonly ObservableCollection<FolderRowVm> _folderRows = new ObservableCollection<FolderRowVm>();
+        // flat-order anchor for shift-click pick ranges (-1 = none yet)
+        private int _pickAnchor = -1;
 
         // MainWindow wires this: switch to Convert and load the selection
         // there — (folder root, files); root is null for loose selections
@@ -727,38 +747,28 @@ namespace FfxTool.Gui
             QueuePanel.Visibility = Visibility.Visible;
 
 
-            // the file manager: the folder shows as a list of presets
-            // grouped under their subfolders; a plain click opens one with
-            // the full single-preset anatomy, ctrl/shift picks a selection
+            // the explorer-style file manager: folder nodes nest the
+            // source layout, each preset sits inside its folder; a plain
+            // click opens one with the full single-preset anatomy,
+            // ctrl/shift picks a selection for the Convert handoff
             _folderRows.Clear();
-            bool grouped = root != null && files.Any(
-                f => FolderScan.RelUnder(root, f).Length > 0);
-            string leaf = root != null ? FolderScan.LeafName(root) : "";
+            _pickAnchor = -1;
+            var byPath = new Dictionary<string, FolderRowVm>(StringComparer.OrdinalIgnoreCase);
             foreach (var f in files)
             {
                 string size = "—";
                 try { size = FolderScan.FmtSize(new FileInfo(f).Length); }
                 catch { /* unreadable metadata — the size stays “—” */ }
-                string rel = root != null ? FolderScan.RelUnder(root, f) : "";
-                _folderRows.Add(new FolderRowVm
+                var row = new FolderRowVm
                 {
                     Name = System.IO.Path.GetFileName(f),
                     Size = size,
-                    Path = f,
-                    Group = !grouped ? null
-                        : (rel.Length == 0 ? leaf : leaf + "\\" + rel)
-                });
+                    Path = f
+                };
+                _folderRows.Add(row);
+                byPath[f] = row;
             }
-            if (grouped)
-            {
-                var view = new ListCollectionView(_folderRows);
-                view.GroupDescriptions.Add(new PropertyGroupDescription("Group"));
-                FolderList.ItemsSource = view;
-            }
-            else
-            {
-                FolderList.ItemsSource = _folderRows;
-            }
+            FolderTree.ItemsSource = FolderScan.BuildTree(files, root, f => byPath[f]);
             ShowFolderView();
         }
 
@@ -767,10 +777,25 @@ namespace FfxTool.Gui
         private void ShowFolderView()
         {
             _folderView = true;
-            FolderList.SelectedIndex = -1; // so re-clicking the same row re-fires
-            EmptyState.Visibility = Visibility.Collapsed; // the list replaces it
+            ClearTreeSelection(FolderTree); // so re-clicking the same row re-fires
+            EmptyState.Visibility = Visibility.Collapsed; // the tree replaces it
             UpdateSendButton();
             SetView(_viewMode);
+        }
+
+        /// <summary>Best-effort selection wipe across the realized
+        /// containers — virtualization means unrealized branches hold no
+        /// containers anyway, and the selected item's own container always
+        /// exists.</summary>
+        private static void ClearTreeSelection(ItemsControl parent)
+        {
+            if (parent == null || !parent.HasItems) return;
+            foreach (var item in parent.Items)
+                if (parent.ItemContainerGenerator.ContainerFromItem(item) is TreeViewItem tvi)
+                {
+                    tvi.IsSelected = false;
+                    ClearTreeSelection(tvi);
+                }
         }
 
         /// <summary>The handoff button's label tracks what a click would
@@ -780,12 +805,10 @@ namespace FfxTool.Gui
         {
             if (_folderView)
             {
-                int n = 0;
-                var sel = FolderList.SelectedItems;
-                if (sel != null)
-                    foreach (var it in sel)
-                        if (it is FolderRowVm) n++;
-                SendConvertBtn.Content = n > 0 ? "Convert selection…" : "Convert folder…";
+                int n = _folderRows.Count(r => r.Picked);
+                SendConvertBtn.Content = n > 0
+                    ? "Convert selection (" + n + ")…"
+                    : "Convert folder…";
             }
             else
             {
@@ -798,22 +821,53 @@ namespace FfxTool.Gui
             if (_queue != null) ShowFolderView();
         }
 
-        private void FolderList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void FolderTree_SelectionChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
             // items only ever arrive in code, after the page is built — but
             // guard anyway, per the round-32 parse-order lesson
             if (!IsInitialized || _queue == null) return;
             UpdateSendButton();
-            // ctrl/shift multi-select: the click only grows the selection —
-            // a plain click still opens the preset (the round-35 behavior)
-            if (System.Windows.Input.Keyboard.Modifiers !=
-                System.Windows.Input.ModifierKeys.None) return;
-            var row = FolderList.SelectedItem as FolderRowVm;
+            // a plain click opens the preset and starts a fresh pick set —
+            // ctrl/shift clicks never get here (the preview handler eats
+            // them so the tree's single selection stays out of the way)
+            var row = FolderTree.SelectedItem as FolderRowVm;
             if (row == null) return;
+            foreach (var r in _folderRows) r.Picked = false;
             int i = _queue.IndexOf(row.Path);
             if (i < 0) return;
+            _pickAnchor = i;
             _queueIndex = i;
             LoadFile(_queue[i]);
+        }
+
+        /// <summary>Ctrl+click toggles a preset in the pick set, Shift+
+        /// click picks the flat range from the last anchor — the TreeView's
+        /// own single selection is deliberately left alone. Folder rows and
+        /// bare chrome behave natively (expand / collapse).</summary>
+        private void FolderTree_PreviewLeftDown(object sender, MouseButtonEventArgs e)
+        {
+            if (!IsInitialized || _queue == null) return;
+            var mods = Keyboard.Modifiers;
+            bool ctrl = (mods & ModifierKeys.Control) != 0;
+            bool shift = (mods & ModifierKeys.Shift) != 0;
+            if (!ctrl && !shift) return;
+            var row = (e.OriginalSource as FrameworkElement)?.DataContext as FolderRowVm;
+            if (row == null) return;
+            e.Handled = true; // keep the single-selection machinery out of it
+            int i = _queue.IndexOf(row.Path);
+            if (i < 0) return;
+            if (ctrl)
+            {
+                row.Picked = !row.Picked;
+                _pickAnchor = i;
+            }
+            else
+            {
+                int anchor = _pickAnchor < 0 ? 0 : _pickAnchor;
+                int lo = Math.Min(anchor, i), hi = Math.Max(anchor, i);
+                for (int k = lo; k <= hi; k++) _folderRows[k].Picked = true;
+            }
+            UpdateSendButton();
         }
 
         private void SendConvertBtn_Click(object sender, RoutedEventArgs e)
@@ -824,10 +878,8 @@ namespace FfxTool.Gui
                 // folder; the root rides along so Convert can mirror the
                 // subfolders either way
                 var picked = new List<string>();
-                var sel = FolderList.SelectedItems;
-                if (sel != null)
-                    foreach (var it in sel)
-                        if (it is FolderRowVm r) picked.Add(r.Path);
+                foreach (var r in _folderRows)
+                    if (r.Picked) picked.Add(r.Path);
                 if (picked.Count > 0)
                     ConvertRequested?.Invoke(_queueRoot, picked);
                 else

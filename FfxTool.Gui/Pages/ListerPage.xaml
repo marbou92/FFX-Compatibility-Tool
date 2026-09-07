@@ -4,6 +4,41 @@
              xmlns:controls="clr-namespace:FfxTool.Gui"
              AllowDrop="True" DragEnter="Page_DragEnter" DragLeave="Page_DragLeave" Drop="Page_Drop">
     <UserControl.Resources>
+        <!-- the folder file manager's explorer tree: folder nodes nest the
+             source layout, preset leaves carry the pickable row -->
+        <HierarchicalDataTemplate DataType="{x:Type controls:FolderNode}" ItemsSource="{Binding Items}">
+            <StackPanel Orientation="Horizontal" Background="Transparent">
+                <controls:IconGlyph IconName="FolderOpen" Width="16" Height="16"
+                                    Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="Medium"
+                           Margin="8,0,0,0" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding CountLabel}" Style="{StaticResource Caption}" Opacity="0.7"
+                           Margin="9,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
+        </HierarchicalDataTemplate>
+        <!-- preset leaf: pick tint (ctrl/shift handoff selection), name, size -->
+        <DataTemplate DataType="{x:Type controls:FolderRowVm}">
+            <Border x:Name="PickBg" CornerRadius="8" Background="Transparent">
+                <Grid Margin="2,2" Background="Transparent" Cursor="Hand" ToolTip="{Binding Path=Path}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <controls:IconGlyph IconName="Description" Width="15" Height="15"
+                                        Foreground="{DynamicResource B.OnSurfaceVariant}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="Medium"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="9,0,0,0"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Size}" Style="{StaticResource Caption}"
+                               Opacity="0.75" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Picked}" Value="True">
+                    <Setter TargetName="PickBg" Property="Background" Value="{DynamicResource B.SCHigh}"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
         <!-- inspector sub-tabs: M3 segmented control (pill container below) -->
         <Style x:Key="InspTab" TargetType="ToggleButton">
             <Setter Property="Background" Value="Transparent"/>
@@ -658,42 +693,15 @@
                         <TextBlock Text="Folder presets" Style="{StaticResource Body}" FontWeight="Medium"
                                    Margin="10,0,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
-                    <ListBox x:Name="FolderList" Grid.Row="1" Margin="2,12,2,4"
-                             Focusable="False" ScrollViewer.VerticalScrollBarVisibility="Auto"
-                             VirtualizingPanel.ScrollUnit="Pixel"
-                             SelectionMode="Extended"
-                             SelectionChanged="FolderList_SelectionChanged">
-                        <ListBox.GroupStyle>
-                            <GroupStyle>
-                                <GroupStyle.HeaderTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal" Margin="0,8,0,2">
-                                            <controls:IconGlyph IconName="FolderOpen" Width="14" Height="14"
-                                                                Foreground="{DynamicResource B.OnSurfaceVariant}" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{Binding Name}" Style="{StaticResource Caption}" FontWeight="SemiBold"
-                                                       Margin="8,0,0,0" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </GroupStyle.HeaderTemplate>
-                            </GroupStyle>
-                        </ListBox.GroupStyle>
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="2,3" Cursor="Hand" ToolTip="{Binding Path=Path}">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="Medium"
-                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding Size}" Style="{StaticResource Caption}"
-                                               Opacity="0.75" Margin="14,0,0,0" VerticalAlignment="Center"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                    <TreeView x:Name="FolderTree" Grid.Row="1" Margin="2,12,2,4"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto"
+                              VirtualizingPanel.ScrollUnit="Pixel"
+                              Style="{StaticResource FfxTree}" ItemContainerStyle="{StaticResource FfxTreeItem}"
+                              PreviewMouseLeftButtonDown="FolderTree_PreviewLeftDown"
+                              SelectedItemChanged="FolderTree_SelectionChanged"
+                              ToolTip="Click a preset to open it — Ctrl+click picks several, Shift+click picks a range"/>
                     <TextBlock Grid.Row="2" Style="{StaticResource Caption}" Opacity="0.8" Margin="2,8,0,0" TextWrapping="Wrap"
-                               Text="Click a preset to open it — Ctrl+click picks several for the Convert handoff. Folder report deep-reads every file into one table."/>
+                               Text="Click a preset to open it — Ctrl+click picks several, Shift+click picks a range. The Convert button sends the picked presets, or the whole folder with its subfolders when nothing is picked. Folder report deep-reads every file into one table."/>
                 </Grid>
             </Border>
 

@@ -3,6 +3,60 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:FfxTool.Gui"
              AllowDrop="True" DragEnter="Page_DragEnter" DragLeave="Page_DragLeave" Drop="Page_Drop">
+    <UserControl.Resources>
+        <!-- the file manager's explorer tree: folder nodes nest the
+             source layout, preset leaves carry the live row -->
+        <HierarchicalDataTemplate DataType="{x:Type controls:FolderNode}" ItemsSource="{Binding Items}">
+            <StackPanel Orientation="Horizontal" Background="Transparent">
+                <controls:IconGlyph IconName="FolderOpen" Width="16" Height="16"
+                                    Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="Medium"
+                           Margin="8,0,0,0" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding CountLabel}" Style="{StaticResource Caption}" Opacity="0.7"
+                           Margin="9,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
+        </HierarchicalDataTemplate>
+        <!-- preset leaf: name · profile flag · size · live conversion status -->
+        <DataTemplate DataType="{x:Type controls:QueueFileVm}">
+            <Grid Margin="2,2" Background="Transparent" ToolTip="{Binding Note}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <controls:IconGlyph IconName="Description" Width="15" Height="15"
+                                    Foreground="{DynamicResource B.OnSurfaceVariant}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="Medium"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="9,0,0,0"
+                           ToolTip="{Binding Note}"/>
+                <!-- plugin-profile flag: this preset references plugins that
+                     are unknown or not selected in the profile -->
+                <controls:IconGlyph Grid.Column="2" IconName="Warning" Width="14" Height="14"
+                                    Foreground="{DynamicResource B.Error}" Visibility="{Binding FlagVis}"
+                                    ToolTip="{Binding FlagTip}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="3" Text="{Binding Size}" Style="{StaticResource Caption}"
+                           Opacity="0.75" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                <TextBlock x:Name="StatusCell" Grid.Column="4" Text="{Binding Status}" Margin="18,0,0,0"
+                           VerticalAlignment="Center" ToolTip="{Binding Note}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+                            <Setter Property="Foreground" Value="{DynamicResource B.Primary}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Status}" Value="WARN">
+                                    <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Status}" Value="FAILED">
+                                    <Setter Property="Foreground" Value="{DynamicResource B.Error}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
     <Grid Margin="32,24,32,24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -100,83 +154,53 @@
                                 <TextBlock x:Name="QueueSub" Style="{StaticResource Caption}" Opacity="0.85" Margin="32,4,0,0"
                                            Text="One conversion per preset — the settings here apply to every file. Double-click a preset to open its effects and toggle them."/>
                             </StackPanel>
-                            <ListBox x:Name="QueueFileList" Grid.Row="1" Margin="10,12,2,4"
-                                     Focusable="False" ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                     VirtualizingPanel.ScrollUnit="Pixel"
-                                     MouseDoubleClick="QueueFileList_DoubleClick"
-                                     ToolTip="Double-click a preset to open its effects — toggle the ones you don't want, then run the batch">
-                                <ListBox.GroupStyle>
-                                    <GroupStyle>
-                                        <GroupStyle.HeaderTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Orientation="Horizontal" Margin="0,8,0,2">
-                                                    <controls:IconGlyph IconName="FolderOpen" Width="14" Height="14"
-                                                                        Foreground="{DynamicResource B.OnSurfaceVariant}" VerticalAlignment="Center"/>
-                                                    <TextBlock Text="{Binding Name}" Style="{StaticResource Caption}" FontWeight="SemiBold"
-                                                               Margin="8,0,0,0" VerticalAlignment="Center"/>
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </GroupStyle.HeaderTemplate>
-                                    </GroupStyle>
-                                </ListBox.GroupStyle>
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="2,3">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="Medium"
-                                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                                                       ToolTip="{Binding Note}"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding Size}" Style="{StaticResource Caption}"
-                                                       Opacity="0.75" Margin="14,0,0,0" VerticalAlignment="Center"/>
-                                            <TextBlock x:Name="StatusCell" Grid.Column="2" Text="{Binding Status}" Margin="18,0,0,0"
-                                                       VerticalAlignment="Center" ToolTip="{Binding Note}">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
-                                                        <Setter Property="Foreground" Value="{DynamicResource B.Primary}"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding Status}" Value="WARN">
-                                                                <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
-                                                            </DataTrigger>
-                                                            <DataTrigger Binding="{Binding Status}" Value="FAILED">
-                                                                <Setter Property="Foreground" Value="{DynamicResource B.Error}"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="32,12,0,0">
-                                <StackPanel Margin="0,0,28,0">
-                                    <TextBlock Text="Scan" Style="{StaticResource FieldLabel}"/>
-                                    <CheckBox x:Name="QueueRecursive" Style="{StaticResource Md3CheckBox}" Content="Include subfolders"
-                                              IsChecked="True" Checked="QueueOption_Changed" Unchecked="QueueOption_Changed"/>
-                                </StackPanel>
-                                <StackPanel Margin="0,0,28,0">
-                                    <TextBlock Text="Effects" Style="{StaticResource FieldLabel}"/>
-                                    <CheckBox x:Name="RemoveMissingCheck" Style="{StaticResource Md3CheckBox}"
-                                              Content="Remove effects missing from my profile"/>
-                                </StackPanel>
-                                <StackPanel>
+                            <TreeView x:Name="QueueTree" Grid.Row="1" Margin="10,12,2,4"
+                                      ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                      VirtualizingPanel.ScrollUnit="Pixel"
+                                      Style="{StaticResource FfxTree}" ItemContainerStyle="{StaticResource FfxTreeItem}"
+                                      MouseDoubleClick="QueueTree_DoubleClick"
+                                      ToolTip="Double-click a preset to open its effects — toggle the ones you don't want, then run the batch"/>
+                            <!-- Scan + Effects share the first row; Output
+                                 gets its own full-width row — the old 300px
+                                 combo sat in a horizontal strip that clipped
+                                 at the card's edge whenever the window was
+                                 narrower than the three columns summed -->
+                            <Grid Grid.Row="2" Margin="32,12,0,0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,28,0">
+                                        <TextBlock Text="Scan" Style="{StaticResource FieldLabel}"/>
+                                        <CheckBox x:Name="QueueRecursive" Style="{StaticResource Md3CheckBox}" Content="Include subfolders"
+                                                  IsChecked="True" Checked="QueueOption_Changed" Unchecked="QueueOption_Changed"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="Effects" Style="{StaticResource FieldLabel}"/>
+                                        <CheckBox x:Name="RemoveMissingCheck" Style="{StaticResource Md3CheckBox}"
+                                                  Content="Remove effects missing from my profile"/>
+                                    </StackPanel>
+                                </Grid>
+                                <StackPanel Grid.Row="1" Margin="0,12,0,0">
                                     <TextBlock Text="Output" Style="{StaticResource FieldLabel}"/>
-                                    <ComboBox x:Name="QueueOutput" Width="300" HorizontalAlignment="Left">
+                                    <ComboBox x:Name="QueueOutput" HorizontalAlignment="Stretch" MaxWidth="480"
+                                              SelectionChanged="QueueOutput_Changed">
                                         <ComboBoxItem Content="Subfolder &quot;converted&quot; inside the source"/>
                                         <ComboBoxItem Content="Beside originals, with a version suffix"/>
                                         <ComboBoxItem Content="Overwrite the original files"/>
                                         <ComboBoxItem Content="One ZIP that mirrors the subfolders"/>
                                         <ComboBoxItem Content="One folder that mirrors the subfolders"/>
                                     </ComboBox>
-                                    <TextBlock Style="{StaticResource Caption}" Opacity="0.85" Margin="0,6,0,0"
-                                               MaxWidth="300" TextWrapping="Wrap"
+                                    <TextBlock x:Name="MirrorCaption" Style="{StaticResource Caption}" Opacity="0.85" Margin="0,6,0,0"
+                                               TextWrapping="Wrap" Visibility="Collapsed"
                                                Text="The two mirror modes rebuild the source folder's subfolder layout — as one ZIP or as a plain folder — placed next to the source folder."/>
                                 </StackPanel>
-                            </StackPanel>
+                            </Grid>
                         </Grid>
                     </Border>
                 </Grid>

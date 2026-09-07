@@ -136,8 +136,15 @@ namespace FfxTool.Gui
     /// </summary>
     public sealed class PluginCatalog
     {
-        private const int MaxFileBytes = 64 * 1024 * 1024; // skip monster packs
-        private const int MaxNamesPerFile = 4000;
+        // 256 MB: Continuum / Boris suites ship single .aex files far past
+        // the old 64 MB cap, and a skipped file is a file whose match names
+        // can never be recognized — the "wrong .aex" reports got BCC
+        // effects exactly because the harvest gave up on them
+        private const int MaxFileBytes = 256 * 1024 * 1024;
+        // 24000: a big BCC binary easily holds more than 4000 plausible
+        // strings BEFORE its PiPL match names appear — the old cap cut the
+        // harvest off mid-file and the effect's own name never made it
+        private const int MaxNamesPerFile = 24000;
 
         private readonly List<CatalogFile> _files = new List<CatalogFile>();
         private readonly Dictionary<string, CatalogFile> _exact =
@@ -234,13 +241,22 @@ namespace FfxTool.Gui
         /// <summary>Does candidate a claim the normalized name more
         /// specifically than the current owner b? A file NAMED after the
         /// effect wins over one that merely contains it, which wins over a
-        /// plain harvest; an equal rank goes to the leaner name list (a
+        /// plain harvest; an equal rank goes to the closest stem length
+        /// ("BCC Lens Flare.aex" beats "BCC Lens Flare Pro.aex" for the
+        /// name "BCC Lens Flare"), then to the leaner name list (a
         /// dedicated plugin carries fewer strings than a bundle).</summary>
         private static bool Beats(CatalogFile a, CatalogFile b, string norm)
         {
             int ra = ClaimRank(a, norm), rb = ClaimRank(b, norm);
             if (ra != rb) return ra > rb;
+            int da = StemDelta(a, norm), db = StemDelta(b, norm);
+            if (da != db) return da < db;
             return a.Names.Count < b.Names.Count;
+        }
+
+        private static int StemDelta(CatalogFile f, string norm)
+        {
+            return Math.Abs(Normalize(Path.GetFileNameWithoutExtension(f.FilePath)).Length - norm.Length);
         }
 
         /// <summary>How strongly a finding file claims a normalized name:
@@ -265,6 +281,13 @@ namespace FfxTool.Gui
         /// first dictionary hit — several plugins can carry the same or an
         /// overlapping string, and the first-scanned one is rarely the
         /// effect's real home.
+        ///
+        /// The containment pass is bounded both ways: a harvested key may
+        /// not be wildly longer than the name (a whole binary's string
+        /// soup containing it proves nothing), and a key the name contains
+        /// must cover most of it ("bcc" inside "bcclensflare" matched
+        /// every BCC plugin's file and was the wrong-.aex engine for BCC
+        /// suites).
         /// </summary>
         public CatalogFile Lookup(string matchName)
         {
@@ -285,23 +308,34 @@ namespace FfxTool.Gui
         }
 
         /// <summary>Best claimant among the loose keys whose containment
-        /// direction matches: strongest claim rank wins, then the leanest
-        /// name list, then insertion order (strictly-better keeps the scan
-        /// deterministic).</summary>
+        /// direction matches: strongest claim rank wins, then the closest
+        /// key length, then the leanest name list, then insertion order
+        /// (strictly-better keeps the scan deterministic). Keys must sit
+        /// in a meaningful length band around the name — see Lookup.
+        /// </summary>
         private CatalogFile BestContainment(string norm, bool keyContainsName)
         {
+            // "bcclensflarewide" (16) may claim "bcclensflare" (12); a
+            // 60-char binary string may not
+            int maxLen = norm.Length + norm.Length / 2;
+            // "bcclensflare" may claim "lensflare" (9); "bcc" (3) may not
+            int minLen = Math.Max(5, norm.Length - norm.Length / 3);
             CatalogFile best = null;
-            int bestRank = 0, bestCount = 0;
+            int bestRank = 0, bestDelta = 0, bestCount = 0;
             foreach (var kv in _loose)
             {
                 bool match = keyContainsName ? kv.Key.Contains(norm) : norm.Contains(kv.Key);
                 if (!match) continue;
-                int rank = ClaimRank(kv.Value, norm);
-                int count = kv.Value.Names.Count;
+                if (kv.Key.Length > maxLen || kv.Key.Length < minLen) continue;
+                var f = kv.Value;
+                int rank = ClaimRank(f, norm);
+                int delta = Math.Abs(kv.Key.Length - norm.Length);
+                int count = f.Names.Count;
                 if (best == null || rank > bestRank ||
-                    (rank == bestRank && count < bestCount))
+                    (rank == bestRank && (delta < bestDelta ||
+                     (delta == bestDelta && count < bestCount))))
                 {
-                    best = kv.Value; bestRank = rank; bestCount = count;
+                    best = f; bestRank = rank; bestDelta = delta; bestCount = count;
                 }
             }
             return best;

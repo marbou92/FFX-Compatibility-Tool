@@ -31,18 +31,27 @@ main) is published at the `nightly` tag for testing new features early.
 ### Convert
 
 - Drop presets — or a whole folder of them — anywhere onto the window, or
-  browse. A folder shows up as a **file manager** listing every preset with
-  its size, and each row fills in with its live conversion status
-  (`Converting…` → `OK` / `WARN` / `FAILED`).
+  browse. A folder shows up as an **explorer-style file manager**: the
+  source folder's subfolders nest the presets exactly like on disk
+  (folders expand, presets sit inside their folder), and each row fills
+  in with its live conversion status (`Converting…` → `OK` / `WARN` /
+  `FAILED`).
+- Presets whose effects reference plugins that are unknown or not selected
+  in your plugin profile get a **warning badge** in the file manager —
+  hover it for the exact list, and double-click the preset to open the
+  effect checklist and toggle those effects yourself. The flags follow
+  your profile live.
 - A single preset shows its effects as a checklist against your plugin
   profile: what you don't own is pre-marked for removal.
 - Conversion applies the target version, optionally removes the marked
   effects, and **verifies** the output (structure, effect indices and
   keyframe data) before anything is written.
 - Folder mode converts every `.ffx` in one pass — one console line per
-  file — with three output modes: a `converted` subfolder inside the
-  source, a version suffix beside the originals, or an in-place overwrite
-  that asks first. Derived outputs can never overwrite the input file.
+  file — with five output modes: a `converted` subfolder inside the
+  source, a version suffix beside the originals, an in-place overwrite
+  that asks first, or one **ZIP / plain folder that mirrors the source
+  folder's subfolder layout** beside it. Derived outputs can never
+  overwrite the input file.
 
 ### Effect Lister
 
@@ -52,9 +61,13 @@ main) is published at the `nightly` tag for testing new features early.
 - The split inspector adds a compatibility list (which effects are likely
   missing on this machine) plus a keyframe view with AE-style timecodes and
   the value/speed graph pair.
-- Open a folder and the workspace becomes a **file manager**: click a
-  preset to open it with the full anatomy, or use **All presets** to come
-  back to the list. The **Folder report** deep-reads every preset into one
+- Open a folder and the workspace becomes an **explorer-style file
+  manager** with the same subfolder tree: click a preset to open it with
+  the full anatomy, or use **All presets** to come back to the tree.
+  Ctrl+click picks several presets and Shift+click picks a range —
+  **Convert selection…** sends exactly those to Convert, and with
+  nothing picked it sends the whole folder with its subfolder layout.
+  The **Folder report** deep-reads every preset into one
   table — status, effect/parameter/animated counts, size, decode notes —
   exportable as CSV.
 - **Convert this preset…** hands the preset you are reading straight to
@@ -66,7 +79,10 @@ main) is published at the `nightly` tag for testing new features early.
   and the "remove effects missing from my profile" option key off it.
 - **Appearance** — four color palettes, light and dark, applied live.
 - **Storage** — inspect and delete the plugin-scan catalog and the
-  recently-opened history.
+  recently-opened history. After updating the tool, run the plugin scan
+  once more: the catalog harvest now reads much deeper into big plugin
+  packs (Boris Continuum and friends), which fixes the
+  "installed: something.aex" lines that used to name the wrong file.
 - **About** — build version and Check for Updates.
 
 ## Privacy

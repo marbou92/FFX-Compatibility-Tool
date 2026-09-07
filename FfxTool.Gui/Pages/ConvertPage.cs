@@ -14,6 +14,56 @@ using Microsoft.Win32;
 
 namespace FfxTool.Gui
 {
+    /// <summary>One row of the convert file manager: name and size while
+    /// queued, a plugin-profile flag badge, and status + note filling in
+    /// live as the batch runs. Namespace-level (not nested in the page)
+    /// because XAML templates target it with x:Type, and nested types
+    /// can't be referenced from XAML.</summary>
+    public class QueueFileVm : System.ComponentModel.INotifyPropertyChanged
+    {
+        public string Name { get; set; }
+        public string Size { get; set; }
+        // full path (double-click opens the preset)
+        public string Path { get; set; }
+
+        string _status = "";
+        public string Status
+        {
+            get { return _status; }
+            set { _status = value; Raise(nameof(Status)); }
+        }
+
+        string _note = "";
+        public string Note
+        {
+            get { return _note; }
+            set { _note = value; Raise(nameof(Note)); }
+        }
+
+        // the plugin-profile flag as Visibility (not bool) so the template
+        // binds it without a converter: Visible once the background scan
+        // finds this preset referencing plugins that are unknown or not
+        // selected in the plugin profile
+        Visibility _flagVis = Visibility.Collapsed;
+        public Visibility FlagVis
+        {
+            get { return _flagVis; }
+            set { _flagVis = value; Raise(nameof(FlagVis)); }
+        }
+
+        string _flagTip = "";
+        public string FlagTip
+        {
+            get { return _flagTip; }
+            set { _flagTip = value; Raise(nameof(FlagTip)); }
+        }
+
+        public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
+
+        void Raise(string prop) =>
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(prop));
+    }
+
     /// <summary>
     /// Convert: two-pane workspace — clickable hero drop zone / effect checklist,
     /// target + output options with an auto-naming fallback, a CTA that doubles as
@@ -70,37 +120,6 @@ namespace FfxTool.Gui
             public string Note;
         }
 
-        /// <summary>One row of the folder file manager: name and size while
-        /// queued, status + note filling in live as the batch runs.</summary>
-        private sealed class QueueFileVm : System.ComponentModel.INotifyPropertyChanged
-        {
-            public string Name { get; set; }
-            public string Size { get; set; }
-            // full path (double-click opens the preset) and the display
-            // folder the row groups under when the queue came from a folder
-            public string Path { get; set; }
-            public string Group { get; set; }
-
-            string _status = "";
-            public string Status
-            {
-                get { return _status; }
-                set { _status = value; Raise(nameof(Status)); }
-            }
-
-            string _note = "";
-            public string Note
-            {
-                get { return _note; }
-                set { _note = value; Raise(nameof(Note)); }
-            }
-
-            public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
-
-            void Raise(string prop) =>
-                PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(prop));
-        }
-
         // DragEnter/DragLeave fire on every child boundary crossing; a depth
         // counter is the only flicker-free way to know the drag truly left.
         private int _dragDepth;
@@ -137,7 +156,11 @@ namespace FfxTool.Gui
 
         public void OnShown() { }
 
-        public void OnProfileChanged() => RefreshEffects();
+        public void OnProfileChanged()
+        {
+            RefreshEffects();
+            if (_queue != null) StartFlagScan(); // the flags follow the profile
+        }
 
         // ---------- file loading ----------
         public void OpenFile()
@@ -319,49 +342,106 @@ namespace FfxTool.Gui
             QueueText.Text = root ?? files.Count + " presets queued";
             if (QueueOutput.SelectedIndex < 0) QueueOutput.SelectedIndex = 0;
 
-            // the file manager: one row per preset with its size; each
-            // row's status fills in live as the batch runs. A folder queue
-            // groups its rows under the subfolders they came from.
+            // the explorer-style file manager: one row per preset, nested
+            // under its real subfolder; each row's status fills in live as
+            // the batch runs (the worker indexes _queueRowFiles, which the
+            // tree's leaves ARE)
+            _queueGen++; // a reload invalidates the previous flag scan
             _queueRows.Clear();
             _queueRowFiles.Clear();
             _queueRemovals.Clear();
             _queueEditPath = null;
-            bool grouped = root != null && files.Any(
-                f => FolderScan.RelUnder(root, f).Length > 0);
-            string leaf = root != null ? FolderScan.LeafName(root) : "";
+            var byPath = new Dictionary<string, QueueFileVm>(StringComparer.OrdinalIgnoreCase);
             foreach (var f in files)
             {
                 string size = "—";
                 try { size = FolderScan.FmtSize(new FileInfo(f).Length); }
                 catch { /* unreadable metadata — the size stays “—” */ }
-                string rel = root != null ? FolderScan.RelUnder(root, f) : "";
                 var vm = new QueueFileVm
                 {
                     Name = Path.GetFileName(f),
                     Size = size,
-                    Path = f,
-                    Group = !grouped ? null
-                        : (rel.Length == 0 ? leaf : leaf + "\\" + rel)
+                    Path = f
                 };
                 _queueRows.Add(vm);
                 _queueRowFiles.Add(vm);
+                byPath[f] = vm;
             }
-            if (grouped)
-            {
-                var view = new ListCollectionView(_queueRows);
-                view.GroupDescriptions.Add(new PropertyGroupDescription("Group"));
-                QueueFileList.ItemsSource = view;
-            }
-            else
-            {
-                QueueFileList.ItemsSource = _queueRows;
-            }
+            QueueTree.ItemsSource = FolderScan.BuildTree(files, root, f => byPath[f]);
             QueuePanel.Visibility = Visibility.Visible;
 
             StatusText.Text = files.Count + " preset" + (files.Count == 1 ? "" : "s") + " queued";
             Console.Log($"[INFO] Queue loaded: {files.Count} preset(s)" +
                         (root != null ? " from " + root : "") + ".");
+            StartFlagScan();
             UpdateCta();
+        }
+
+        // plugin-profile flag scans: a generation counter, so loading a
+        // new queue invalidates the previous scan's remaining work
+        private int _queueGen;
+
+        /// <summary>Background pass over the queue: every preset whose
+        /// effects reference plugins that are unknown or not selected in
+        /// the plugin profile gets the warning badge in the file manager.
+        /// The same recognition chain the batch itself applies, so the
+        /// badge never disagrees with what "remove effects missing from
+        /// my profile" would remove.</summary>
+        private void StartFlagScan()
+        {
+            int gen = _queueGen;
+            var files = new List<string>(_queue);
+            // a private copy of the rows: the field lists are cleared in
+            // place on a reload, so the background loop must never index
+            // them after that
+            var rows = new List<QueueFileVm>(_queueRowFiles);
+            Task.Run(() =>
+            {
+                var table = PluginLookup.LoadTable();
+                var names = EffectNameLookup.Load();
+                int flagged = 0;
+                for (int i = 0; i < files.Count; i++)
+                {
+                    if (gen != _queueGen) return; // a newer queue took over
+                    string tip = null;
+                    try
+                    {
+                        var effects = Pipeline.ListEffects(File.ReadAllBytes(files[i]));
+                        var bad = new List<string>();
+                        foreach (var eff in effects.Where(x => !x.IsSentinel))
+                        {
+                            var match = PluginRecognition.Resolve(eff.MatchName, table, names);
+                            if (!match.Installed &&
+                                (match.Vendor == null || _profile.Owns(match.Vendor) == false))
+                                bad.Add(eff.MatchName + (match.Vendor == null
+                                    ? " (unknown plugin)"
+                                    : " (" + match.Vendor + " — not in your profile)"));
+                        }
+                        if (bad.Count > 0)
+                        {
+                            flagged++;
+                            tip = (bad.Count == 1
+                                ? "1 effect uses a plugin outside your profile:"
+                                : bad.Count + " effects use plugins outside your profile:")
+                                + "\n• " + string.Join("\n• ", bad.Take(6))
+                                + (bad.Count > 6 ? "\n…" : "");
+                        }
+                    }
+                    catch { /* unreadable here — the batch reports it if it matters */ }
+                    var vm = rows[i];
+                    if (tip != null)
+                        Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            vm.FlagVis = Visibility.Visible;
+                            vm.FlagTip = tip;
+                        }));
+                }
+                if (gen != _queueGen) return;
+                Dispatcher.BeginInvoke(new Action(() => Console.Log(flagged > 0
+                    ? "[INFO] Plugin check: " + flagged + " of " + files.Count +
+                      " preset(s) use plugins outside your profile — flagged in the file manager."
+                    : "[INFO] Plugin check: every preset matches your profile.")));
+            });
         }
 
         private void RefreshEffects()
@@ -817,11 +897,23 @@ namespace FfxTool.Gui
         /// <summary>Double-click a file manager row: the preset opens in
         /// the checklist — its effects with their plugins (match names),
         /// each toggleable — while the queue waits behind "All presets".</summary>
-        private void QueueFileList_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        private void QueueTree_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            var vm = QueueFileList.SelectedItem as QueueFileVm;
+            var vm = QueueTree.SelectedItem as QueueFileVm;
             if (vm == null || string.IsNullOrEmpty(vm.Path)) return;
             LoadFile(vm.Path, true);
+        }
+
+        /// <summary>The mirror-explainer caption only means something for
+        /// the two mirror outputs — show it exactly then. No SelectedIndex
+        /// in the XAML, so nothing fires during parse; the guard follows
+        /// the parse-time-event rule regardless.</summary>
+        private void QueueOutput_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (!IsInitialized || MirrorCaption == null) return;
+            int i = QueueOutput.SelectedIndex;
+            bool mirror = i == (int)QueueOutputMode.ZipTree || i == (int)QueueOutputMode.FolderTree;
+            MirrorCaption.Visibility = mirror ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void Cancel_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
