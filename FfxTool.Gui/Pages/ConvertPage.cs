@@ -837,8 +837,10 @@ namespace FfxTool.Gui
         /// outputs (the converted subfolder, the mirrored ZIP, the
         /// mirrored folder — never beside the inputs). UTF-8 with BOM so
         /// Excel reads it straight. Best-effort: a report failure is
-        /// logged, never fatal to the run.</summary>
-        private static void WriteConvertReport(string dir, List<string[]> rows)
+        /// logged, never fatal to the run. An INSTANCE method on purpose:
+        /// it logs through the page's own console control (x:Name="Console"),
+        /// which no static method can reach.</summary>
+        private void WriteConvertReport(string dir, List<string[]> rows)
         {
             try
             {
