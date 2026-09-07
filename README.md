@@ -47,11 +47,25 @@ main) is published at the `nightly` tag for testing new features early.
   effects, and **verifies** the output (structure, effect indices and
   keyframe data) before anything is written.
 - Folder mode converts every `.ffx` in one pass — one console line per
-  file — with five output modes: a `converted` subfolder inside the
-  source, a version suffix beside the originals, an in-place overwrite
-  that asks first, or one **ZIP / plain folder that mirrors the source
-  folder's subfolder layout** beside it. Derived outputs can never
-  overwrite the input file.
+  file — with five output modes:
+  - **Subfolder "converted" inside the source** — one converted copy per
+    preset, side by side.
+  - **Beside originals, with a version suffix** — `MyPreset_cs55.ffx`
+    next to `MyPreset.ffx`.
+  - **Overwrite the original files** — asks first; the originals cannot
+    be recovered.
+  - **One ZIP that mirrors the subfolders** — `Presets (converted).zip`
+    beside the source folder, holding the converted presets inside their
+    real subfolders and nothing else (no invented folders, ever).
+  - **One folder that mirrors the subfolders** — the same tree as a
+    plain folder next to the source.
+- The derived outputs (subfolder, suffix, ZIP, mirrored folder) are
+  **clean rebuilds**: every run produces exactly that run's result, so a
+  preset that fails or was removed from the queue can never leave an
+  older converted copy behind. They can never overwrite the input file.
+- Derived outputs also carry a **`conversion-report.csv`** — one quoted
+  row per preset: file, source subfolder, status, effects kept/removed
+  and decode notes — UTF-8 with BOM, opens straight in Excel.
 
 ### Effect Lister
 
@@ -103,9 +117,13 @@ dotnet build FfxTool.sln --configuration Release
 
 Building `net48` needs the .NET Framework 4.8 targeting pack (GitHub's
 `windows-latest` runners have it preinstalled). CI (`.github/workflows/test.yml`)
-builds and tests every push. Tagging `v*` runs `.github/workflows/build.yml`,
-which tests, packages the Release output and publishes the release with a
-description written automatically from the commit history.
+builds and tests every push. `.github/workflows/build.yml` publishes
+releases two ways: push a `v*` tag, or open the workflow's **Run workflow**
+page, type a version number (e.g. `0.2.0`) and run — it tests, packages
+the Release output, stamps the exe's version to match, creates the tag
+and publishes the release with a description written automatically from
+the commit history. Leave the version box empty to build an artifact
+without publishing anything.
 
 ## Repository layout
 

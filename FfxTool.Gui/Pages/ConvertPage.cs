@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -613,8 +614,16 @@ namespace FfxTool.Gui
             string outDir = null;
             if (output == QueueOutputMode.Subfolder)
             {
+                // clean rebuild: the folder is this tool's own derived
+                // output, so wiping it first means the result is always
+                // exactly this run — a preset that failed or was removed
+                // from the queue can never leave an older copy behind
                 outDir = Path.Combine(root ?? ".", "converted");
-                try { Directory.CreateDirectory(outDir); }
+                try
+                {
+                    if (Directory.Exists(outDir)) Directory.Delete(outDir, true);
+                    Directory.CreateDirectory(outDir);
+                }
                 catch (Exception ex)
                 {
                     MessageBox.Show(this.FindWindow(),
@@ -626,8 +635,8 @@ namespace FfxTool.Gui
 
             // tree modes: the converted set mirrors the source folder's
             // subfolders — one ZIP beside the source folder, or a plain
-            // folder next to it. The derived output reuses (overwrites) its
-            // own previous result, never the inputs.
+            // folder next to it. Both are clean rebuilds of their own
+            // previous result and never touch the inputs.
             string outBase = null;
             string zipPath = null;
             string staging = null;
@@ -640,8 +649,15 @@ namespace FfxTool.Gui
                 if (string.IsNullOrEmpty(parent)) parent = ".";
                 if (output == QueueOutputMode.FolderTree)
                 {
+                    // clean rebuild, same contract as the subfolder
+                    // mode: the mirrored folder always ends up exactly
+                    // this run's result
                     outBase = Path.Combine(parent, baseName);
-                    try { Directory.CreateDirectory(outBase); }
+                    try
+                    {
+                        if (Directory.Exists(outBase)) Directory.Delete(outBase, true);
+                        Directory.CreateDirectory(outBase);
+                    }
                     catch (Exception ex)
                     {
                         MessageBox.Show(this.FindWindow(),
@@ -680,6 +696,13 @@ namespace FfxTool.Gui
             int done = 0, ok = 0, warned = 0, failed = 0, removedTotal = 0;
             bool cancelled = false;
             string fatal = null;
+            // conversion-report.csv rows: header first, one row per
+            // preset in queue order (which is folder-grouped), written
+            // into the derived outputs after the run
+            var report = new List<string[]>
+            {
+                new[] { "File", "Folder", "Status", "Kept", "Removed", "Note" }
+            };
             try
             {
                 await Task.Run(() =>
@@ -694,16 +717,20 @@ namespace FfxTool.Gui
                         ((IProgress<(int, string)>)reporter).Report((done,
                             "Converting… " + (done + 1) + "/" + total + " — " + name));
                         _queueRemovals.TryGetValue(path, out var userRemove);
+                        // relFolder: the REAL subfolders between the source
+                        // root and the preset — the only thing the mirror
+                        // outputs reproduce. RelUnder returns the file name
+                        // too, and appending GetFileName to that full rel
+                        // used to nest every preset inside a phantom folder
+                        // named after the preset itself.
+                        string relFull = FolderScan.RelUnder(_queueRoot, path);
+                        int relSlash = relFull.LastIndexOf('\\');
+                        string relFolder = relSlash >= 0 ? relFull.Substring(0, relSlash) : "";
                         string forcedOut = null;
                         if (output == QueueOutputMode.ZipTree || output == QueueOutputMode.FolderTree)
                         {
-                            // the mirrored relative path keeps the source
-                            // folder's subfolder layout inside the output
-                            string rel = FolderScan.RelUnder(_queueRoot, path);
                             string baseDir = output == QueueOutputMode.ZipTree ? staging : outBase;
-                            forcedOut = rel.Length == 0
-                                ? Path.Combine(baseDir, Path.GetFileName(path))
-                                : Path.Combine(baseDir, rel, Path.GetFileName(path));
+                            forcedOut = Path.Combine(baseDir, relFolder, Path.GetFileName(path));
                         }
                         var r = QueueConvertOne(path, targetKey, removeMissing, output, outDir,
                                                 userRemove, forcedOut);
@@ -713,6 +740,8 @@ namespace FfxTool.Gui
                         removedTotal += r.Removed;
                         string rowStatus = !r.Ok ? "FAILED" : r.Warn ? "WARN" : "OK";
                         string rowNote = r.Note ?? "";
+                        report.Add(new[] { name, relFolder, rowStatus,
+                                           r.Kept.ToString(), r.Removed.ToString(), rowNote });
                         Dispatcher.BeginInvoke(new Action(() =>
                         { row.Status = rowStatus; row.Note = rowNote; }));
                         string line = !r.Ok
@@ -761,11 +790,13 @@ namespace FfxTool.Gui
                 {
                     try
                     {
+                        WriteConvertReport(staging, report);
                         if (File.Exists(zipPath)) File.Delete(zipPath);
                         System.IO.Compression.ZipFile.CreateFromDirectory(
                             staging, zipPath,
                             System.IO.Compression.CompressionLevel.Optimal, false);
-                        Console.Log("[SUCCESS] ZIP written: " + zipPath);
+                        Console.Log("[SUCCESS] ZIP written: " + zipPath +
+                                    " — " + ok + " preset(s) + conversion-report.csv");
                     }
                     catch (Exception ex)
                     {
@@ -776,6 +807,21 @@ namespace FfxTool.Gui
                 else zipPath = null;
                 try { Directory.Delete(staging, true); } catch { }
             }
+            // a zero-ok run leaves the derived folder an empty shell —
+            // it serves nobody (the ZIP mode has the same guarantee:
+            // nothing converted, no archive). Partial results stay for
+            // the files that did convert.
+            if (ok == 0)
+            {
+                if (output == QueueOutputMode.FolderTree && outBase != null)
+                    try { Directory.Delete(outBase, true); } catch { }
+                else if (output == QueueOutputMode.Subfolder && outDir != null)
+                    try { Directory.Delete(outDir, true); } catch { }
+            }
+            if (output == QueueOutputMode.FolderTree && ok > 0 && !cancelled && fatal == null)
+                WriteConvertReport(outBase, report);
+            else if (output == QueueOutputMode.Subfolder && ok > 0 && !cancelled && fatal == null)
+                WriteConvertReport(outDir, report);
             if (done > 0 && (output != QueueOutputMode.ZipTree || zipPath != null))
             {
                 SavedToText.Text = summary;
@@ -785,6 +831,33 @@ namespace FfxTool.Gui
             else if (output == QueueOutputMode.FolderTree) _lastOutput = outBase;
             else _lastOutput = output == QueueOutputMode.Subfolder ? outDir : root;
         }
+
+        /// <summary>The conversion report: one quoted-CSV row per queued
+        /// preset, written as conversion-report.csv inside the derived
+        /// outputs (the converted subfolder, the mirrored ZIP, the
+        /// mirrored folder — never beside the inputs). UTF-8 with BOM so
+        /// Excel reads it straight. Best-effort: a report failure is
+        /// logged, never fatal to the run.</summary>
+        private static void WriteConvertReport(string dir, List<string[]> rows)
+        {
+            try
+            {
+                var sb = new StringBuilder();
+                foreach (var row in rows)
+                    sb.AppendLine(string.Join(",", row.Select(Q)));
+                string full = Path.Combine(dir, "conversion-report.csv");
+                File.WriteAllText(full, sb.ToString(), new UTF8Encoding(true));
+                Console.Log("[INFO] Report: " + full);
+            }
+            catch (Exception ex)
+            {
+                Console.Log("[WARN] The conversion report could not be written: " + ex.Message);
+            }
+        }
+
+        /// <summary>CSV field quoting: wrap in quotes and double any inner
+        /// quote — commas inside file names/notes can never split a cell.</summary>
+        private static string Q(string s) => "\"" + (s ?? "").Replace("\"", "\"\"") + "\"";
 
         /// <summary>The proven single-file pipeline applied to one queued
         /// preset: version patch plus optional profile-driven removal of
@@ -848,9 +921,9 @@ namespace FfxTool.Gui
         }
 
         /// <summary>Derived outputs overwrite their own previous result;
-        /// the one guarded edge is a name collision with the INPUT file
-        /// (subfolder mode meeting a file already named *_cs55.ffx) — that
-        /// falls back to a numbered suffix instead of destroying the source.</summary>
+        /// the one guarded edge is the suffix mode meeting a source file
+        /// already named *_cs55.ffx — that falls back to a numbered suffix
+        /// instead of destroying the source.</summary>
         private static string OutputPathFor(string path, QueueOutputMode mode, string outDir, string targetKey)
         {
             string name = Path.GetFileNameWithoutExtension(path);

@@ -97,12 +97,15 @@ namespace FfxTool.Gui
         /// under its real subfolder, folder nodes nesting exactly like the
         /// source directory — folders first (A→Z), presets after them in
         /// the caller's order. One root node carries the folder's own name
-        /// ("Presets" for a loose multi-file list). leaf(fullPath) returns
-        /// the row VM for a file, so the pages keep their own live-status /
-        /// selection objects flowing through the tree.
+        /// ("Presets" for a loose multi-file list), returned inside a
+        /// one-element list because ItemsSource binds IEnumerable and a
+        /// bare FolderNode is not one (the CS0266 the first build caught).
+        /// leaf(fullPath) returns the row VM for a file, so the pages keep
+        /// their own live-status / selection objects flowing through the
+        /// tree.
         /// </summary>
-        public static FolderNode BuildTree(IReadOnlyList<string> files, string root,
-                                           Func<string, object> leaf)
+        public static List<FolderNode> BuildTree(IReadOnlyList<string> files, string root,
+                                                 Func<string, object> leaf)
         {
             var rootNode = new FolderNode
             {
@@ -124,7 +127,7 @@ namespace FfxTool.Gui
                 for (var n = parent; n != null; n = n.Parent) n.Count++;
             }
             SortTree(rootNode);
-            return rootNode;
+            return new List<FolderNode> { rootNode };
         }
 
         /// <summary>The node for a relative directory ("sub\inner"),
