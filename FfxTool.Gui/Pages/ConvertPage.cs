@@ -280,6 +280,7 @@ namespace FfxTool.Gui
                     _queueRoot = null;
                     _queueEditPath = null;
                 }
+                if (_queueBig) ExitBigQueue(); // the overlay never outlives the card
                 QueueCard.Visibility = Visibility.Collapsed;
                 QueuePanel.Visibility = inQueue && _queue != null
                     ? Visibility.Visible : Visibility.Collapsed;
@@ -767,6 +768,7 @@ namespace FfxTool.Gui
             _cts = null;
             CancelLink.Visibility = Visibility.Collapsed;
             UpdateCta(); // re-enables the CTA with the right summary
+            if (_queueBig) ExitBigQueue(); // the summary + banner live in the column layout
 
             if (fatal != null)
                 Console.Log("[ERROR] The job stopped early: " + fatal);
@@ -997,6 +999,65 @@ namespace FfxTool.Gui
             _cts.Cancel();
             Console.Log("[INFO] Cancelling — the current preset finishes first.");
             CancelLink.Visibility = Visibility.Collapsed;
+        }
+
+        // ---------- bigger list (Convert's file manager, full page) ----------
+
+        // while on, the queue card lives in the page-wide overlay host and
+        // the CTA row joins it inside the card — one visual-tree parent at
+        // a time, and both always move back before the card hides or the
+        // run ends (the summary + banner live in the column layout)
+        private bool _queueBig;
+        private Panel _queueHome;
+        private int _queueCardIndex = -1;
+        private int _ctaIndex = -1;
+        private int _ctaRowSaved;
+
+        /// <summary>"Bigger list" (Convert only): the file manager swaps
+        /// its column for the whole page — the same card with the same
+        /// behaviours, just far more rows. The batch button travels with
+        /// it, so the job stays startable from the full page.</summary>
+        private void QueueBigBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (QueueCard.Visibility != Visibility.Visible) return;
+            if (!_queueBig) EnterBigQueue(); else ExitBigQueue();
+        }
+
+        private void EnterBigQueue()
+        {
+            _queueHome = (Panel)QueueCard.Parent;
+            _queueCardIndex = _queueHome.Children.IndexOf(QueueCard);
+            _ctaIndex = _queueHome.Children.IndexOf(CtaRow);
+            _ctaRowSaved = Grid.GetRow(CtaRow);
+            _queueHome.Children.Remove(QueueCard);
+            _queueHome.Children.Remove(CtaRow);
+            QueueBigHost.Child = QueueCard;
+            // the card grows a fourth row to host the CTA while expanded
+            QueueGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            Grid.SetRow(CtaRow, 3);
+            QueueGrid.Children.Add(CtaRow);
+            QueueBigHost.Visibility = Visibility.Visible;
+            QueueBigText.Text = "Back to normal";
+            QueueBigIcon.IconName = "Minimize";
+            Console.Log("[INFO] File manager expanded across the page.");
+        }
+
+        private void ExitBigQueue()
+        {
+            QueueBigHost.Visibility = Visibility.Collapsed;
+            QueueBigHost.Child = null;
+            QueueGrid.Children.Remove(CtaRow);
+            if (QueueGrid.RowDefinitions.Count > 3) QueueGrid.RowDefinitions.RemoveAt(3);
+            if (_queueHome != null)
+            {
+                _queueHome.Children.Insert(Math.Min(_queueCardIndex < 0 ? 0 : _queueCardIndex,
+                                                    _queueHome.Children.Count), QueueCard);
+                _queueHome.Children.Insert(Math.Min(_ctaIndex < 0 ? 0 : _ctaIndex,
+                                                    _queueHome.Children.Count), CtaRow);
+            }
+            Grid.SetRow(CtaRow, _ctaRowSaved);
+            QueueBigText.Text = "Bigger list";
+            QueueBigIcon.IconName = "Maximize";
         }
 
         /// <summary>"MyPreset_cs55.ffx" next to the source — derived from the chosen target.</summary>

@@ -35,7 +35,9 @@ main) is published at the `nightly` tag for testing new features early.
   source folder's subfolders nest the presets exactly like on disk
   (folders expand, presets sit inside their folder), and each row fills
   in with its live conversion status (`Converting…` → `OK` / `WARN` /
-  `FAILED`).
+  `FAILED`). **Bigger list** opens the file manager across the whole
+  page — same card, same behaviours, far more rows — and puts it back
+  exactly where it was.
 - Presets whose effects reference plugins that are unknown or not selected
   in your plugin profile get a **warning badge** in the file manager —
   hover it for the exact list, and double-click the preset to open the
@@ -78,9 +80,14 @@ main) is published at the `nightly` tag for testing new features early.
 - Open a folder and the workspace becomes an **explorer-style file
   manager** with the same subfolder tree: click a preset to open it with
   the full anatomy, or use **All presets** to come back to the tree.
-  Ctrl+click picks several presets and Shift+click picks a range —
+  Clicking a **folder** targets the handoff at it — the button reads
+  `Convert folder “Sub” (N)…` and sends exactly that subfolder with its
+  layout. Ctrl+click picks several presets and Shift+click picks a range —
   **Convert selection…** sends exactly those to Convert, and with
   nothing picked it sends the whole folder with its subfolder layout.
+  The two file managers share one look but not one behaviour: Convert's
+  runs the batch (statuses, plugin flags, double-click to edit, bigger
+  list), the Lister's browses and hands off.
   The **Folder report** deep-reads every preset into one
   table — status, effect/parameter/animated counts, size, decode notes —
   exportable as CSV.

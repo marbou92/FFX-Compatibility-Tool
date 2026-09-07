@@ -654,7 +654,7 @@
                                    TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,0,0,18"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,22">
                             <Button Content="Open .ffx file" Width="170" Click="Open_Click"/>
-                            <Button Content="Open folder…" Width="170" Margin="10,0,0,0" Click="FolderBtn_Click"
+                            <Button Content="Open folder…" Width="170" Margin="12,0,0,0" Click="FolderBtn_Click"
                                     Style="{StaticResource OutlinedButton}"
                                     ToolTip="Load every .ffx in a folder — flip through them here, or scan the whole folder into one report"/>
                         </StackPanel>
@@ -681,7 +681,7 @@
                  to open it with the full single-preset anatomy -->
             <Border x:Name="FolderHost" Visibility="Collapsed" CornerRadius="24"
                     Background="{DynamicResource B.SCLow}" Margin="8">
-                <Grid Margin="22,18">
+                <Grid Margin="20,16">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
@@ -693,15 +693,15 @@
                         <TextBlock Text="Folder presets" Style="{StaticResource Body}" FontWeight="Medium"
                                    Margin="10,0,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
-                    <TreeView x:Name="FolderTree" Grid.Row="1" Margin="2,12,2,4"
+                    <TreeView x:Name="FolderTree" Grid.Row="1" Margin="8,12,4,2"
                               ScrollViewer.VerticalScrollBarVisibility="Auto"
                               VirtualizingPanel.ScrollUnit="Pixel"
                               Style="{StaticResource FfxTree}" ItemContainerStyle="{StaticResource FfxTreeItem}"
                               PreviewMouseLeftButtonDown="FolderTree_PreviewLeftDown"
                               SelectedItemChanged="FolderTree_SelectionChanged"
-                              ToolTip="Click a preset to open it — Ctrl+click picks several, Shift+click picks a range"/>
-                    <TextBlock Grid.Row="2" Style="{StaticResource Caption}" Opacity="0.8" Margin="2,8,0,0" TextWrapping="Wrap"
-                               Text="Click a preset to open it — Ctrl+click picks several, Shift+click picks a range. The Convert button sends the picked presets, or the whole folder with its subfolders when nothing is picked. Folder report deep-reads every file into one table."/>
+                              ToolTip="Click a preset to open it — click a folder to target the Convert handoff at it — Ctrl+click picks several, Shift+click picks a range"/>
+                    <TextBlock Grid.Row="2" Style="{StaticResource Caption}" Opacity="0.8" Margin="8,10,4,0" TextWrapping="Wrap"
+                               Text="Click a preset to open it — click a folder to target the Convert handoff at it — Ctrl+click picks several, Shift+click picks a range. The Convert button sends the picked presets, the selected folder, or the whole folder with its subfolders when nothing is picked. Folder report deep-reads every file into one table."/>
                 </Grid>
             </Border>
 

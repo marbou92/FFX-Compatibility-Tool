@@ -137,24 +137,43 @@
                          manager lists every preset with its live conversion
                          status, the settings below apply to all -->
                     <Border x:Name="QueueCard" Visibility="Collapsed" CornerRadius="24"
-                            Background="{DynamicResource B.SCLow}" Margin="4" Padding="22,18">
-                        <Grid>
+                            Background="{DynamicResource B.SCLow}" Margin="4" Padding="20,16">
+                        <Grid x:Name="QueueGrid">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <StackPanel Grid.Row="0">
-                                <StackPanel Orientation="Horizontal">
-                                    <controls:IconGlyph IconName="FolderOpen" Width="22" Height="22"
-                                                        Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
-                                    <TextBlock x:Name="QueueText" Text="Folder queue" Style="{StaticResource Body}" FontWeight="Medium"
-                                               Margin="10,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            <Grid Grid.Row="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:IconGlyph IconName="FolderOpen" Width="22" Height="22"
+                                                            Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="QueueText" Text="Folder queue" Style="{StaticResource Body}" FontWeight="Medium"
+                                                   Margin="10,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                    <TextBlock x:Name="QueueSub" Style="{StaticResource Caption}" Opacity="0.85" Margin="32,6,0,0"
+                                               Text="One conversion per preset — the settings here apply to every file. Double-click a preset to open its effects and toggle them."/>
                                 </StackPanel>
-                                <TextBlock x:Name="QueueSub" Style="{StaticResource Caption}" Opacity="0.85" Margin="32,4,0,0"
-                                           Text="One conversion per preset — the settings here apply to every file. Double-click a preset to open its effects and toggle them."/>
-                            </StackPanel>
-                            <TreeView x:Name="QueueTree" Grid.Row="1" Margin="10,12,2,4"
+                                <!-- bigger list (Convert only): the file manager
+                                     takes the whole page — same card, same
+                                     behaviours, far more rows -->
+                                <Button x:Name="QueueBigBtn" Grid.Column="1" Style="{StaticResource OutlinedButton}"
+                                        Height="34" MinWidth="132" Margin="14,0,0,0" VerticalAlignment="Center"
+                                        Click="QueueBigBtn_Click"
+                                        ToolTip="Open the file manager across the whole page — click again to put it back">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:IconGlyph x:Name="QueueBigIcon" IconName="Maximize" Width="16" Height="16"
+                                                            VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="QueueBigText" Text="Bigger list" Margin="8,0,2,0" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                            <TreeView x:Name="QueueTree" Grid.Row="1" Margin="8,12,4,2"
                                       ScrollViewer.VerticalScrollBarVisibility="Auto"
                                       VirtualizingPanel.ScrollUnit="Pixel"
                                       Style="{StaticResource FfxTree}" ItemContainerStyle="{StaticResource FfxTreeItem}"
@@ -165,7 +184,7 @@
                                  combo sat in a horizontal strip that clipped
                                  at the card's edge whenever the window was
                                  narrower than the three columns summed -->
-                            <Grid Grid.Row="2" Margin="32,12,0,0">
+                            <Grid Grid.Row="2" Margin="32,14,0,0">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
@@ -216,12 +235,12 @@
                         </StackPanel>
                     </Border>
                     <Button x:Name="FolderBtn" Content="Open folder…" Style="{StaticResource OutlinedButton}"
-                            MinWidth="118" Margin="10,0,0,0" Click="FolderBtn_Click" VerticalAlignment="Center"
+                            MinWidth="118" Margin="12,0,0,0" Click="FolderBtn_Click" VerticalAlignment="Center"
                             ToolTip="Load every .ffx in a folder and convert them all in one pass"/>
                     <!-- folder queue: only visible when a folder (or a multi-file
                          selection) is loaded — "All presets" returns to the
                          file manager from an opened preset -->
-                    <StackPanel x:Name="QueuePanel" Orientation="Horizontal" Visibility="Collapsed" Margin="10,0,0,0">
+                    <StackPanel x:Name="QueuePanel" Orientation="Horizontal" Visibility="Collapsed" Margin="12,0,0,0">
                         <TextBlock x:Name="QueueLink" Text="All presets" Style="{StaticResource M3Link}" Cursor="Hand"
                                    VerticalAlignment="Center" MouseLeftButtonUp="QueueLink_Click"
                                    ToolTip="Back to the folder's file manager"/>
@@ -229,7 +248,7 @@
                 </StackPanel>
 
                 <!-- options card -->
-                <Border Grid.Row="2" Style="{StaticResource Card}" Padding="18,14,18,14" Margin="0,0,0,16">
+                <Border Grid.Row="2" Style="{StaticResource Card}" Padding="20,16" Margin="0,0,0,16">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -250,8 +269,10 @@
                 </Border>
 
                 <!-- full-width expressive CTA — content doubles as a summary of the pending job;
-                     the cancel link only shows while a folder job is running -->
-                <Grid Grid.Row="3">
+                     the cancel link only shows while a folder job is running.
+                     Named + reparented at runtime: "Bigger list" moves it into
+                     the card so the batch stays startable from the full page -->
+                <Grid x:Name="CtaRow" Grid.Row="3">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
@@ -323,6 +344,12 @@
                 </Border>
                 <controls:M3Console x:Name="Console"/>
             </DockPanel>
+
+            <!-- full-page host: the queue card (and the CTA row) move here
+                 while "Bigger list" is on — one card, one behaviour, a much
+                 bigger canvas. Declared before the drag overlay so drag
+                 feedback still paints on top. -->
+            <Border x:Name="QueueBigHost" Grid.Column="0" Grid.ColumnSpan="3" Visibility="Collapsed"/>
 
             <!-- drag feedback overlay (visual only — drop is handled by the page root) -->
             <Border x:Name="DragOverlay" Visibility="Collapsed" IsHitTestVisible="False" CornerRadius="26"

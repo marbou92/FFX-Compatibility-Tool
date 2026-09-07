@@ -572,6 +572,10 @@ namespace FfxTool.Gui
         private readonly ObservableCollection<FolderRowVm> _folderRows = new ObservableCollection<FolderRowVm>();
         // flat-order anchor for shift-click pick ranges (-1 = none yet)
         private int _pickAnchor = -1;
+        // the folder row currently targeted by the handoff (a plain
+        // click on a folder) — null while per-file picks or the whole
+        // folder speak instead
+        private FolderNode _pickedFolder;
 
         // MainWindow wires this: switch to Convert and load the selection
         // there — (folder root, files); root is null for loose selections
@@ -777,6 +781,7 @@ namespace FfxTool.Gui
         private void ShowFolderView()
         {
             _folderView = true;
+            _pickedFolder = null;
             ClearTreeSelection(FolderTree); // so re-clicking the same row re-fires
             EmptyState.Visibility = Visibility.Collapsed; // the tree replaces it
             UpdateSendButton();
@@ -799,16 +804,21 @@ namespace FfxTool.Gui
         }
 
         /// <summary>The handoff button's label tracks what a click would
-        /// send: the open preset, the picked selection, or the whole
-        /// folder with its subfolders when nothing is picked.</summary>
+        /// send: the open preset, the picked selection, the clicked
+        /// folder, or the whole folder with its subfolders when nothing
+        /// is picked.</summary>
         private void UpdateSendButton()
         {
             if (_folderView)
             {
                 int n = _folderRows.Count(r => r.Picked);
-                SendConvertBtn.Content = n > 0
-                    ? "Convert selection (" + n + ")…"
-                    : "Convert folder…";
+                if (n > 0)
+                    SendConvertBtn.Content = "Convert selection (" + n + ")…";
+                else if (_pickedFolder != null)
+                    SendConvertBtn.Content = "Convert folder \u201C" + _pickedFolder.Name + "\u201D (" +
+                                             _pickedFolder.Count + ")…";
+                else
+                    SendConvertBtn.Content = "Convert folder…";
             }
             else
             {
@@ -831,7 +841,19 @@ namespace FfxTool.Gui
             // ctrl/shift clicks never get here (the preview handler eats
             // them so the tree's single selection stays out of the way)
             var row = FolderTree.SelectedItem as FolderRowVm;
-            if (row == null) return;
+            if (row == null)
+            {
+                // a plain click on a FOLDER row targets the handoff at
+                // it: the per-file pick set yields and the button now
+                // sends exactly that subfolder's presets (its count is
+                // live on the node) — the chevron still expands
+                _pickedFolder = FolderTree.SelectedItem as FolderNode;
+                if (_pickedFolder != null)
+                    foreach (var r in _folderRows) r.Picked = false;
+                UpdateSendButton();
+                return;
+            }
+            _pickedFolder = null;
             foreach (var r in _folderRows) r.Picked = false;
             int i = _queue.IndexOf(row.Path);
             if (i < 0) return;
@@ -854,6 +876,13 @@ namespace FfxTool.Gui
             var row = (e.OriginalSource as FrameworkElement)?.DataContext as FolderRowVm;
             if (row == null) return;
             e.Handled = true; // keep the single-selection machinery out of it
+            if (_pickedFolder != null)
+            {
+                // picking files ends folder targeting — the folder's
+                // selection tint yields to the pick set
+                _pickedFolder = null;
+                ClearTreeSelection(FolderTree);
+            }
             int i = _queue.IndexOf(row.Path);
             if (i < 0) return;
             if (ctrl)
@@ -882,6 +911,9 @@ namespace FfxTool.Gui
                     if (r.Picked) picked.Add(r.Path);
                 if (picked.Count > 0)
                     ConvertRequested?.Invoke(_queueRoot, picked);
+                else if (_pickedFolder != null)
+                    ConvertRequested?.Invoke(_pickedFolder.FullPath ?? _queueRoot,
+                                             FolderFilesUnder(_pickedFolder));
                 else
                     ConvertRequested?.Invoke(_queueRoot, new List<string>(_queue));
                 return;
@@ -889,6 +921,26 @@ namespace FfxTool.Gui
             // a preset is open (or no folder at all): hand over exactly it
             if (string.IsNullOrEmpty(_currentPath)) return;
             ConvertRequested?.Invoke(_queueRoot, new List<string> { _currentPath });
+        }
+
+        /// <summary>Every preset path under a picked folder node, depth
+        /// first — the tree nests exactly the rows the flat queue holds,
+        /// so walking it is the folder's own slice of the queue (the
+        /// folder's FullPath rides along as the root).</summary>
+        private static List<string> FolderFilesUnder(FolderNode node)
+        {
+            var found = new List<string>();
+            Collect(node, found);
+            return found;
+        }
+
+        private static void Collect(FolderNode node, List<string> into)
+        {
+            foreach (var item in node.Items)
+            {
+                if (item is FolderRowVm row) into.Add(row.Path);
+                else if (item is FolderNode sub) Collect(sub, into);
+            }
         }
 
 
