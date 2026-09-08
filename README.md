@@ -1,6 +1,8 @@
 # FFX Compatibility Tool
 
-[![CI](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/test.yml/badge.svg)](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/test.yml)
+[![CI](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/test.yml/badge.svg?label=CI)](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/test.yml)
+[![Nightly](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/nightly.yml/badge.svg?label=Nightly)](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/nightly.yml)
+[![Release](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/build.yml/badge.svg?label=Release)](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/build.yml)
 
 A small Windows desktop tool for After Effects **.ffx** presets: it
 downgrades presets to older After Effects versions, removes effects whose
@@ -130,7 +132,9 @@ page, type a version number (e.g. `0.2.0`) and run — it tests, packages
 the Release output, stamps the exe's version to match, creates the tag
 and publishes the release with a description written automatically from
 the commit history. Leave the version box empty to build an artifact
-without publishing anything.
+without publishing anything. `.github/workflows/nightly.yml` keeps the
+rolling nightly channel fed: every push to main plus a daily scheduled
+build is published as a pre-release at the `nightly` tag.
 
 ## Repository layout
 
@@ -156,3 +160,14 @@ Hard-won rules from the format research, preserved by the engine:
 - The keyframe tick is 1/1024 of a 30 fps frame (30720 ticks/second).
 - Keyframe streams and third-party plugin blobs are never rewritten;
   `Pipeline.Verify()` checks that holds after every conversion.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+Trademark note: Adobe After Effects, the .ffx preset format, and the
+third-party plugin names referenced in data/plugin_table.json (Boris FX,
+Red Giant/Maxon, Video Copilot, Plugin Everything, RE:Vision Effects,
+etc.) are trademarks of their respective owners, referenced here solely
+for interoperability and identification. This project is not affiliated
+with or endorsed by Adobe or any of the plugin vendors it detects.
