@@ -6,10 +6,11 @@ name: Build & Release
 # version (the tag is created on the built commit); an empty input builds
 # an artifact without publishing anything.
 #
-# On a tag push the release description is written by the notes bot: it
-# reads the commit subjects between the previous tag and this one, splits
-# the repo's multi-entry commit messages (entries are joined by " and
-# <type>(") so every change becomes its own bullet, and adds install
+# On a release run the description is written by the notes bot: it reads
+# the commit subjects between the previous release tag and the commit
+# being released — the whole history when no earlier release exists — and
+# splits the repo's multi-entry commit messages (entries are joined by "
+# and <type>(") so every change becomes its own bullet, and adds install
 # steps plus the SHA-256 of the attached exe. GitHub's own generated
 # notes (the compare link) are appended on top of that body.
 #
@@ -127,21 +128,27 @@ jobs:
           EXENAME: ${{ steps.pack.outputs.exename }}
         run: |
           TAG="${{ steps.ver.outputs.tag }}"
-          # nearest tag reachable from the new tag's parent commit — empty
-          # when this is the first tag ever (then the range is the whole
-          # history, which is honest for a first release)
-          PREV="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
-          RANGE="$TAG"
-          if [ -n "$PREV" ]; then RANGE="${PREV}..${TAG}"; fi
+          # nearest release tag reachable from the parent of the commit
+          # being released — the new tag itself is NOT in the local repo
+          # yet (it is created by the API in the release step below), so
+          # the anchor is HEAD's parent; --match 'v*' keeps the moving
+          # nightly tag from ever acting as a changelog boundary. Empty
+          # when this is the first release ever (then the range is the
+          # whole history, which is honest for a first release)
+          PREV="$(git describe --tags --abbrev=0 --match 'v*' 'HEAD^' 2>/dev/null || true)"
+          RANGE=""
+          if [ -n "$PREV" ]; then RANGE="${PREV}..HEAD"; fi
           SUM="$(sha256sum "${{ steps.pack.outputs.exename }}" | cut -d' ' -f1)"
           {
             echo "FFX Compatibility Tool ${TAG} — the portable Windows build."
             echo ""
             echo "## What's changed"
             echo ""
-            git log "$RANGE" --format='%s' \
+            # a release must not die over its own description — if the
+            # commit log cannot be read, the fallback bullet publishes it
+            git log ${RANGE:+"$RANGE"} --format='%s' \
               | sed -E 's/ and (chore|feat|fix|ci|docs|test|build|refactor|perf)\(/\n\1(/g' \
-              | sed 's/^/- /' > release_commits.txt
+              | sed 's/^/- /' > release_commits.txt || true
             if [ -s release_commits.txt ]; then
               cat release_commits.txt
             else
