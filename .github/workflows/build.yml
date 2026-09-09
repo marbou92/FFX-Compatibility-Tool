@@ -10,15 +10,17 @@ name: Build & Release
 # reads the commit subjects between the previous tag and this one, splits
 # the repo's multi-entry commit messages (entries are joined by " and
 # <type>(") so every change becomes its own bullet, and adds install
-# steps plus the SHA-256 of the attached zip. GitHub's own generated
+# steps plus the SHA-256 of the attached zip and exe. GitHub's own generated
 # notes (the compare link) are appended on top of that body.
 #
 # Note on why this is simpler than the old Python/PyInstaller build.yml:
-# .NET Framework (net48) apps don't need PyInstaller-style bundling — a
-# normal `dotnet build` in Release config already produces a runnable
-# FfxTool.Gui.exe plus its dependency DLLs and data/plugin_table.json in
-# the output folder (copied there via the csproj's CopyToOutputDirectory
-# settings). We just zip that folder as-is.
+# .NET Framework (net48) apps don't need PyInstaller-style bundling. A
+# Release build runs the csproj's ILRepack step, which merges every
+# dependency DLL (FfxTool.Core, the System.Text.Json chain) into
+# FfxTool.Gui.exe itself, and the seed tables ship embedded inside
+# FfxTool.Core — so the output folder is exactly one runnable .exe. We
+# zip that one file and also attach the exe itself for people who would
+# rather skip the unzip.
 on:
   push:
     tags:
@@ -98,16 +100,22 @@ jobs:
           if (-not $outDir) { throw "Could not find FfxTool.Gui.exe under FfxTool.Gui\bin\Release" }
           echo "outdir=$outDir" >> $env:GITHUB_OUTPUT
 
-      - name: Zip build output
+      - name: Zip build output + copy the bare exe
         shell: pwsh
         run: |
+          # the output folder holds exactly one file — the merged exe —
+          # so the zip is a one-file archive; the bare exe ships beside
+          # it for people who skip the unzip
           Compress-Archive -Path "${{ steps.locate.outputs.outdir }}\*" -DestinationPath "FFXCompatibilityTool-windows.zip"
+          Copy-Item "${{ steps.locate.outputs.outdir }}\FfxTool.Gui.exe" -Destination "FfxTool.Gui.exe"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: FFXCompatibilityTool-windows
-          path: FFXCompatibilityTool-windows.zip
+          path: |
+            FFXCompatibilityTool-windows.zip
+            FfxTool.Gui.exe
 
       - name: Generate the release description
         if: steps.ver.outputs.tag != ''
@@ -121,6 +129,7 @@ jobs:
           RANGE="$TAG"
           if [ -n "$PREV" ]; then RANGE="${PREV}..${TAG}"; fi
           SUM="$(sha256sum FFXCompatibilityTool-windows.zip | cut -d' ' -f1)"
+          SUMEXE="$(sha256sum FfxTool.Gui.exe | cut -d' ' -f1)"
           {
             echo "FFX Compatibility Tool ${TAG} — the portable Windows build."
             echo ""
@@ -137,14 +146,15 @@ jobs:
             echo ""
             echo "## Install"
             echo ""
-            echo "1. Download **FFXCompatibilityTool-windows.zip** below and unzip it anywhere."
-            echo "2. Run **FfxTool.Gui.exe** — no installer."
+            echo "1. Download **FfxTool.Gui.exe** below (or the zip — it holds just that one file) and put it anywhere."
+            echo "2. Run it — no installer, no DLL pile, no data folder: everything is inside the exe."
             echo "3. Requires .NET Framework 4.8 (preinstalled on Windows 10/11; Windows 7 SP1 needs the 4.8 runtime installed once)."
             echo ""
             echo "## Verify"
             echo ""
             echo '```'
             echo "SHA-256  ${SUM}  FFXCompatibilityTool-windows.zip"
+            echo "SHA-256  ${SUMEXE}  FfxTool.Gui.exe"
             echo '```'
             echo ""
             echo "The in-app **Check for Updates** (Settings → About) resolves this releases page — publishing a release is what announces the new version to installed builds."
@@ -161,6 +171,8 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: FFX Compatibility Tool ${{ steps.ver.outputs.tag }}
           body_path: release_notes.md
-          files: FFXCompatibilityTool-windows.zip
+          files: |
+            FFXCompatibilityTool-windows.zip
+            FfxTool.Gui.exe
           fail_on_unmatched_files: true
           generate_release_notes: true
