@@ -10,17 +10,17 @@ name: Build & Release
 # reads the commit subjects between the previous tag and this one, splits
 # the repo's multi-entry commit messages (entries are joined by " and
 # <type>(") so every change becomes its own bullet, and adds install
-# steps plus the SHA-256 of the attached zip and exe. GitHub's own generated
+# steps plus the SHA-256 of the attached exe. GitHub's own generated
 # notes (the compare link) are appended on top of that body.
 #
 # Note on why this is simpler than the old Python/PyInstaller build.yml:
 # .NET Framework (net48) apps don't need PyInstaller-style bundling. A
 # Release build runs the csproj's ILRepack step, which merges every
 # dependency DLL (FfxTool.Core, the System.Text.Json chain) into
-# FfxTool.Gui.exe itself, and the seed tables ship embedded inside
-# FfxTool.Core — so the output folder is exactly one runnable .exe. We
-# zip that one file and also attach the exe itself for people who would
-# rather skip the unzip.
+# FFXCompatibilityTool.exe itself, and the seed tables ship embedded
+# inside FfxTool.Core — so the output folder is exactly one runnable
+# .exe, packed under its product name and shipped as-is: no zip around
+# it, the exe IS the download.
 on:
   push:
     tags:
@@ -95,31 +95,36 @@ jobs:
         id: locate
         shell: pwsh
         run: |
-          $outDir = Get-ChildItem -Path "FfxTool.Gui\bin\Release" -Recurse -Filter "FfxTool.Gui.exe" |
+          $outDir = Get-ChildItem -Path "FfxTool.Gui\bin\Release" -Recurse -Filter "FFXCompatibilityTool.exe" |
             Select-Object -First 1 -ExpandProperty DirectoryName
-          if (-not $outDir) { throw "Could not find FfxTool.Gui.exe under FfxTool.Gui\bin\Release" }
+          if (-not $outDir) { throw "Could not find FFXCompatibilityTool.exe under FfxTool.Gui\bin\Release" }
           echo "outdir=$outDir" >> $env:GITHUB_OUTPUT
 
-      - name: Zip build output + copy the bare exe
+      - name: Pack the single exe
+        id: pack
         shell: pwsh
         run: |
           # the output folder holds exactly one file — the merged exe —
-          # so the zip is a one-file archive; the bare exe ships beside
-          # it for people who skip the unzip
-          Compress-Archive -Path "${{ steps.locate.outputs.outdir }}\*" -DestinationPath "FFXCompatibilityTool-windows.zip"
-          Copy-Item "${{ steps.locate.outputs.outdir }}\FfxTool.Gui.exe" -Destination "FfxTool.Gui.exe"
+          # and it ships under its product name, no zip around it. A
+          # release run carries the version (FFXCompatibilityTool-0.1.0.exe);
+          # an artifact-only dispatch run falls back to a stable name.
+          $tag = "${{ steps.ver.outputs.tag }}"
+          if ($tag) { $exeName = "FFXCompatibilityTool-$($tag.TrimStart('v')).exe" }
+          else { $exeName = "FFXCompatibilityTool-windows.exe" }
+          Copy-Item "${{ steps.locate.outputs.outdir }}\FFXCompatibilityTool.exe" -Destination $exeName
+          echo "exename=$exeName" >> $env:GITHUB_OUTPUT
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: FFXCompatibilityTool-windows
-          path: |
-            FFXCompatibilityTool-windows.zip
-            FfxTool.Gui.exe
+          path: ${{ steps.pack.outputs.exename }}
 
       - name: Generate the release description
         if: steps.ver.outputs.tag != ''
         shell: bash
+        env:
+          EXENAME: ${{ steps.pack.outputs.exename }}
         run: |
           TAG="${{ steps.ver.outputs.tag }}"
           # nearest tag reachable from the new tag's parent commit — empty
@@ -128,8 +133,7 @@ jobs:
           PREV="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
           RANGE="$TAG"
           if [ -n "$PREV" ]; then RANGE="${PREV}..${TAG}"; fi
-          SUM="$(sha256sum FFXCompatibilityTool-windows.zip | cut -d' ' -f1)"
-          SUMEXE="$(sha256sum FfxTool.Gui.exe | cut -d' ' -f1)"
+          SUM="$(sha256sum "${{ steps.pack.outputs.exename }}" | cut -d' ' -f1)"
           {
             echo "FFX Compatibility Tool ${TAG} — the portable Windows build."
             echo ""
@@ -146,15 +150,14 @@ jobs:
             echo ""
             echo "## Install"
             echo ""
-            echo "1. Download **FfxTool.Gui.exe** below (or the zip — it holds just that one file) and put it anywhere."
-            echo "2. Run it — no installer, no DLL pile, no data folder: everything is inside the exe."
+            echo "1. Download **${EXENAME}** below — that single file is the whole app."
+            echo "2. Run it — no installer, no zip, no DLL pile, no data folder: everything is inside the exe."
             echo "3. Requires .NET Framework 4.8 (preinstalled on Windows 10/11; Windows 7 SP1 needs the 4.8 runtime installed once)."
             echo ""
             echo "## Verify"
             echo ""
             echo '```'
-            echo "SHA-256  ${SUM}  FFXCompatibilityTool-windows.zip"
-            echo "SHA-256  ${SUMEXE}  FfxTool.Gui.exe"
+            echo "SHA-256  ${SUM}  ${EXENAME}"
             echo '```'
             echo ""
             echo "The in-app **Check for Updates** (Settings → About) resolves this releases page — publishing a release is what announces the new version to installed builds."
@@ -171,8 +174,6 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: FFX Compatibility Tool ${{ steps.ver.outputs.tag }}
           body_path: release_notes.md
-          files: |
-            FFXCompatibilityTool-windows.zip
-            FfxTool.Gui.exe
+          files: ${{ steps.pack.outputs.exename }}
           fail_on_unmatched_files: true
           generate_release_notes: true

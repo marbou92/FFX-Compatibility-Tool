@@ -54,42 +54,37 @@ jobs:
         id: locate
         shell: pwsh
         run: |
-          $outDir = Get-ChildItem -Path "FfxTool.Gui\bin\Release" -Recurse -Filter "FfxTool.Gui.exe" |
+          $outDir = Get-ChildItem -Path "FfxTool.Gui\bin\Release" -Recurse -Filter "FFXCompatibilityTool.exe" |
             Select-Object -First 1 -ExpandProperty DirectoryName
-          if (-not $outDir) { throw "Could not find FfxTool.Gui.exe under FfxTool.Gui\bin\Release" }
+          if (-not $outDir) { throw "Could not find FFXCompatibilityTool.exe under FfxTool.Gui\bin\Release" }
           echo "outdir=$outDir" >> $env:GITHUB_OUTPUT
 
-      - name: Zip nightly build
-        id: zip
+      - name: Pack the nightly exe
+        id: pack
         shell: pwsh
         run: |
           # the portable build is a single merged exe (the csproj's
-          # ILRepack step) — the zip is a one-file archive. Name carries
+          # ILRepack step) — shipped directly, no zip. The name carries
           # the UTC stamp + short SHA so one nightly can always be told
           # from the next.
           $stamp = (Get-Date).ToUniversalTime().ToString("yyyyMMdd-HHmm")
           $sha = "${{ github.sha }}".Substring(0, 7)
-          $name = "FFXCompatibilityTool-nightly-$stamp-$sha"
-          Compress-Archive -Path "${{ steps.locate.outputs.outdir }}\*" -DestinationPath "$name.zip"
-          Copy-Item "${{ steps.locate.outputs.outdir }}\FfxTool.Gui.exe" -Destination "FfxTool.Gui.exe"
-          echo "zipname=$name.zip" >> $env:GITHUB_OUTPUT
-          echo "exename=FfxTool.Gui.exe" >> $env:GITHUB_OUTPUT
+          $exeName = "FFXCompatibilityTool-nightly-$stamp-$sha.exe"
+          Copy-Item "${{ steps.locate.outputs.outdir }}\FFXCompatibilityTool.exe" -Destination $exeName
+          echo "exename=$exeName" >> $env:GITHUB_OUTPUT
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: FFXCompatibilityTool-nightly
-          path: |
-            ${{ steps.zip.outputs.zipname }}
-            FfxTool.Gui.exe
+          path: ${{ steps.pack.outputs.exename }}
           retention-days: 14
 
       - name: Publish the rolling "nightly" release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          ZIPNAME: ${{ steps.zip.outputs.zipname }}
-          EXENAME: ${{ steps.zip.outputs.exename }}
+          EXENAME: ${{ steps.pack.outputs.exename }}
         run: |
           SHA7="${GITHUB_SHA:0:7}"
           DATE="$(date -u +%Y-%m-%d)"
@@ -104,9 +99,9 @@ jobs:
             echo "date and commit in the file name are what distinguish one"
             echo "nightly from the next."
             echo ""
-            echo "The zip holds exactly one file — FfxTool.Gui.exe, with"
-            echo "every dependency and the seed tables merged/embedded"
-            echo "inside. The exe itself is attached beside the zip."
+            echo "${EXENAME} is the whole app: every dependency and the"
+            echo "seed tables are merged/embedded inside. Download it and"
+            echo "run it — no zip, no installer."
             echo ""
             echo "If it crashes, the app writes a readable report to"
             echo "%LOCALAPPDATA%\FFXCompatibilityTool\crash.log — include it when"
@@ -117,7 +112,7 @@ jobs:
           # then re-tag at the commit that was just built and tested
           gh release delete nightly --yes --cleanup-tag || echo "no previous nightly to replace"
           git push origin :refs/tags/nightly || echo "tag already gone"
-          gh release create nightly "$ZIPNAME" "$EXENAME" \
+          gh release create nightly "$EXENAME" \
             --title "Nightly build — ${DATE} (${SHA7})" \
             --prerelease \
             --target "$GITHUB_SHA" \
