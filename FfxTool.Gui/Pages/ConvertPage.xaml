@@ -164,14 +164,11 @@
                                      takes the whole page — same card, same
                                      behaviours, far more rows -->
                                 <Button x:Name="QueueBigBtn" Grid.Column="1" Style="{StaticResource OutlinedButton}"
-                                        Height="34" MinWidth="132" Margin="14,0,0,0" VerticalAlignment="Center"
+                                        Height="34" Width="34" MinWidth="34" Padding="0" Margin="12,0,0,0" VerticalAlignment="Center"
                                         Click="QueueBigBtn_Click"
-                                        ToolTip="Open the file manager across the whole page — click again or press Esc to put it back">
-                                    <StackPanel Orientation="Horizontal">
-                                        <controls:IconGlyph x:Name="QueueBigIcon" IconName="Maximize" Width="16" Height="16"
-                                                            VerticalAlignment="Center"/>
-                                        <TextBlock x:Name="QueueBigText" Text="Bigger list" Margin="8,0,2,0" VerticalAlignment="Center"/>
-                                    </StackPanel>
+                                        ToolTip="Open the file manager across the whole page">
+                                    <controls:IconGlyph x:Name="QueueBigIcon" IconName="Maximize" Width="16" Height="16"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Button>
                             </Grid>
                             <TreeView x:Name="QueueTree" Grid.Row="1" Margin="8,12,4,2"

@@ -40,7 +40,8 @@ namespace FfxTool.Gui
             var sub = new TextBlock
             {
                 Text = (string.IsNullOrEmpty(context) ? "An unexpected error occurred." : context) +
-                       "  The details below name the failing method — copy them into a bug report, or attach the log file.",
+                       "  The details below name the failing method — 'Report on GitHub' opens a prefilled issue " +
+                       "with the full trace on your clipboard, or attach the log file.",
                 FontSize = 12,
                 TextWrapping = TextWrapping.Wrap,
                 Foreground = SystemColors.GrayTextBrush,
@@ -62,6 +63,7 @@ namespace FfxTool.Gui
                 Margin = new Thickness(0, 0, 0, 10)
             };
 
+            var reportBtn = NewButton("Report on GitHub", 122);
             var copy = NewButton("Copy report", 100);
             var logs = NewButton("Open log folder", 116);
             var close = NewButton("Continue", 96);
@@ -89,9 +91,23 @@ namespace FfxTool.Gui
                 }
                 catch { /* Explorer refused — nothing sensible */ }
             };
+            reportBtn.Click += (s, e) =>
+            {
+                // the FULL trace rides on the clipboard — the prefilled issue
+                // body only carries a trimmed copy (URL length limits), so
+                // one paste completes the report
+                try { Clipboard.SetText(details.Text); } catch { /* clipboard can refuse */ }
+                try
+                {
+                    Process.Start(BuildIssueUrl(details.Text));
+                    reportBtn.Content = "Opened";
+                }
+                catch { /* no default browser — the copy button still works */ }
+            };
             close.Click += (s, e) => Close();
 
             var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+            buttons.Children.Add(reportBtn);
             buttons.Children.Add(copy);
             buttons.Children.Add(logs);
             buttons.Children.Add(close);
@@ -157,6 +173,69 @@ namespace FfxTool.Gui
                 level++;
             }
             return sb.ToString();
+        }
+
+        // the repo's new-issue form, prefilled from the report: the title
+        // carries the exception type + the failing method, the body carries
+        // the structured header plus the FIRST exception's frames. GitHub
+        // silently drops over-long URLs, so the body is trimmed to fit and
+        // the full trace travels on the clipboard (and in crash.log).
+        private const string IssuesNewUrl =
+            "https://github.com/marbou92/FFX-Compatibility-Tool/issues/new";
+
+        public static string BuildIssueUrl(string report)
+        {
+            string title = "[crash] problem report";
+            foreach (var line in report.Split('\n'))
+            {
+                var t = line.Trim();
+                if (t.StartsWith("[") && t.EndsWith("]"))
+                {
+                    title = "[crash] " + t.Substring(1, t.Length - 2);
+                    break;
+                }
+            }
+            foreach (var line in report.Split('\n'))
+            {
+                var t = line.Trim();
+                if (!t.StartsWith("at ")) continue;
+                var frame = t.Substring(3);
+                int inAt = frame.IndexOf(" in ", StringComparison.Ordinal);
+                if (inAt > 0) frame = frame.Substring(0, inAt);
+                if (frame.Length > 90) frame = frame.Substring(0, 90);
+                title += " at " + frame;
+                break;
+            }
+            if (title.Length > 140) title = title.Substring(0, 140);
+
+            // the log path lives at the very end of the report — read it
+            // BEFORE trimming so it survives the first-exception cut
+            string logLine = "%LOCALAPPDATA%\\FFXCompatibilityTool\\crash.log";
+            int savedAt = report.IndexOf("Full trace saved to:", StringComparison.Ordinal);
+            if (savedAt >= 0)
+            {
+                var tail = report.Substring(savedAt).Split('\n');
+                if (tail.Length > 1 && tail[1].Trim().Length > 0) logLine = tail[1].Trim();
+            }
+
+            string body = report;
+            int inner = body.IndexOf("--- inner exception ---", StringComparison.Ordinal);
+            if (inner > 0) body = body.Substring(0, inner);
+            if (savedAt >= 0 && savedAt < body.Length)
+                body = body.Substring(0, savedAt).TrimEnd() + "\n";
+            body += "\nThe FULL trace is on my clipboard and in:\n" + logLine +
+                    "\n\n### Steps to reproduce\n1. ";
+
+            string url = IssuesNewUrl + "?title=" + Uri.EscapeDataString(title) +
+                         "&body=" + Uri.EscapeDataString(body);
+            // hard cap: keep shrinking the body until the URL fits a browser
+            for (int max = 1800; url.Length > 6000 && max > 200; max -= 300)
+            {
+                var trimmed = body.Length > max ? body.Substring(0, max) : body;
+                url = IssuesNewUrl + "?title=" + Uri.EscapeDataString(title) +
+                      "&body=" + Uri.EscapeDataString(trimmed);
+            }
+            return url;
         }
     }
 }

@@ -1033,7 +1033,7 @@ namespace FfxTool.Gui
             Panel.SetZIndex(WorkCol, 10);
             StatusRow.Visibility = Visibility.Collapsed;
             OptionsCard.Visibility = Visibility.Collapsed;
-            QueueBigText.Text = "Back to normal";
+            QueueBigBtn.ToolTip = "Back to the normal layout — Esc works too";
             QueueBigIcon.IconName = "Minimize";
             Console.Log("[INFO] File manager expanded across the page — Esc or the button puts it back.");
         }
@@ -1046,7 +1046,7 @@ namespace FfxTool.Gui
             Panel.SetZIndex(WorkCol, 0);
             StatusRow.Visibility = Visibility.Visible;
             OptionsCard.Visibility = Visibility.Visible;
-            QueueBigText.Text = "Bigger list";
+            QueueBigBtn.ToolTip = "Open the file manager across the whole page";
             QueueBigIcon.IconName = "Maximize";
         }
 
