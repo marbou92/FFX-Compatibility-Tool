@@ -216,6 +216,7 @@
                                     <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
                                         <TextBlock Text="FFX Compatibility Tool" Style="{StaticResource Body}" FontWeight="SemiBold" FontSize="14"/>
                                         <TextBlock x:Name="VersionText" Style="{StaticResource Caption}" Margin="0,2,0,0"/>
+                                        <TextBlock Text="Made by marbou92" Style="{StaticResource Caption}" Margin="0,2,0,0"/>
                                     </StackPanel>
                                 </StackPanel>
 

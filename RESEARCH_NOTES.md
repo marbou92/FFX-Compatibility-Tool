@@ -596,3 +596,30 @@ Release build "already produces a runnable exe plus its dependency
 DLLs" is rewritten, and both the Release and Nightly pages now attach
 the bare FfxTool.Gui.exe beside the one-file zip (the release body
 gains its SHA-256).
+
+## Round 45 — the exe under its own name, no zip, and the maker on the label
+
+The single-exe pipeline from Round 44 survived real CI (the nightly
+release page is the proof), and three finishing touches came out of
+looking at that page:
+
+**The binary carries its product name.** The AssemblyName is now
+FFXCompatibilityTool — the app.manifest had declared the identity
+"FFXCompatibilityTool.app" all along, but the built file was still
+FfxTool.Gui.exe, and that is the name the release page was shipping.
+The CI locate/pack steps follow the new name, and the assets carry it
+with context: tagged releases attach FFXCompatibilityTool-<version>.exe,
+the nightly attaches FFXCompatibilityTool-nightly-<stamp>-<sha>.exe.
+
+**No zip beside it.** Round 44 kept the one-file zip around the exe for
+the SHA-256-verified download flow; the user prefers the exe alone, so
+both the Release and Nightly workflows dropped Compress-Archive entirely
+— the exe IS the artifact, the release attachment and the thing the
+notes hash. The notes' install steps say so explicitly.
+
+**The maker is on the label.** The GUI csproj now fills the Windows
+"Properties → Details" tab (file description, product name, company,
+authors, © 2026 marbou92, a one-line description — previously the
+Details tab showed a bare assembly name and nothing else), the About
+view says "Made by marbou92" under the version line, and the crash
+report's App line ends with "by marbou92" so filed issues carry it too.

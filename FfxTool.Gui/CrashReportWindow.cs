@@ -156,7 +156,7 @@ namespace FfxTool.Gui
             var sb = new StringBuilder();
             sb.AppendLine("What happened:  " + (context ?? "an unexpected error"));
             sb.AppendLine("When:  " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-            sb.AppendLine("App:  FFX Compatibility Tool " + AppInfo.DisplayVersion);
+            sb.AppendLine("App:  FFX Compatibility Tool " + AppInfo.DisplayVersion + " by marbou92");
             sb.AppendLine("Running on:  " + Environment.OSVersion.VersionString +
                           "  ·  .NET " + Environment.Version);
             sb.AppendLine();

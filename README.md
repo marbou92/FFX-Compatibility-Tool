@@ -8,15 +8,15 @@ Downgrades After Effects **.ffx** presets to older versions, strips effects
 whose plugins you don't own, and shows you exactly what is inside a preset —
 all offline, in one portable exe. Built for **.NET Framework 4.8 / WPF**: runs
 on Windows 7 SP1 through Windows 11, no installer, no runtime download on
-Windows 10/11.
+Windows 10/11. Made by **marbou92**.
 
 ## Install
 
-1. Grab **FfxTool.Gui.exe** from the
+1. Grab the **FFXCompatibilityTool-*.exe** from the
    [latest release](https://github.com/marbou92/FFX-Compatibility-Tool/releases/latest)
-   — or the zip, which holds just that one file.
-2. Run it. Everything lives inside the exe — no installer, no DLL pile,
-   no data folder.
+   — that single file is the whole app.
+2. Run it. Everything lives inside the exe — no installer, no zip, no
+   DLL pile, no data folder.
 3. Windows 7 only: install the .NET 4.8 runtime once —
    [download](https://dotnet.microsoft.com/download/dotnet-framework/net48).
 
@@ -69,8 +69,9 @@ it yourself.
 dotnet restore FfxTool.sln
 dotnet test FfxTool.sln --configuration Release
 dotnet build FfxTool.sln --configuration Release
-# → FfxTool.Gui\bin\Release\net48\FfxTool.Gui.exe — one file (the DLLs
-#   and seed tables are merged/embedded into it; Debug stays unpacked)
+# → FfxTool.Gui\bin\Release\net48\FFXCompatibilityTool.exe — one file
+#   (the DLLs and seed tables are merged/embedded into it; Debug stays
+#   unpacked)
 ```
 
 CI runs on every push: **CI** (test.yml), **Nightly** (nightly.yml — the
