@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text.Json;
 
@@ -9,8 +8,9 @@ namespace FfxTool.Core
     /// <summary>
     /// Plugin match-name lookup: resolve an effect's match-name (e.g.
     /// "S_Sharpen") to a vendor/suite, using the same seed table
-    /// (data/plugin_table.json) the Python version uses — this file is
-    /// shared verbatim between both, not duplicated/retyped.
+    /// (data/plugin_table.json, embedded inside FfxTool.Core.dll) the
+    /// Python version uses — this file is shared verbatim between both,
+    /// not duplicated/retyped.
     /// </summary>
     public class PluginTableEntry
     {
@@ -54,10 +54,12 @@ namespace FfxTool.Core
 
         public static List<PluginTableEntry> LoadTable(string path = null)
         {
-            path = path ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "plugin_table.json");
             try
             {
-                var json = File.ReadAllText(path);
+                // path wins (tests, power users); null = the table embedded
+                // inside FfxTool.Core.dll, with the old data\ folder as a
+                // last-resort fallback
+                var json = EmbeddedData.ReadJson(path, "FfxTool.Data.plugin_table.json", "plugin_table.json");
                 TableLoadError = null;
                 return JsonSerializer.Deserialize<List<PluginTableEntry>>(json) ?? new List<PluginTableEntry>();
             }

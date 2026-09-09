@@ -566,3 +566,33 @@ the old folder's rows into the new one. Every new state-event handler
 guards on IsInitialized — the round-32 lesson is now house style: the
 queue's pre-checked subfolder box fires during the BAML parse, exactly
 like its BatchPage ancestor did.
+
+## Round 44 — the portable build becomes one single .exe
+
+The Release output folder used to be the exe, its dependency DLLs and a
+data\ folder with the two seed tables; the zip carried all of it. Two
+changes collapse that to one file:
+
+**The seed tables ride inside the assembly.** plugin_table.json and
+effect_names.json are now EmbeddedResources of FfxTool.Core.dll
+(LogicalName "FfxTool.Data.*"), and a small EmbeddedData helper decides
+where a table comes from: an explicit path always wins (the tests pass
+one to exercise the missing-file degrade), then the embedded resource,
+then the old data\ folder as a last-resort fallback for anything built
+without the resources. The lookups' degrade-to-empty contract is
+untouched — every failure still lands in TableLoadError/LoadError.
+
+**ILRepack folds the DLLs into the exe.** A Release-only MSBuild target
+in the GUI csproj runs ILRepack over every DLL in the output folder
+(FfxTool.Core plus the System.Text.Json chain) and writes the merged
+result back over FfxTool.Gui.exe, deleting the inputs: /allowDup
+tolerates the identical internal nullable-annotation attributes the
+netstandard2.0 packages each embed, /ndebug skips pdb merging, and the
+deps.json (a .NET Core mechanism .NET Framework never reads) is switched
+off so nothing else lands beside the exe. The icon, manifest and Win32
+resources come from the primary assembly and survive the merge; Debug
+builds stay unpacked for debugging. The workflow comment that said the
+Release build "already produces a runnable exe plus its dependency
+DLLs" is rewritten, and both the Release and Nightly pages now attach
+the bare FfxTool.Gui.exe beside the one-file zip (the release body
+gains its SHA-256).

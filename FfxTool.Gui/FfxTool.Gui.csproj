@@ -15,6 +15,10 @@
     <RootNamespace>FfxTool.Gui</RootNamespace>
     <Version>0.1.0</Version>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <!-- .NET Framework never reads the deps.json at runtime (that is a
+         .NET Core mechanism) — skip it so the packed Release output is
+         exactly one file (see the ILRepack step at the bottom). -->
+    <GenerateDependencyFile>false</GenerateDependencyFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -35,8 +39,28 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\data\plugin_table.json" CopyToOutputDirectory="PreserveNewest" Link="data\plugin_table.json" />
-    <None Include="..\data\effect_names.json" CopyToOutputDirectory="PreserveNewest" Link="data\effect_names.json" />
+    <!-- Single-exe packing: merges FfxTool.Core.dll and the
+         System.Text.Json dependency chain INTO FfxTool.Gui.exe so the
+         portable build is one file (Release only — Debug stays unpacked
+         for debugging). /allowDup tolerates the identical internal
+         nullable-annotation attributes the netstandard2.0 packages each
+         embed; /ndebug skips pdb merging. -->
+    <PackageReference Include="ILRepack" Version="2.0.18" PrivateAssets="all" />
   </ItemGroup>
+
+  <Target Name="PackIntoSingleExe" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <ItemGroup>
+      <_MergeDll Include="$(OutputPath)*.dll" />
+    </ItemGroup>
+    <Error Condition="'$(PkgILRepack)' == ''" Text="ILRepack could not be resolved from the package cache — run dotnet restore FfxTool.sln first." />
+    <Message Condition="'@(_MergeDll)' == ''" Importance="high" Text="Single-exe packing: no dependency DLLs beside the output — FfxTool.Gui.exe is already packed." />
+    <Message Condition="'@(_MergeDll)' != ''" Importance="high" Text="Single-exe packing: merging @(_MergeDll->Count()) DLL(s) into FfxTool.Gui.exe." />
+    <MakeDir Condition="'@(_MergeDll)' != ''" Directories="$(OutputPath)_merged" />
+    <Exec Condition="'@(_MergeDll)' != ''" Command="&quot;$(PkgILRepack)\tools\ILRepack.exe&quot; /allowDup /ndebug /out:&quot;$(OutputPath)_merged\$(TargetFileName)&quot; &quot;$(TargetPath)&quot; @(_MergeDll->'&quot;%(FullPath)&quot;', ' ')" />
+    <Copy Condition="'@(_MergeDll)' != ''" SourceFiles="$(OutputPath)_merged\$(TargetFileName)" DestinationFiles="$(TargetPath)" />
+    <Delete Condition="'@(_MergeDll)' != ''" Files="$(OutputPath)$(TargetFileName).pdb;@(_MergeDll)" />
+    <Delete Condition="'@(_MergeDll)' != ''" Files="@(_MergeDll->'%(RootDir)%(Directory)%(Filename).pdb')" />
+    <RemoveDir Condition="'@(_MergeDll)' != ''" Directories="$(OutputPath)_merged" />
+  </Target>
 
 </Project>

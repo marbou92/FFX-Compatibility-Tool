@@ -12,10 +12,11 @@ Windows 10/11.
 
 ## Install
 
-1. Grab **FFXCompatibilityTool-windows.zip** from the
+1. Grab **FfxTool.Gui.exe** from the
    [latest release](https://github.com/marbou92/FFX-Compatibility-Tool/releases/latest)
-   and unzip it anywhere.
-2. Run **FfxTool.Gui.exe**.
+   — or the zip, which holds just that one file.
+2. Run it. Everything lives inside the exe — no installer, no DLL pile,
+   no data folder.
 3. Windows 7 only: install the .NET 4.8 runtime once —
    [download](https://dotnet.microsoft.com/download/dotnet-framework/net48).
 
@@ -68,7 +69,8 @@ it yourself.
 dotnet restore FfxTool.sln
 dotnet test FfxTool.sln --configuration Release
 dotnet build FfxTool.sln --configuration Release
-# → FfxTool.Gui\bin\Release\net48\FfxTool.Gui.exe (+ DLLs + data\)
+# → FfxTool.Gui\bin\Release\net48\FfxTool.Gui.exe — one file (the DLLs
+#   and seed tables are merged/embedded into it; Debug stays unpacked)
 ```
 
 CI runs on every push: **CI** (test.yml), **Nightly** (nightly.yml — the

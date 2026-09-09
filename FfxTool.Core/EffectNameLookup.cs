@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Text.Json;
 
 namespace FfxTool.Core
@@ -31,7 +30,8 @@ namespace FfxTool.Core
     }
 
     /// <summary>
-    /// Match-name → display name/category lookup over data/effect_names.json.
+    /// Match-name → display name/category lookup over data/effect_names.json
+    /// (embedded inside FfxTool.Core.dll).
     /// Exact match first, then a case-insensitive pass (some presets mutate
     /// match-name case). Mirrors PluginLookup's contract: a missing or
     /// corrupt table degrades to an empty one with LoadError set — it never
@@ -47,10 +47,12 @@ namespace FfxTool.Core
 
         public static List<EffectNameEntry> Load(string path = null)
         {
-            path = path ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "effect_names.json");
             try
             {
-                var json = File.ReadAllText(path);
+                // path wins; null = the table embedded inside
+                // FfxTool.Core.dll (the old data\ folder stays as a
+                // last-resort fallback)
+                var json = EmbeddedData.ReadJson(path, "FfxTool.Data.effect_names.json", "effect_names.json");
                 var root = JsonSerializer.Deserialize<EffectNameFile>(json);
                 LoadError = null;
                 return root?.effects ?? new List<EffectNameEntry>();

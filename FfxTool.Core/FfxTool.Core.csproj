@@ -17,7 +17,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\data\plugin_table.json" CopyToOutputDirectory="PreserveNewest" Link="data\plugin_table.json" />
+    <!-- The seed tables ship embedded inside FfxTool.Core.dll, so the
+         portable build is one single .exe with no data\ folder beside
+         it. The loaders read the embedded copy and fall back to a
+         data\ folder for anything built without the resources. -->
+    <EmbeddedResource Include="..\data\plugin_table.json" LogicalName="FfxTool.Data.plugin_table.json" />
+    <EmbeddedResource Include="..\data\effect_names.json" LogicalName="FfxTool.Data.effect_names.json" />
   </ItemGroup>
 
 </Project>
