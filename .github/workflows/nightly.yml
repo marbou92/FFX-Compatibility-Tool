@@ -47,8 +47,34 @@ jobs:
         # stays published until main is green again
         run: dotnet test FfxTool.sln --configuration Release
 
+      - name: Resolve the nightly version stamp
+        id: ver
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # the nightly's app version = the latest real release followed
+          # by "-nightly"; before the first release exists it is just
+          # "nightly". A real release is not a draft, not a prerelease
+          # and not the rolling "nightly" one itself (the list is
+          # newest-first, so the first hit is the latest). Any API
+          # failure degrades to the bare "nightly" stamp.
+          LATEST="$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+            --jq '[.[] | select((.draft | not) and (.prerelease | not) and (.tag_name != "nightly"))][0].tag_name // empty' 2>/dev/null || true)"
+          # defensive: some gh --jq builds wrap string results in quotes
+          LATEST="${LATEST//\"/}"
+          LATEST="${LATEST#v}"
+          if [ -n "$LATEST" ]; then APPVER="${LATEST}-nightly"; else APPVER="nightly"; fi
+          echo "appver=${APPVER}" >> "$GITHUB_OUTPUT"
+
       - name: Build (Release)
-        run: dotnet build FfxTool.sln --configuration Release --no-restore
+        # /p:InformationalVersion stamps the display version Windows
+        # shows as "Product version" and the app shows in About, the
+        # status bar and crash reports: <latest release>-nightly, or a
+        # bare nightly before the first release. The numeric assembly
+        # version keeps its csproj default, so update checks stay
+        # exactly as they are.
+        run: dotnet build FfxTool.sln --configuration Release --no-restore "/p:InformationalVersion=${{ steps.ver.outputs.appver }}"
 
       - name: Locate build output
         id: locate
@@ -95,9 +121,11 @@ jobs:
             echo "straight from the repository head and may be less stable than a"
             echo "tagged release. Tests ran green before this was packaged."
             echo ""
-            echo "The version stamp inside matches the latest release; the build"
-            echo "date and commit in the file name are what distinguish one"
-            echo "nightly from the next."
+            echo "The app version says the latest release followed by"
+            echo "\"-nightly\" — or just \"nightly\" until the first release"
+            echo "exists — in the exe's Windows file properties and in the"
+            echo "app's own About page. The build date and commit in the"
+            echo "file name are what distinguish one nightly from the next."
             echo ""
             echo "${EXENAME} is the whole app: every dependency and the"
             echo "seed tables are merged/embedded inside. Download it and"
