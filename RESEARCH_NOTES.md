@@ -623,3 +623,29 @@ authors, © 2026 marbou92, a one-line description — previously the
 Details tab showed a bare assembly name and nothing else), the About
 view says "Made by marbou92" under the version line, and the crash
 report's App line ends with "by marbou92" so filed issues carry it too.
+
+## Round 46 — a nightly says what it is
+
+The nightly built straight from main carried the csproj's numeric
+version (0.1.0), so in Windows' file properties and the About page it
+was indistinguishable from a real 0.1.0 release. A nightly now stamps
+an informational version: the latest real release followed by
+"-nightly", or a bare "nightly" when no release exists yet.
+
+**Where the stamp comes from.** The Nightly workflow asks the releases
+API for the newest entry that is not a draft, not a prerelease and not
+the rolling "nightly" itself, strips its leading v, appends -nightly
+and passes the result to the build as /p:InformationalVersion. That
+property is free-form — unlike the numeric AssemblyVersion and
+FileVersion, which keep the csproj's 0.1.0 (a Win32 "File version"
+field cannot hold text via assembly attributes; "Product version" is
+the free-form display field). Any API failure degrades to the bare
+"nightly" stamp, so the channel never blocks on the lookup.
+
+**Who reads it.** AppInfo.DisplayVersion switched from "v" + numeric
+version to the assembly's AssemblyInformationalVersionAttribute (with
+a numeric fallback), which is what the status bar and the crash
+reports already displayed; the About page and the session-log banner
+now read it too. UpdateChecker deliberately keeps comparing the
+numeric version, byte-for-byte unchanged — a nightly never nags about
+the release it is based on and still learns about newer ones.

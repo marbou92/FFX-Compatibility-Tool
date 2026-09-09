@@ -58,7 +58,7 @@ namespace FfxTool.Gui
                 {
                     _sessionBannerWritten = true;
                     File.AppendAllText(path,
-                        $"----- session started {DateTime.Now:yyyy-MM-dd HH:mm:ss} · FFX Compatibility Tool v{AppInfo.Version} -----" +
+                        $"----- session started {DateTime.Now:yyyy-MM-dd HH:mm:ss} · FFX Compatibility Tool {AppInfo.DisplayVersion} -----" +
                         Environment.NewLine);
                 }
                 File.AppendAllText(path, line + Environment.NewLine);

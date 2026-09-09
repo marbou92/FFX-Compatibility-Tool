@@ -30,7 +30,7 @@ namespace FfxTool.Gui
         public SettingsPage(ProfilePage profilePage)
         {
             InitializeComponent();
-            VersionText.Text = "Version " + AppInfo.Version;
+            VersionText.Text = "Version " + AppInfo.DisplayVersion;
 
             ProfileHost.Content = profilePage ?? throw new ArgumentNullException(nameof(profilePage));
 
