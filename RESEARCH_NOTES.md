@@ -1,11 +1,11 @@
 # Research Notes — How This Was Figured Out
 
 No official Adobe spec exists for the `.ffx` binary format. Everything in
-`ffx_core/` was derived by hand-diffing real sample files. This document
+`FfxTool.Core/` was derived by hand-diffing real sample files. This document
 records the derivation and, importantly, **the mistakes made along the
 way** — several fixes looked correct in isolation but caused new failures,
 and future contributors should read this before "simplifying" anything in
-`pipeline.py`.
+`Pipeline.cs`.
 
 ## Container format
 
@@ -160,7 +160,7 @@ container-level version/string fixes were in place.
   produced a file that "looked" fine (parsed without error) but was wrong
   in ways only visible by actually opening it in AE.
 
-## Keyframe records are per-DIMENSION (lhd3 field [3]) — round-23 graph fix
+## Keyframe records are per-DIMENSION (lhd3 field [3])
 
 The graph pane's "spike then decay" artifact on some effects (BCC points
 especially) was the keyframe reader treating a 2D stream as 1D:
@@ -181,16 +181,17 @@ especially) was the keyframe reader treating a 2D stream as 1D:
   must share its time (the structural fingerprint of interleaving).
   Anything else falls back to the 1D read. `[3] = 0` (synthetic test
   files) reads as 1.
-- Round 23 plotted only dimension 0 (the row/tooltip named 2D streams
-  "X of 2D (Y = ...)"); round 25 decodes dimension 1's value AND its
-  own tangent block, so the value graph draws AE's X+Y curve pair and
-  the speed graph draws the combined magnitude (round-25 section below).
-- **Padded records carry the tangents too (round 26).** Every tangent
+- An early reader plotted only dimension 0 (the row/tooltip named 2D
+  streams "X of 2D (Y = ...)"); the current reader decodes dimension
+  1's value AND its own tangent block, so the value graph draws AE's
+  X+Y curve pair and the speed graph draws the combined magnitude (the
+  multidimensional-graphs section below).
+- **Padded records carry the tangents too.** Every tangent
   offset lives in the record's FIRST 48 bytes; a writer that pads the
   record beyond byte 48 keeps the proven layout intact, and the padding
   proves it: when every byte past byte 48 is zero, the tangent block
-  decodes with the same confidence as a 48-byte record. Round 25 and
-  earlier decoded tangents ONLY at recSize == 48, so a padded stream
+  decodes with the same confidence as a 48-byte record. Earlier readers
+  decoded tangents ONLY at recSize == 48, so a padded stream
   silently drew clean straight lines where AE shows eased curves — the
   "the curve math doesn't look like AE" report that no presentation fix
   could reach. A record whose tail is NOT zero (an unknown layout whose
@@ -198,7 +199,7 @@ especially) was the keyframe reader treating a 2D stream as 1D:
   read; the fixture's 48-byte streams are untouched (byte-identical
   decode, proven old-vs-new).
 
-## The pard param-flags word (+4) and AE-hidden rows — round-23 panel fix
+## The pard param-flags word (+4) and AE-hidden rows
 
 The 148-byte `pard` descriptor in `LIST parT` starts with a big-endian
 uint32 **flags word at offset +4** (the control kind is the uint32 at +12,
@@ -218,10 +219,10 @@ its low byte at +15):
   (3x placeholder, "Hidden", "Mocha Data0") and Sapphire's mocha blob row,
   matching what AE's own panel shows.
 
-## Nested tdgp groups: the naming order, and the tdmn BEFORE the group (round 26)
+## Nested tdgp groups: the naming order, and the tdmn BEFORE the group
 
 A nested `LIST tdgp` usually carries its display name in a `tdsn` leaf.
-Round 26 established the FULL naming order AE's own writer uses:
+The FULL naming order AE's own writer uses:
 
 1. the `tdsn` inside the group;
 2. **the `tdmn` directly BEFORE the group** — the group's match name.
@@ -236,37 +237,37 @@ Round 26 established the FULL naming order AE's own writer uses:
    every parameter inside it one level up. The walker now consumes the
    tdmn at the tdgp, uses it as a name candidate, and clears it.
 3. a `tdmn` INSIDE the group resolving to the parT descriptor's display
-   name (round 23's fallback — and the last resort: on a tdsn-less group
-   it used to name the GROUP after its first inner PARAMETER, a header
+   name (the last resort: on a tdsn-less group an early reader used to
+   name the GROUP after its first inner PARAMETER, a header
    AE never shows).
 
 Anonymous wrappers (no name anywhere) keep the parent path — they ARE
 the parent visually.
 
-## Graph Editor rendering references (round-23; corrected rounds 24/25)
+## Graph Editor rendering references
 
-The round-23 reading of a "light editor" with unselected direction
-lines and a faint speed fill was wrong - the round-24 screenshot pair
-(value graph, speed graph) shows AE's REFERENCE shots wearing one dark
-skin. Round 25 settles the theme question the way AE itself does: AE's
+An early reading of a "light editor" with unselected direction
+lines and a faint speed fill was wrong - the side-by-side screenshot
+pair (value graph, speed graph) shows AE's REFERENCE shots wearing one
+dark skin. The theme question resolves the way AE itself does it: AE's
 Graph Editor follows AE's UI brightness preference, so OUR editor
 follows the app theme - dark app = AE's dark palette, light app = the
-app's own light tokens. The round-24 shape grammar stands:
+app's own light tokens. The surviving shape grammar stands:
 
 - dark editor (BOTH modes): field #656565, grid #595959, zero line
   brighter, curve #CBCBCB, picked key #FFEE00, current-time line
   #FC0000, ruler labels bare numbers - the readout above the plot
   carries the unit ("N units" / "N units/sec", AE's own grammar).
-- light editor (BOTH modes, round 25): the app's own tokens - B.Surface
+- light editor (BOTH modes): the app's own tokens - B.Surface
   field, B.OutlineVariant grid, B.Primary curve and key fill,
   B.OnSurfaceVariant labels; AE's #FFEE00 picked key and #FC0000
   current-time line stay fixed (they read on any brightness).
 - value graph: direction lines exist ONLY on the picked key
-  (unselected keys show none; round-23 drew every bezier key's lines -
-  disproven by the round-24 screenshot). The value carry beyond the
-  keyed span is DASHED (AE's dashed stub after the last key). No glow,
+  (unselected keys show none; an early reader drew every bezier key's
+  lines - disproven by the reference screenshot). The value carry beyond
+  the keyed span is DASHED (AE's dashed stub after the last key). No glow,
   no fill: a plain 2px line.
-- speed graph: SIGNED derivative with NO area fill (the round-23 faint
+- speed graph: SIGNED derivative with NO area fill (an early faint
   fill was wrong - AE's field stays uniformly dark under the curve).
   Each segment renders as ONE analytic arc (dv/dt evaluated straight
   from the segment's control points); keyframe speed discontinuities
@@ -280,9 +281,9 @@ app's own light tokens. The round-24 shape grammar stands:
   editor yellow; AE draws no selection ring around it.
 
 
-## Multidimensional graphs draw AE's per-dimension pair (round 25)
+## Multidimensional graphs draw AE's per-dimension pair
 
-Round-25 research pins AE's Graph Editor behavior for a 2D property
+Side-by-side research pins AE's Graph Editor behavior for a 2D property
 (Position, a POINT control):
 
 - VALUE graph: ONE CURVE PER DIMENSION - "when you animate Position,
@@ -300,12 +301,12 @@ Round-25 research pins AE's Graph Editor behavior for a 2D property
   dimension 0 (ClampHandle2), so one absurd Y slope cannot bend the
   Y curve into an arc AE never draws.
 
-## The ldat time unit is 1/1024 of a 30 fps frame — 30720 ticks per second (round 28)
+## The ldat time unit is 1/1024 of a 30 fps frame — 30720 ticks per second
 
 The worst kind of wrong constant is one that produces *plausible* graphs,
 and the tick base was exactly that: an early revision read ldat's int32
 keyframe times as 1/1024 SECOND, "validated" by fixture times that land on
-round numbers when divided by 1024. Every value graph looked right anyway
+whole numbers when divided by 1024. Every value graph looked right anyway
 (value shape is scale-free — only the *relative* keyframe times matter),
 and endpoint speeds read the stored slope doubles directly, which are
 value-per-second and independent of any time base. Only the interior of
@@ -339,11 +340,11 @@ times 1877 / 5631 / 11264 / 21504 are whole-or-half FRAMES in
 seconds. `PresetCurve.TicksPerSecond` is now 30720.0; nothing in the tool
 rewrites ldat bytes, so this remains a display-time conversion only.
 
-## The pard flag 0x8 is the writer's "not in AE's Effect Controls" bit (round 29)
+## The pard flag 0x8 is the writer's "not in AE's Effect Controls" bit
 
-Round 23 concluded that BCC's 'Hidden' row "carries 0x8 like visible
-sliders, so it hides by NAME instead" — that retraction goes the other
-way now. The full BCC Directional Blur descriptor walk (side-by-side EC
+An earlier conclusion held that BCC's 'Hidden' row "carries 0x8 like
+visible sliders, so it hides by NAME instead" — the full BCC Directional
+Blur descriptor walk (side-by-side EC
 screenshots contributed for comparison) shows a 23-row superseded legacy
 PixelChooser block — Legacy PixelChooser, Apply PixelChooser, PC
 Intensity, Mask, Shape, Point 1/2 and the matte controls From, To,
@@ -354,11 +355,11 @@ own Effect Controls drawing NONE of them, while every row AE does draw
 carries 0x0 (rows inside groups carry 0x20, which is therefore not a
 visibility bit). 'Hidden' (0x8), Sapphire's 'mocha' (0x208) and BCC's
 'Mocha Data0' (0x8, kind 11) all fall under the same rule; Adobe's own
-effects never set 0x8. IsHiddenParam now tests 0x200 OR 0x8 — the
-round-23/26 name-based and 0x200-based hiding still holds, they just
-were reading two edges of one bit.
+effects never set 0x8. IsHiddenParam tests 0x200 OR 0x8 — the
+name-based and 0x200-based hiding still holds, they just were
+reading two edges of one bit.
 
-## The no-sspc preset class: property/animator presets (round 30)
+## The no-sspc preset class: property/animator presets
 
 A contributed pack of 27 real-world presets (kept out of the repository)
 contains six files that decode to ZERO effects under the previous
@@ -399,7 +400,7 @@ Three consequences, all verified against the pack:
 3. Inspection yields one entry per real tdsp, in path order, so the
    effect list's N rows keep pairing with the inspection by position.
 
-## parT is written once per repeated effect (round 30)
+## parT is written once per repeated effect
 
 The same pack shows multi-effect presets where the same effect appears
 two or four times (S_Sharpen ×2, MB LookSuite3 ×4, BCC Unsharp Mask ×2,
@@ -413,7 +414,7 @@ popup menus. The reader now caches the parT map by match name and gives
 an empty map the first copy's map; a later copy that does carry its own
 parT keeps it.
 
-## parT kind 10 is AE's own bounded slider (round 30)
+## parT kind 10 is AE's own bounded slider
 
 Across the pack, kind 10 rows are Exposure/Offset/Gamma (Adobe
 Exposure2), the six Reverb and three High-Low Pass rows (Adobe audio),
@@ -423,229 +424,3 @@ with tdum/tduM bounds in the file. Kind 10 joins Slider(1) /
 FixedSlider(2) / FloatSlider(9) as a bounded-slider kind
 (`PresetParamKind.BoundedSlider`); the value slot already renders it
 through the shared slider path.
-
-## The update check is one version file, the batch jobs are one page (round 31)
-
-**Check for Updates.** The About page's placeholder button goes live
-with the smallest possible scheme: the repository root carries a
-one-line `VERSION.txt`, GitHub serves its raw bytes for the default
-branch at a stable URL, and the app fetches exactly that one file
-(HttpWebRequest, TLS 1.2 pinned for Windows 7, 6 s timeout, no
-telemetry). The body must be strictly numeric-dotted ("1.0.31", an
-optional leading v tolerated) — a 404 page or captive-portal HTML
-disqualifies itself and surfaces as an error instead of parsing as a
-version. Comparison is numeric per part (Version.CompareTo), never a
-string compare, so 1.0.9 < 1.0.31. Bumping the version for a new round
-is a one-line edit of the same file, committed with the code it
-announces.
-
-**Batch.** One page, two jobs, one folder in:
-
-- *Inspect* mirrors the effect lister's deep read (PresetInspector
-  with the errors list) into one summary row per file: status, effect /
-  parameter / animated counts, size, first decode notes. A file whose
-  effects all fail to decode shows FAILED; a file that yields zero
-  effects or carries decode warnings shows WARN — round 30 proved both
-  states are legitimate file shapes, never reasons to abort the run.
-- *Convert* runs Pipeline.Convert per file: version patch to the
-  chosen target, optional removal of effects whose match name resolves
-  (system scan first, reference tables second — the same recognition
-  chain as the single-file page) as not-installed under the active
-  profile. Three explicit output modes: a "converted" subfolder inside
-  the source, a version suffix beside each original, or an in-place
-  overwrite that demands a Yes/No first. Derived outputs overwrite
-  their own previous result (re-runs stay idempotent); the one guarded
-  edge is a derived name colliding with the INPUT file, which falls
-  back to a numbered suffix instead of destroying the source.
-
-The folder walk is hand-rolled (per-directory try/catch) because
-.NET Framework's Directory.EnumerateFiles with AllDirectories throws
-mid-enumeration on the first locked subtree and loses every file after
-it. Per-file work runs on one worker thread with a cancellation token
-checked between files; UI rows marshal through the dispatcher; progress
-is a determinate 0..N fraction. The CSV report quotes every field
-(doubled quotes), UTF-8 with BOM so Excel reads it correctly.
-
-## Round 32 — the startup crash, the 0.1.0 release scheme, the nightly channel
-
-**The BAML parse-order crash.** WPF raises `ToggleButton.OnIsCheckedChanged`
-*inside* the BAML parse the moment the parser applies `IsChecked="True"` —
-before `InitializeComponent()` returns, and before any control declared
-further down the XAML exists. BatchPage's pre-checked "Include subfolders"
-checkbox fired its `Checked` handler mid-parse; the handler's guard checked
-`SourceCountText` (declared *before* the checkbox in the XAML, so non-null)
-and passed, and `UpdateCta` then dereferenced `RunBtn` (declared *after*,
-still null). NullReferenceException in `BatchPage.UpdateCta`, thrown from
-`BatchPage..ctor` inside `MainWindow..ctor` inside `App.OnStartup` — a
-deterministic crash on every machine, on every 1.0.31 start. The crash
-funnel did its job (readable problem report, full trace in
-%LOCALAPPDATA%\FFXCompatibilityTool\crash.log) — which is how the fix was
-located without a repro machine. The guard that cannot be defeated by
-declaration order is `FrameworkElement.IsInitialized`: false for the whole
-parse, true only after EndInit — by the time `InitializeComponent()`
-returns. All three parse-time-firing handlers in the app (BatchPage's
-ModeNav + SourceOption, SettingsPage's SubNav — `IsSelected="True"` on the
-first ListBoxItem raises SelectionChanged the same way) now guard on it,
-and the initial state each of them would compute is already applied
-without them (the constructor's `ApplyModeVisuals()` for BatchPage; the
-XAML's own static visibilities for SettingsPage), so behavior is exactly
-what it would have been without the crash. Audit of every other
-event-wired control: `IsChecked="True" Click="…"` (the Effect Lister's
-three segmented toggles) cannot fire during parse — Click is a
-user-gesture event, only Checked/Unchecked ride OnIsCheckedChanged; the
-remaining `{Binding …}` toggles are runtime bindings. That closes the
-class, not just the instance.
-
-**The version scheme.** The internal round counter (1.0.31) becomes the
-release scheme 0.1.0: the assembly `<Version>` and the About / crash
-report / session-log stamps all read AppInfo (one source), and VERSION.txt
-— the live update endpoint — moves to 0.1.0 in the same commit, so a fresh
-release install compares 0.1.0 vs 0.1.0 and reports up-to-date. The
-comparison is numeric per part (System.Version), so 0.1.9 < 0.1.10 when
-the first patch lands. The same-commit rule is non-negotiable here:
-VERSION.txt is served raw from the default branch the moment the commit
-lands, while installed builds only see it when the user checks.
-
-**The nightly channel.** A new workflow publishes the rolling test build
-the release is shipped through instead of hand-made portable zips: every
-push to main (i.e. every uploaded round), plus a 02:30 UTC daily schedule,
-plus manual dispatch. Same toolchain as the release workflow
-(windows-latest's 4.8 targeting pack, .NET 8 SDK driving). Tests run
-before packaging — a red test run stops the pipeline and the previous
-nightly stays published. The artifact is the Release output folder zipped
-whole (exe + dependency DLLs + data/plugin_table.json), named with the UTC
-date and the short commit SHA, kept 14 days. Publishing replaces one
-rolling pre-release tagged `nightly`: the previous release and tag are
-deleted, the tag is re-pointed at the commit that was just built and
-tested, and a new pre-release is created with the zip attached — tagged
-v* releases keep their separate "Latest" slot. A workflow-level
-concurrency group serializes runs so two pushes landing close together
-cannot race the release replacement.
-
-## Round 33 — the release-notes bot, and the Batch section dissolves into its users
-
-**The tag workflow's description bot.** The release workflow now writes
-the release description itself before publishing: it walks the commit
-subjects between the previous tag and the new one (full clone — a
-shallow checkout has nothing to read; the first tag ever reads the
-whole history, which is honest for a first release), splits the repo's
-multi-entry commit messages at their " and <type>(" joins so every
-change becomes its own bullet, and appends install steps (unzip
-anywhere, run the exe; .NET Framework 4.8 — preinstalled on Windows
-10/11, a one-time install on Windows 7 SP1), the SHA-256 of the
-attached zip, and the Check-for-Updates note. GitHub's generated notes
-(the compare link) ride on top of that body. A manual dispatch — no
-tag — skips both steps and just produces the artifact.
-
-**Batch dissolves.** The Batch section is gone from the nav; its two
-jobs return to where their results are actually used:
-
-- *Convert* accepts a whole folder ("Open folder…" beside the status
-  chip, folder drops, and a multi-select file dialog — one entry point
-  each for the queue). The queue card carries the three settings the
-  batch page had (include subfolders / remove effects missing from the
-  profile / the three output modes) and the CTA converts every .ffx in
-  one pass, streaming one console line per file and reusing the save
-  banner as a batch-completion handoff to the output folder. The
-  single-preset checklist flow is untouched — a single file behaves
-  exactly as before, and loading one file while a queue is showing
-  returns to the checklist.
-- *Effect Lister* takes the same folder inputs and turns them into a
-  queue: a combo in the header lists the folder's presets, picking one
-  deep-reads it with the exact single-preset anatomy, and the file chip
-  reads "3 / 27 — name.ffx". The batch-inspect table survives as the
-  "Folder report" flyout: every preset deep-read into one row (status,
-  effect/parameter/animated counts, size, decode notes), exportable as
-  the same quoted UTF-8-BOM CSV.
-
-The folder walk and the size formatter moved to one shared helper
-(FolderScan) so the two pages cannot drift; the per-directory
-try/catch stands (one locked subtree contributes nothing). Loading a
-new queue bumps a scan generation so an in-flight report can never mix
-the old folder's rows into the new one. Every new state-event handler
-guards on IsInitialized — the round-32 lesson is now house style: the
-queue's pre-checked subfolder box fires during the BAML parse, exactly
-like its BatchPage ancestor did.
-
-## Round 44 — the portable build becomes one single .exe
-
-The Release output folder used to be the exe, its dependency DLLs and a
-data\ folder with the two seed tables; the zip carried all of it. Two
-changes collapse that to one file:
-
-**The seed tables ride inside the assembly.** plugin_table.json and
-effect_names.json are now EmbeddedResources of FfxTool.Core.dll
-(LogicalName "FfxTool.Data.*"), and a small EmbeddedData helper decides
-where a table comes from: an explicit path always wins (the tests pass
-one to exercise the missing-file degrade), then the embedded resource,
-then the old data\ folder as a last-resort fallback for anything built
-without the resources. The lookups' degrade-to-empty contract is
-untouched — every failure still lands in TableLoadError/LoadError.
-
-**ILRepack folds the DLLs into the exe.** A Release-only MSBuild target
-in the GUI csproj runs ILRepack over every DLL in the output folder
-(FfxTool.Core plus the System.Text.Json chain) and writes the merged
-result back over FfxTool.Gui.exe, deleting the inputs: /allowDup
-tolerates the identical internal nullable-annotation attributes the
-netstandard2.0 packages each embed, /ndebug skips pdb merging, and the
-deps.json (a .NET Core mechanism .NET Framework never reads) is switched
-off so nothing else lands beside the exe. The icon, manifest and Win32
-resources come from the primary assembly and survive the merge; Debug
-builds stay unpacked for debugging. The workflow comment that said the
-Release build "already produces a runnable exe plus its dependency
-DLLs" is rewritten, and both the Release and Nightly pages now attach
-the bare FfxTool.Gui.exe beside the one-file zip (the release body
-gains its SHA-256).
-
-## Round 45 — the exe under its own name, no zip, and the maker on the label
-
-The single-exe pipeline from Round 44 survived real CI (the nightly
-release page is the proof), and three finishing touches came out of
-looking at that page:
-
-**The binary carries its product name.** The AssemblyName is now
-FFXCompatibilityTool — the app.manifest had declared the identity
-"FFXCompatibilityTool.app" all along, but the built file was still
-FfxTool.Gui.exe, and that is the name the release page was shipping.
-The CI locate/pack steps follow the new name, and the assets carry it
-with context: tagged releases attach FFXCompatibilityTool-<version>.exe,
-the nightly attaches FFXCompatibilityTool-nightly-<stamp>-<sha>.exe.
-
-**No zip beside it.** Round 44 kept the one-file zip around the exe for
-the SHA-256-verified download flow; the user prefers the exe alone, so
-both the Release and Nightly workflows dropped Compress-Archive entirely
-— the exe IS the artifact, the release attachment and the thing the
-notes hash. The notes' install steps say so explicitly.
-
-**The maker is on the label.** The GUI csproj now fills the Windows
-"Properties → Details" tab (file description, product name, company,
-authors, © 2026 marbou92, a one-line description — previously the
-Details tab showed a bare assembly name and nothing else), the About
-view says "Made by marbou92" under the version line, and the crash
-report's App line ends with "by marbou92" so filed issues carry it too.
-
-## Round 46 — a nightly says what it is
-
-The nightly built straight from main carried the csproj's numeric
-version (0.1.0), so in Windows' file properties and the About page it
-was indistinguishable from a real 0.1.0 release. A nightly now stamps
-an informational version: the latest real release followed by
-"-nightly", or a bare "nightly" when no release exists yet.
-
-**Where the stamp comes from.** The Nightly workflow asks the releases
-API for the newest entry that is not a draft, not a prerelease and not
-the rolling "nightly" itself, strips its leading v, appends -nightly
-and passes the result to the build as /p:InformationalVersion. That
-property is free-form — unlike the numeric AssemblyVersion and
-FileVersion, which keep the csproj's 0.1.0 (a Win32 "File version"
-field cannot hold text via assembly attributes; "Product version" is
-the free-form display field). Any API failure degrades to the bare
-"nightly" stamp, so the channel never blocks on the lookup.
-
-**Who reads it.** AppInfo.DisplayVersion switched from "v" + numeric
-version to the assembly's AssemblyInformationalVersionAttribute (with
-a numeric fallback), which is what the status bar and the crash
-reports already displayed; the About page and the session-log banner
-now read it too. UpdateChecker deliberately keeps comparing the
-numeric version, byte-for-byte unchanged — a nightly never nags about
-the release it is based on and still learns about newer ones.
