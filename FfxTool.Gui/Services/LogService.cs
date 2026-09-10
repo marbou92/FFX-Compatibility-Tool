@@ -66,6 +66,59 @@ namespace FfxTool.Gui
             catch { /* best-effort — logging must never break conversion */ }
         }
 
+        /// <summary>Extra per-step detail for bug reports — off until the
+        /// Storage settings turn it on. Persisted to logging.json in the
+        /// same profile folder (a hand-rolled one-key JSON: nothing else
+        /// in this service needs a serializer).</summary>
+        public static bool Verbose
+        {
+            get { return _verbose; }
+            set { _verbose = value; SaveVerbose(); }
+        }
+
+        private static bool _verbose;
+
+        /// <summary>Called once at startup (App.OnStartup), before any
+        /// verbose line could fire. A missing or unreadable file simply
+        /// means the off default.</summary>
+        public static void LoadSettings()
+        {
+            try
+            {
+                string path = VerboseSettingsPath();
+                if (!File.Exists(path)) return;
+                string json = File.ReadAllText(path);
+                _verbose = json != null && json.ToLowerInvariant().Contains("true");
+            }
+            catch { /* default off */ }
+        }
+
+        private static string VerboseSettingsPath()
+        {
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "FFXCompatibilityTool", "logging.json");
+        }
+
+        private static void SaveVerbose()
+        {
+            try
+            {
+                string path = VerboseSettingsPath();
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                File.WriteAllText(path, "{\"verbose\":" + (_verbose ? "true" : "false") + "}");
+            }
+            catch { /* best-effort — the toggle still works for this session */ }
+        }
+
+        /// <summary>A verbose-gated detail line: written to the session log
+        /// only while Verbose is on, always prefixed so support can tell
+        /// the extra lines apart at a glance.</summary>
+        public static void AppendVerbose(string line)
+        {
+            if (_verbose) Append("[debug] " + line);
+        }
+
         /// <summary>Show the latest log selected in Explorer; fall back to the folder itself.</summary>
         public static void RevealLatest()
         {

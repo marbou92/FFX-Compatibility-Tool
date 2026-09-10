@@ -87,7 +87,7 @@
                                 </StackPanel>
 
                                 <!-- dark mode row -->
-                                <Border Background="{DynamicResource B.SC}" CornerRadius="14" Padding="18,12" Margin="0,0,0,22">
+                                <Border Background="{DynamicResource B.SC}" CornerRadius="14" Padding="18,12" Margin="0,0,0,12">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -99,6 +99,25 @@
                                         </StackPanel>
                                         <ToggleButton x:Name="DarkSwitch" Grid.Column="1" Style="{StaticResource Md3Switch}"
                                                       VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- follow-the-system row: owns the mode while
+                                     checked, so the manual switch above is
+                                     disabled rather than fighting the OS -->
+                                <Border Background="{DynamicResource B.SC}" CornerRadius="14" Padding="18,12" Margin="0,0,0,22">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Follow the Windows theme" Style="{StaticResource Body}" FontWeight="Medium"/>
+                                            <TextBlock Text="Light and dark follow the system app setting and update live — the switch above is disabled while this is on"
+                                                       Style="{StaticResource Caption}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                        <CheckBox x:Name="FollowSystemCheck" Grid.Column="1" Style="{StaticResource Md3CheckBox}"
+                                                  VerticalAlignment="Center" Margin="12,0,0,0"/>
                                     </Grid>
                                 </Border>
 
@@ -150,6 +169,25 @@
                                                 Margin="12,0,0,0" VerticalAlignment="Center"
                                                 Click="ClearCache_Click"
                                                 ToolTip="Deletes plugin_catalog.txt — recognition falls back to the reference tables until the next scan"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- verbose logging row: the bug-report
+                                     helper — writes the per-file conversion
+                                     steps into the session log only while on -->
+                                <Border Background="{DynamicResource B.SC}" CornerRadius="14" Padding="18,12" Margin="0,0,0,12">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Verbose Logging" Style="{StaticResource Body}" FontWeight="Medium"/>
+                                            <TextBlock Text="Per-file conversion steps in the session log — turn on when reporting a bug, off again afterwards"
+                                                       Style="{StaticResource Caption}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                        <CheckBox x:Name="VerboseCheck" Grid.Column="1" Style="{StaticResource Md3CheckBox}"
+                                                  VerticalAlignment="Center"/>
                                     </Grid>
                                 </Border>
 
@@ -261,9 +299,9 @@
                                 <TextBlock x:Name="UpdateStatusText" Style="{StaticResource Caption}" Margin="0,12,0,0"
                                            Opacity="0.85" TextWrapping="Wrap"
                                            Text="Not checked yet — the check resolves the project's latest release on GitHub; nothing else leaves this machine."/>
-                                <TextBlock x:Name="UpdateLink" Text="Open the releases page" Style="{StaticResource M3Link}" Cursor="Hand"
+                                <TextBlock x:Name="UpdateLink" Text="Open the new version's release page" Style="{StaticResource M3Link}" Cursor="Hand"
                                            Visibility="Collapsed" Margin="0,8,0,0" MouseLeftButtonUp="UpdateLink_Click"
-                                           ToolTip="Opens the repository's releases page in your browser"/>
+                                           ToolTip="Opens the found version's release page in your browser"/>
                                 <TextBlock Text="Every conversion session is journaled to %APPDATA%\FFXCompatibilityTool\logs."
                                            Style="{StaticResource Caption}" Margin="0,12,0,0" Opacity="0.85"/>
                             </StackPanel>

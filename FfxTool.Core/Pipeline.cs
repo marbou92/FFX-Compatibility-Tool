@@ -6,8 +6,9 @@ using System.Text;
 namespace FfxTool.Core
 {
     /// <summary>
-    /// The CS5.5-downgrade conversion pipeline — a 1:1 port of
-    /// ffx_core/pipeline.py. Every step here was derived and verified
+    /// The preset-conversion pipeline — a 1:1 port of ffx_core/pipeline.py,
+    /// extended with a modern mode for AE versions after CS5.5. Every step
+    /// of the CS5.5 downgrade was derived and verified
     /// against real .ffx sample files in the Python version first; see
     /// RESEARCH_NOTES.md for the full derivation and the three mistakes
     /// made along the way. Do not "simplify" any of these steps without
@@ -32,6 +33,36 @@ namespace FfxTool.Core
         };
 
         public const int FnamFixedSize = 48; // CS5.5's fixed-width field size for `fnam` chunks
+
+        // AE versions newer than CS5.5 are served in the "modern" mode:
+        // effect removal and index renumbering run exactly as always, but
+        // the file's own era — its head chunk, Utf8-prefixed strings and
+        // variable-length fnam fields — is preserved byte-for-byte. Modern
+        // AE releases read the preset format their siblings write, so no
+        // version rewriting is needed (and none is possible without a
+        // natively-saved sample to confirm the head bytes against — CS5.5
+        // stays the only fully-verified native downgrade target). A quiet
+        // side benefit: long modern match names are never squeezed into
+        // CS5.5's fixed 48-byte fnam field, because no such field is
+        // written at all.
+        public static readonly string[] ModernTargets =
+        {
+            "cs6", "cc2013", "cc2014", "cc2015", "cc2015.3", "cc2017",
+            "cc2018", "cc2019", "2020", "2021", "2022", "2023", "2024", "2025"
+        };
+
+        /// <summary>Picks the conversion mode for a target id: true = the
+        /// verified CS5.5 native downgrade (plain strings, patched head),
+        /// false = modern native-format conversion. Throws for unknown ids
+        /// before any conversion work happens.</summary>
+        public static bool IsPlainStringTarget(string target)
+        {
+            if (KnownVersions.ContainsKey(target)) return true;
+            if (Array.IndexOf(ModernTargets, target) >= 0) return false;
+            throw new ArgumentException(
+                $"Unknown target '{target}'. Verified downgrade target: cs5.5. " +
+                $"Modern targets: {string.Join(", ", ModernTargets)}.");
+        }
 
         static readonly byte[] TDMN = RiffFile.Cid("tdmn");
         static readonly byte[] TDIX = RiffFile.Cid("tdix");
@@ -321,15 +352,31 @@ namespace FfxTool.Core
         /// The mandatory post-conversion safety pass. Returns a list of
         /// problems found (empty list = all checks passed). Never skip this.
         /// </summary>
-        public static List<string> Verify(byte[] originalData, byte[] convertedData)
+        public static List<string> Verify(byte[] originalData, byte[] convertedData,
+            bool plainStringTarget = true)
         {
             var problems = new List<string>();
             var newTree = RiffFile.ParseFile(convertedData);
+            var origTree = RiffFile.ParseFile(originalData);
 
-            // 1. No remaining Utf8-tagged chunks anywhere
-            int utf8Remaining = CountUtf8(newTree);
-            if (utf8Remaining > 0)
-                problems.Add($"{utf8Remaining} chunk(s) still carry the Utf8 prefix.");
+            // 1. Plain-string targets only: no remaining Utf8-tagged chunks
+            //    anywhere. Modern targets deliberately keep the source's own
+            //    Utf8 era, so the check does not apply there.
+            if (plainStringTarget)
+            {
+                int utf8Remaining = CountUtf8(newTree);
+                if (utf8Remaining > 0)
+                    problems.Add($"{utf8Remaining} chunk(s) still carry the Utf8 prefix.");
+            }
+            else
+            {
+                // modern mode's promise: AE's own era bytes survive untouched —
+                // the head chunk must be identical to the source's
+                var origHead = origTree.Children[0];
+                if (!SequenceEqual(origHead.Cid, HEAD) ||
+                    !SequenceEqual(origHead.Content, newTree.Children[0].Content))
+                    problems.Add("The head chunk changed — modern mode must preserve it byte-for-byte.");
+            }
 
             // 2. tdix values are contiguous starting at 0 — for WHOLE-EFFECT
             // presets, where tdix[1] indexes the sspc blocks. A property
@@ -357,7 +404,6 @@ namespace FfxTool.Core
             // 3. Keyframe data (lhd3/ldat) unchanged wherever it still
             // exists (removed effects legitimately remove their own
             // keyframes — we only check surviving chunks are untouched).
-            var origTree = RiffFile.ParseFile(originalData);
             var origLhd3 = new HashSet<string>(RiffFile.FindAll(origTree, LHD3).Select(c => System.Convert.ToBase64String(c.Content)));
             var newLhd3 = RiffFile.FindAll(newTree, LHD3).Select(c => System.Convert.ToBase64String(c.Content));
             if (newLhd3.Any(h => !origLhd3.Contains(h)))
@@ -388,11 +434,15 @@ namespace FfxTool.Core
 
         /// <summary>
         /// Run the full pipeline: optional effect removal, index
-        /// renumbering, string-format conversion, version patch,
-        /// re-serialize, verify.
+        /// renumbering, then — for the CS5.5 target only — the
+        /// string-format conversion and version patch; re-serialize,
+        /// verify. Modern targets skip the CS5.5-only surgery and keep
+        /// the source file's own era.
         /// </summary>
         public static ConversionResult Convert(byte[] data, string target = "cs5.5", HashSet<string> removeMatchNames = null)
         {
+            // picks the mode and rejects unknown ids before any work happens
+            bool plainStringTarget = IsPlainStringTarget(target);
             var tree = RiffFile.ParseFile(data);
             var result = new ConversionResult();
 
@@ -405,11 +455,17 @@ namespace FfxTool.Core
             }
 
             RenumberIndices(tree);
-            ConvertStringsToTargetFormat(tree);
-            PatchVersion(tree, target);
+
+            // CS5.5-family surgery only — modern targets keep the source
+            // file's strings, fnam layout and head chunk exactly as written
+            if (plainStringTarget)
+            {
+                ConvertStringsToTargetFormat(tree);
+                PatchVersion(tree, target);
+            }
 
             var outBytes = RiffFile.Serialize(tree);
-            var problems = Verify(data, outBytes);
+            var problems = Verify(data, outBytes, plainStringTarget);
             if (problems.Count > 0)
                 throw new InvalidOperationException(
                     "Conversion failed its verification pass:\n  - " + string.Join("\n  - ", problems));

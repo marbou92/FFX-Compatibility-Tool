@@ -41,6 +41,7 @@ namespace FfxTool.Gui
             try
             {
                 ThemeService.Load(); // must run before any window reads theme colors
+                LogService.LoadSettings(); // verbose preference — before anything can log verbosely
                 new MainWindow().Show();
             }
             catch (Exception startup)

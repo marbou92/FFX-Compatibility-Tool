@@ -126,18 +126,38 @@ namespace FfxTool.Gui
         private int _dragDepth;
 
         private static readonly Dictionary<string, string> DisplayNames =
-            new Dictionary<string, string> { { "cs5.5", "After Effects CS5.5" } };
+            new Dictionary<string, string>
+            {
+                { "cs5.5", "After Effects CS5.5" },
+                { "cs6", "After Effects CS6" },
+                { "cc2013", "After Effects CC 2013" },
+                { "cc2014", "After Effects CC 2014" },
+                { "cc2015", "After Effects CC 2015" },
+                { "cc2015.3", "After Effects CC 2015.3" },
+                { "cc2017", "After Effects CC 2017" },
+                { "cc2018", "After Effects CC 2018" },
+                { "cc2019", "After Effects CC 2019" },
+                { "2020", "After Effects 2020" },
+                { "2021", "After Effects 2021" },
+                { "2022", "After Effects 2022" },
+                { "2023", "After Effects 2023" },
+                { "2024", "After Effects 2024" },
+                { "2025", "After Effects 2025" },
+            };
 
         public ConvertPage(PluginProfile profile)
         {
             InitializeComponent();
             _profile = profile;
 
-            TargetCombo.ItemsSource = Pipeline.KnownVersions.Keys
-                .OrderBy(k => k)
+            // cs5.5 first — the verified downgrade and the default — then
+            // every AE release after it in chronological order
+            TargetCombo.ItemsSource = new[] { "cs5.5" }.Concat(Pipeline.ModernTargets)
                 .Select(DisplayNameFor)
                 .ToList();
             TargetCombo.SelectedIndex = 0;
+            TargetCombo.SelectionChanged += (s, e) => UpdateTargetNote();
+            UpdateTargetNote();
 
             EffectList.ItemsSource = _rows;
             // checkbox events bubble to the list — re-count and remember
@@ -154,6 +174,17 @@ namespace FfxTool.Gui
 
         private static string InternalKeyFor(string display) =>
             DisplayNames.FirstOrDefault(kv => kv.Value == display).Key ?? display;
+
+        /// <summary>One honest line under the picker: what the chosen
+        /// target actually does to the file, and why the result is safe
+        /// in that AE version.</summary>
+        private void UpdateTargetNote()
+        {
+            string key = InternalKeyFor(TargetCombo.SelectedItem as string ?? "After Effects CS5.5");
+            TargetNote.Text = key == "cs5.5"
+                ? "Full downgrade to CS5.5's native format — the only target verified against a real sample. The result opens in every AE from CS5.5 to the newest."
+                : "AE's own format, untouched — effects you don't own are removed and indexes repaired while the preset stays in the era the source wrote it. The safe choice for every AE after CS5.5.";
+        }
 
         public void OnShown() { }
 
@@ -527,6 +558,8 @@ namespace FfxTool.Gui
 
             string targetKey = InternalKeyFor(TargetCombo.SelectedItem as string ?? "After Effects CS5.5");
             Console.Log($"[SYSTEM] Converting to target '{targetKey}'…");
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            LogService.AppendVerbose($"single convert '{System.IO.Path.GetFileName(_inputPath)}' — {(_inputData?.Length ?? 0)} bytes → {targetKey}");
 
             Pipeline.ConversionResult result;
             try
@@ -581,6 +614,8 @@ namespace FfxTool.Gui
             SavedToText.Text = outPath;
             ShowBanner();
             Console.Log($"[SUCCESS] Saved: {outPath}");
+            sw.Stop();
+            LogService.AppendVerbose($"single convert done in {sw.ElapsedMilliseconds} ms — output {result.Data.Length} bytes, {result.RemovedEffects.Count} effect(s) removed → {outPath}");
             if (result.RemovedEffects.Count > 0)
                 Console.Log($"[INFO] Removed: {string.Join(", ", result.RemovedEffects)}");
             foreach (var w in result.Warnings) Console.Log($"[WARNING] {w}");
@@ -875,8 +910,10 @@ namespace FfxTool.Gui
             var res = new QueueResult { Ok = true, Note = "" };
             try
             {
+                var sw = System.Diagnostics.Stopwatch.StartNew();
                 byte[] data = File.ReadAllBytes(path);
                 var effects = Pipeline.ListEffects(data);
+                LogService.AppendVerbose($"queue: '{System.IO.Path.GetFileName(path)}' — {data.Length} bytes → {targetKey}");
 
                 HashSet<string> toRemove = null;
                 if (removeMissing)
@@ -910,6 +947,8 @@ namespace FfxTool.Gui
 
                 res.Removed = result.RemovedEffects != null ? result.RemovedEffects.Count : 0;
                 res.Kept = effects.Count(x => !x.IsSentinel) - res.Removed;
+                sw.Stop();
+                LogService.AppendVerbose($"queue: '{System.IO.Path.GetFileName(path)}' done in {sw.ElapsedMilliseconds} ms — {res.Removed} removed, {res.Kept} kept, output {result.Data.Length} bytes → {outPath}");
                 bool hasWarnings = result.Warnings != null && result.Warnings.Count > 0;
                 res.Warn = hasWarnings;
                 if (hasWarnings)

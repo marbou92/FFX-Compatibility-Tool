@@ -255,6 +255,9 @@
                         <StackPanel Grid.Column="0" Margin="0,0,28,0">
                             <TextBlock Text="Target version" Style="{StaticResource FieldLabel}"/>
                             <ComboBox x:Name="TargetCombo" Width="210" HorizontalAlignment="Left"/>
+                            <TextBlock x:Name="TargetNote" Style="{StaticResource Caption}" TextWrapping="Wrap"
+                                       MaxWidth="250" Margin="0,8,0,0" Opacity="0.85"
+                                       Text="Full downgrade to CS5.5's native format — the only target verified against a real sample; the result opens in every later AE too."/>
                         </StackPanel>
                         <StackPanel Grid.Column="1">
                             <TextBlock Text="Output" Style="{StaticResource FieldLabel}"/>

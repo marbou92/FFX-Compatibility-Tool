@@ -26,6 +26,7 @@ namespace FfxTool.Gui
         };
 
         private bool _syncing;
+        private string _latestReleaseTag;
 
         public SettingsPage(ProfilePage profilePage)
         {
@@ -36,6 +37,11 @@ namespace FfxTool.Gui
 
             DarkSwitch.Checked += (s, e) => ApplyMode(Md3Mode.Dark);
             DarkSwitch.Unchecked += (s, e) => ApplyMode(Md3Mode.Light);
+            FollowSystemCheck.Checked += (s, e) => ApplyFollow(true);
+            FollowSystemCheck.Unchecked += (s, e) => ApplyFollow(false);
+            VerboseCheck.Checked += (s, e) => LogService.Verbose = true;
+            VerboseCheck.Unchecked += (s, e) => LogService.Verbose = false;
+            VerboseCheck.IsChecked = LogService.Verbose;
 
             BuildPaletteSwatches();
             SyncFromTheme();
@@ -192,13 +198,20 @@ namespace FfxTool.Gui
                 CheckUpdatesButton.Content = "Check for Updates";
                 UpdateStatusText.Text = result.Message;
                 if (result.Status == UpdateCheckStatus.UpdateAvailable)
+                {
+                    _latestReleaseTag = result.LatestVersion;
                     UpdateLink.Visibility = Visibility.Visible;
+                }
                 LogService.Append("update check: " + result.Message);
             })));
         }
 
         private void UpdateLink_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) =>
-            OpenUrl(RepoUrl + "/releases");
+            // straight to the found version's page when a check produced one,
+            // the releases list as the ever-true fallback
+            OpenUrl(string.IsNullOrEmpty(_latestReleaseTag)
+                ? RepoUrl + "/releases"
+                : RepoUrl + "/releases/tag/v" + _latestReleaseTag);
 
         private static void OpenUrl(string url)
         {
@@ -216,8 +229,20 @@ namespace FfxTool.Gui
             try
             {
                 DarkSwitch.IsChecked = ThemeService.Mode == Md3Mode.Dark;
+                // following the system owns the mode — the manual switch
+                // steps aside instead of fighting the next system flip
+                DarkSwitch.IsEnabled = !ThemeService.FollowSystem;
+                FollowSystemCheck.IsChecked = ThemeService.FollowSystem;
                 RefreshSwatchSelection();
             }
+            finally { _syncing = false; }
+        }
+
+        private void ApplyFollow(bool follow)
+        {
+            if (_syncing) return;
+            _syncing = true;
+            try { ThemeService.ApplyWithSystem(follow, ThemeService.Mode, ThemeService.Palette); }
             finally { _syncing = false; }
         }
 
@@ -305,7 +330,7 @@ namespace FfxTool.Gui
 
         private void Restore_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            ThemeService.Apply(Md3Mode.Light, Md3Palette.Teal);
+            ThemeService.ApplyWithSystem(false, Md3Mode.Light, Md3Palette.Teal);
         }
     }
 }

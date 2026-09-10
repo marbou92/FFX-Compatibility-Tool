@@ -4,7 +4,9 @@
 [![Nightly](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/nightly.yml/badge.svg?label=Nightly)](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/nightly.yml)
 [![Release](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/build.yml/badge.svg?label=Release)](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/build.yml)
 
-Downgrades After Effects **.ffx** presets to older versions, strips effects
+Converts After Effects **.ffx** presets for cross-version compatibility —
+a verified full downgrade to CS5.5's native format, or native-format effect
+removal for every AE version after CS5.5 (CS6 through 2025) — strips effects
 whose plugins you don't own, and shows you exactly what is inside a preset —
 all offline, in one portable exe. Built for **.NET Framework 4.8 / WPF**: runs
 on Windows 7 SP1 through Windows 11, no installer, no runtime download on
@@ -19,6 +21,11 @@ Windows 10/11. Made by **marbou92**.
    DLL pile, no data folder.
 3. Windows 7 only: install the .NET 4.8 runtime once —
    [download](https://dotnet.microsoft.com/download/dotnet-framework/net48).
+
+Windows warns "publisher could not be verified" on first run — the app is
+unsigned open source, and Windows says that about every fresh download.
+Check the SHA-256 on the release page, click **Run**, and if the prompt
+gets old: right-click the exe → Properties → **Unblock**.
 
 Want new features early? The rolling
 [nightly](https://github.com/marbou92/FFX-Compatibility-Tool/releases/tag/nightly)
