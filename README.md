@@ -21,6 +21,10 @@ no installer, no runtime download on Windows 10/11.
 
 [Download](https://github.com/marbou92/FFX-Compatibility-Tool/releases/latest) · [Nightly](https://github.com/marbou92/FFX-Compatibility-Tool/releases/tag/nightly) · [Report an issue](https://github.com/marbou92/FFX-Compatibility-Tool/issues)
 
+<img src="docs/screenshots/lister-inspector.png" width="720" alt="Effect Lister with a preset open — installed and compatible effects listed on the left, the Exposure effect's animated value graph drawn on the right" />
+
+<sub>Effect Lister — every effect in a preset, checked against your plugins, keyframes and animated values included</sub>
+
 </div>
 
 ---
@@ -82,6 +86,19 @@ until that listing is live, the download above is the way to go.
   originals, overwrite, or one ZIP / one folder that mirrors the subfolders.
   Every run is a clean rebuild and writes a `conversion-report.csv`.
 
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/convert.png" width="400" alt="Convert page — drop zone, target version picker set to After Effects CS5.5 and the live console output on the right" /><br />
+      <sub>Drop a preset — the console narrates every step</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/convert-folder.png" width="400" alt="Handing a whole preset-pack folder from Windows Explorer over to Convert" /><br />
+      <sub>Hand over a whole folder — the subfolder layout comes with it</sub>
+    </td>
+  </tr>
+</table>
+
 ## 🔍 Effect Lister
 
 - Open a preset to read it the way AE's Effect Controls panel draws it:
@@ -92,6 +109,11 @@ until that listing is live, the download above is the way to go.
   that subfolder to Convert, or ctrl/shift-click presets and hand over a
   selection.
 - **Folder report** deep-reads every preset into one table, exportable as CSV.
+
+<p align="center">
+  <img src="docs/screenshots/lister-start.png" width="720" alt="Effect Lister workspace — open a single .ffx file or a whole folder, with recent files one click away" /><br />
+  <sub>Open one preset — or a whole folder of them — and browse the same tree</sub>
+</p>
 
 ## ⚙️ Settings
 
@@ -104,6 +126,11 @@ until that listing is live, the download above is the way to go.
 - **Storage cleanup** and **Check for Updates** — the only network call the
   app ever makes, and when it finds a new version the link opens straight
   to that release's page.
+
+<p align="center">
+  <img src="docs/screenshots/settings.png" width="720" alt="Settings page — dark mode switch and the four color palettes Teal, Blue, Purple and Orange" /><br />
+  <sub>Settings — four palettes in light and dark, plus follow-the-Windows-theme</sub>
+</p>
 
 ## 🆘 Problems?
 
