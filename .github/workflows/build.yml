@@ -11,8 +11,15 @@ name: Build & Release
 # v>.md (Changelog/Stablemd/0.3.0.md for tag v0.3.0), written for users,
 # not committers — becomes the body verbatim, the install steps and the
 # SHA-256 of the attached exe follow, the commit-derived list folds into
-# a <details> block, and a Support section closes the page. Without that
-# file the body falls back to the plain commit-derived changelog:
+# a <details> block, and a Support section closes the page. The same
+# curated file is parsed into a machine-readable changelog.json (the
+# second half of the vivi pattern) and attached to the release as a
+# second asset: installed builds download it from the permanent
+# releases/latest/download/changelog.json URL to show the what's-new
+# notes in the About page and the in-app updater, and to learn the new
+# exe's exact file name and SHA-256 so the updater can verify what it
+# downloaded. Without that file the body falls back to the plain
+# commit-derived changelog:
 # multi-entry commit messages are split so every change gets its own
 # bullet, identical repeated entries fold into their first appearance,
 # GitHub's "Add files via upload" commits collapse into a single line,
@@ -122,6 +129,90 @@ jobs:
           Copy-Item "${{ steps.locate.outputs.outdir }}\FFXCompatibilityTool.exe" -Destination $exeName
           echo "exename=$exeName" >> $env:GITHUB_OUTPUT
 
+      - name: Generate changelog.json (the in-app update feed)
+        if: steps.ver.outputs.tag != ''
+        shell: pwsh
+        env:
+          EXENAME: ${{ steps.pack.outputs.exename }}
+        run: |
+          # The vivi-music pattern, second half: the same curated
+          # Changelog/Stablemd/<version>.md that becomes the release body
+          # is parsed into a machine-readable changelog.json and attached
+          # to the release as an asset beside the exe. Installed builds
+          # fetch it from releases/latest/download/changelog.json (a plain
+          # file redirect — no API, no rate limit) for the what's-new
+          # notes, the exe file name and the SHA-256. Schema (a superset
+          # of vivi's; unknown keys are ignored by older builds):
+          #   version     "0.3.0"
+          #   description the brings-sentence (or a description:: line)
+          #   date        release day, yyyy-MM-dd
+          #   url         the release page
+          #   file        the exe asset's exact file name
+          #   sha256      the exe's hash
+          #   changelog   [{title, items[]}] — one per ## section
+          $ErrorActionPreference = "Stop"
+          $tag = "${{ steps.ver.outputs.tag }}"
+          $version = $tag.TrimStart("v")
+          $mdPath = "Changelog/Stablemd/$version.md"
+
+          $sections = New-Object System.Collections.Generic.List[object]
+          $descriptionOverride = $null
+          $descParts = New-Object System.Collections.Generic.List[string]
+          $titleSeen = $false
+          $curTitle = $null
+          $curItems = $null
+
+          function Flush-Section {
+            if ($script:curTitle -ne $null) {
+              $script:sections.Add([pscustomobject]@{ title = $script:curTitle; items = @($script:curItems.ToArray()) })
+              $script:curTitle = $null
+              $script:curItems = $null
+            }
+          }
+
+          if (Test-Path $mdPath) {
+            foreach ($raw in Get-Content -Path $mdPath -Encoding UTF8) {
+              $line = $raw.TrimEnd()
+              if ($line -match '^description::(.*)$') { $descriptionOverride = $Matches[1].Trim(); continue }
+              if ($line -match '^image::') { continue }
+              if ($line -match '^#\s') { continue }
+              if ($line -match '^##\s+(.+)$') {
+                if (-not $titleSeen) { $titleSeen = $true; continue }
+                Flush-Section
+                $curTitle = $Matches[1].Trim()
+                $curItems = New-Object System.Collections.Generic.List[string]
+                continue
+              }
+              if ($line -match '^[-*\u2022]+\s+(.+)$') {
+                if ($curItems -ne $null) { $curItems.Add($Matches[1].Trim()) }
+                continue
+              }
+              $t = $line.Trim()
+              if ($t -and $titleSeen -and ($curTitle -eq $null)) { $descParts.Add($t) }
+            }
+            Flush-Section
+          }
+
+          if ($sections.Count -eq 0) {
+            $sections.Add([pscustomobject]@{ title = "What's New"; items = @("Bug fixes and performance improvements.") })
+          }
+          if ($descriptionOverride) { $description = $descriptionOverride }
+          elseif ($descParts.Count -gt 0) { $description = $descParts[0] }
+          else { $description = "FFX Compatibility Tool $version brings new features, fixes and polish." }
+
+          $sha = (Get-FileHash -Algorithm SHA256 -Path $env:EXENAME).Hash.ToLowerInvariant()
+          $feed = [ordered]@{
+            version = $version
+            description = $description
+            date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd")
+            url = "https://github.com/$env:GITHUB_REPOSITORY/releases/tag/$tag"
+            file = $env:EXENAME
+            sha256 = $sha
+            changelog = @($sections)
+          }
+          ConvertTo-Json -InputObject $feed -Depth 6 | Set-Content -Path changelog.json -Encoding utf8
+          Write-Host "changelog.json written for $version ($($sections.Count) section(s))"
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
@@ -222,7 +313,7 @@ jobs:
               echo "</details>"
               echo ""
             fi
-            echo "The in-app **Check for Updates** (Settings → About) resolves this releases page — publishing a release is what announces the new version to installed builds."
+            echo "The in-app updater (Settings → About) announces this release to installed builds automatically — it downloads the exe, checks it against the SHA-256 above, and swaps it in place; publishing a release is the whole announcement."
             if [ -s "$CURATED" ]; then
               echo ""
               echo "## Support"
@@ -261,6 +352,10 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: FFX Compatibility Tool ${{ steps.ver.outputs.tag }}
           body_path: release_notes.md
-          files: ${{ steps.pack.outputs.exename }}
+          # the exe IS the download; changelog.json rides beside it as the
+          # in-app update feed (releases/latest/download/changelog.json)
+          files: |
+            ${{ steps.pack.outputs.exename }}
+            changelog.json
           fail_on_unmatched_files: true
           generate_release_notes: true
