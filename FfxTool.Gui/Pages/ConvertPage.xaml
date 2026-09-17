@@ -158,7 +158,7 @@
                                                    Margin="10,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                     </StackPanel>
                                     <TextBlock x:Name="QueueSub" Style="{StaticResource Caption}" Opacity="0.85" Margin="32,6,0,0"
-                                               Text="One conversion per preset — the settings here apply to every file. Double-click a preset to open its effects and toggle them."/>
+                                               Text="One conversion per preset and checked target — the settings here apply to every file. Double-click a preset to open its effects and toggle them."/>
                                 </StackPanel>
                                 <!-- bigger list (Convert only): the file manager
                                      takes the whole page — same card, same
@@ -177,13 +177,16 @@
                                       Style="{StaticResource FfxTree}" ItemContainerStyle="{StaticResource FfxTreeItem}"
                                       MouseDoubleClick="QueueTree_DoubleClick"
                                       ToolTip="Double-click a preset to open its effects — toggle the ones you don't want, then run the batch"/>
-                            <!-- Scan + Effects share the first row; Output
-                                 gets its own full-width row — the old 300px
-                                 combo sat in a horizontal strip that clipped
-                                 at the card's edge whenever the window was
-                                 narrower than the three columns summed -->
+                            <!-- Scan + Effects share the first row; Targets
+                                 (the multi-target batch picker) and Output
+                                 each get their own full-width row — the old
+                                 300px combo sat in a horizontal strip that
+                                 clipped at the card's edge whenever the
+                                 window was narrower than the three columns
+                                 summed -->
                             <Grid Grid.Row="2" Margin="32,14,0,0">
                                 <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
@@ -203,7 +206,56 @@
                                                   Content="Remove effects missing from my profile"/>
                                     </StackPanel>
                                 </Grid>
+                                <!-- multi-target batch (the 0.2.1 round): every
+                                     preset converts once per checked version;
+                                     nothing checked = the single Target version
+                                     picker below the file manager -->
                                 <StackPanel Grid.Row="1" Margin="0,12,0,0">
+                                    <TextBlock Text="Targets" Style="{StaticResource FieldLabel}"/>
+                                    <Grid>
+                                        <Button x:Name="QueueTargetsBtn" HorizontalAlignment="Stretch" MaxWidth="480"
+                                                HorizontalContentAlignment="Left" Click="QueueTargetsBtn_Click"
+                                                ToolTip="Pick the After Effects versions this batch converts to — every preset converts once per checked version">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <controls:IconGlyph IconName="FilterList" Width="16" Height="16"
+                                                                    VerticalAlignment="Center"/>
+                                                <TextBlock x:Name="QueueTargetsText" Grid.Column="1" Margin="9,0,8,0"
+                                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                           Text="Same as the Target version picker"/>
+                                                <controls:IconGlyph Grid.Column="2" IconName="ArrowDrop" Width="18" Height="18"
+                                                                    VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Button>
+                                        <Popup x:Name="QueueTargetsPopup" PlacementTarget="{Binding ElementName=QueueTargetsBtn}"
+                                               Placement="Bottom" VerticalOffset="4" MinWidth="340" MaxWidth="380"
+                                               AllowsTransparency="True" StaysOpen="False" PopupAnimation="Fade">
+                                            <Border CornerRadius="14" Background="{DynamicResource B.Surface}"
+                                                    BorderBrush="{DynamicResource B.OutlineVariant}" BorderThickness="1"
+                                                    Padding="6,8" Margin="8">
+                                                <Border.Effect>
+                                                    <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.28"/>
+                                                </Border.Effect>
+                                                <StackPanel>
+                                                    <TextBlock Text="Convert every preset to…" Style="{StaticResource FieldLabel}"
+                                                               Margin="12,2,12,6"/>
+                                                    <ScrollViewer MaxHeight="330" VerticalScrollBarVisibility="Auto"
+                                                                  HorizontalScrollBarVisibility="Disabled">
+                                                        <StackPanel x:Name="QueueTargetsList"/>
+                                                    </ScrollViewer>
+                                                    <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap"
+                                                               Margin="12,8,12,4" Opacity="0.85"
+                                                               Text="Every preset converts once per checked version. Nothing checked — the batch uses the single Target version below the file manager."/>
+                                                </StackPanel>
+                                            </Border>
+                                        </Popup>
+                                    </Grid>
+                                </StackPanel>
+                                <StackPanel Grid.Row="2" Margin="0,12,0,0">
                                     <TextBlock Text="Output" Style="{StaticResource FieldLabel}"/>
                                     <ComboBox x:Name="QueueOutput" HorizontalAlignment="Stretch" MaxWidth="480"
                                               SelectionChanged="QueueOutput_Changed">

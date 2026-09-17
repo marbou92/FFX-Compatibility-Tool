@@ -122,6 +122,19 @@ namespace FfxTool.Gui
             MaxBtn.Click += (s, e) => ToggleMaximize();
             CloseBtn.Click += (s, e) => Close();
             StateChanged += (s, e) => ApplyChromeState();
+
+            // ---- the auto-update feed ----
+            // UpdateService fires on worker threads; every handler lands on
+            // the dispatcher. Found → rail badge on Settings + the toast
+            // pill; seen → both stand down.
+            UpdateService.UpdateFound += entry => Dispatcher.BeginInvoke(new Action(() =>
+                ShowUpdateToast(entry)));
+            UpdateService.UpdateSeen += () => Dispatcher.BeginInvoke(new Action(() =>
+            {
+                HideUpdateToast();
+                Rail.SetItemBadge(2, false);
+            }));
+
             // cache the HWND for the message hook as soon as it exists
             SourceInitialized += (s, e) =>
             {
@@ -136,6 +149,56 @@ namespace FfxTool.Gui
 
             ShowSection(0);
             ApplyChromeState(); // first paint: rim + maximize paddings
+        }
+
+        // ---------- update toast ----------
+
+        /// <summary>Settles the update pill into the bottom-right corner —
+        /// a quiet fade + rise, the same material feel as section switches.
+        /// Re-finding an update just refreshes the text and re-plays.</summary>
+        private void ShowUpdateToast(ChangelogEntry entry)
+        {
+            if (entry == null) return;
+            ToastSub.Text = "v" + entry.Version + " is available — see what's new";
+            Rail.SetItemBadge(2, true);
+            UpdateToast.Visibility = Visibility.Visible;
+            UpdateToast.Opacity = 0;
+            ToastMove.Y = 14;
+            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+            var dur = TimeSpan.FromMilliseconds(260);
+            UpdateToast.BeginAnimation(UIElement.OpacityProperty,
+                new DoubleAnimation(0, 1, dur) { EasingFunction = ease });
+            ToastMove.BeginAnimation(TranslateTransform.YProperty,
+                new DoubleAnimation(14, 0, dur) { EasingFunction = ease });
+        }
+
+        private void HideUpdateToast()
+        {
+            UpdateToast.BeginAnimation(UIElement.OpacityProperty, null);
+            ToastMove.BeginAnimation(TranslateTransform.YProperty, null);
+            UpdateToast.Opacity = 1;
+            ToastMove.Y = 0;
+            UpdateToast.Visibility = Visibility.Collapsed;
+        }
+
+        private void UpdateToast_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            HideUpdateToast();
+            OpenUpdateWindow(UpdateService.PendingUpdate);
+        }
+
+        private void ToastClose_Click(object sender, RoutedEventArgs e)
+        {
+            HideUpdateToast(); // badge stays until the update UI is seen
+        }
+
+        /// <summary>The one updater-window entry point — owned, modal,
+        /// prefetched entry when the auto-check already knows the answer.</summary>
+        private void OpenUpdateWindow(ChangelogEntry known)
+        {
+            var win = known != null ? new UpdateWindow(known) : new UpdateWindow();
+            win.Owner = this;
+            win.ShowDialog();
         }
 
         private ISection ActiveSection()

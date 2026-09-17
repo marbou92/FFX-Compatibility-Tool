@@ -33,6 +33,7 @@ namespace FfxTool.Gui
         private const int ContentHeight = IconWrap + LabelGap + LabelHeight; // 70
         private const int PillSize = 50;
         private readonly System.Collections.Generic.List<Button> _buttons = new System.Collections.Generic.List<Button>();
+        private readonly System.Collections.Generic.List<Grid> _iconWraps = new System.Collections.Generic.List<Grid>();
         private int _selectedIndex;
 
         public int SelectedIndex => _selectedIndex;
@@ -57,6 +58,7 @@ namespace FfxTool.Gui
                 Height = IconWrap,
                 HorizontalAlignment = HorizontalAlignment.Center
             };
+            _iconWraps.Add(iconWrap);
             var iconEl = new IconGlyph
             {
                 IconName = icon,
@@ -107,6 +109,54 @@ namespace FfxTool.Gui
             {
                 _selectedIndex = 0;
                 ApplySelectionVisuals(0, animate: false);
+            }
+        }
+
+        /// <summary>
+        /// A small notification dot pinned to an item's icon corner — the
+        /// update-available signal on the Settings item. The dot wears a
+        /// 2px rail-colored halo so it reads as a badge instead of a stray
+        /// pixel, and springs in with the rail's own back-eased feel.
+        /// </summary>
+        public void SetItemBadge(int index, bool visible)
+        {
+            if (index < 0 || index >= _iconWraps.Count) return;
+            var wrap = _iconWraps[index];
+
+            Border existing = null;
+            foreach (var child in wrap.Children)
+                if (child is Border b && (string)b.Tag == "badge") { existing = b; break; }
+
+            if (visible && existing == null)
+            {
+                var dot = new Border
+                {
+                    Width = 10,
+                    Height = 10,
+                    CornerRadius = new CornerRadius(5),
+                    BorderThickness = new Thickness(2),
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Margin = new Thickness(0, 1, 1, 0),
+                    Tag = "badge",
+                    RenderTransformOrigin = new Point(0.5, 0.5),
+                    RenderTransform = new ScaleTransform(0, 0)
+                };
+                dot.SetResourceReference(Border.BackgroundProperty, "B.Error");
+                dot.SetResourceReference(Border.BorderBrushProperty, "B.SCLow");
+                wrap.Children.Add(dot);
+
+                var spring = new DoubleAnimation(1, TimeSpan.FromMilliseconds(240))
+                {
+                    EasingFunction = new BackEase { Amplitude = 0.6, EasingMode = EasingMode.EaseOut }
+                };
+                var scale = (ScaleTransform)dot.RenderTransform;
+                scale.BeginAnimation(ScaleTransform.ScaleXProperty, spring);
+                scale.BeginAnimation(ScaleTransform.ScaleYProperty, spring);
+            }
+            else if (!visible && existing != null)
+            {
+                wrap.Children.Remove(existing);
             }
         }
 

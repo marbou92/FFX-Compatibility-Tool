@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Threading;
 
@@ -42,7 +43,18 @@ namespace FfxTool.Gui
             {
                 ThemeService.Load(); // must run before any window reads theme colors
                 LogService.LoadSettings(); // verbose preference — before anything can log verbosely
+                UpdateService.LoadSettings(); // auto-check preference + last-check stamp
                 new MainWindow().Show();
+
+                // a self-update leaves the previous exe as <exe>.old beside
+                // the fresh one — the running (new) build deletes it now that
+                // the old image is no longer in use; a locked retry just
+                // waits for the next start. Then the silent update check —
+                // throttled to one lookup per 6 h, skipped for nightlies and
+                // when turned off in Settings; its only visible output is
+                // the Settings rail badge + the toast pill.
+                CleanupLeftoverOldExe();
+                UpdateService.BeginAutoCheck();
             }
             catch (Exception startup)
             {
@@ -51,6 +63,22 @@ namespace FfxTool.Gui
                 Report("the app failed to start", startup);
                 Shutdown(1);
             }
+        }
+
+        /// <summary>Deletes the &lt;exe&gt;.old left beside this build by the
+        /// previous one's self-update swap. Best-effort: the file could
+        /// still be locked (this instance started before the updater's
+        /// process exited) — the next start finishes the job.</summary>
+        private static void CleanupLeftoverOldExe()
+        {
+            try
+            {
+                string exe = Assembly.GetExecutingAssembly().Location;
+                if (string.IsNullOrEmpty(exe)) return;
+                string old = exe + ".old";
+                if (System.IO.File.Exists(old)) System.IO.File.Delete(old);
+            }
+            catch { /* a still-locked .old waits for the next start */ }
         }
 
         /// <summary>

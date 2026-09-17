@@ -103,6 +103,40 @@
                 <ContentControl x:Name="PageHost" Grid.Column="1"/>
             </Grid>
 
+            <!-- ============ update toast ============
+                 The auto-check's only loud output: a small pill that
+                 settles into the bottom-right corner when a newer release
+                 exists. Clicking it opens the updater; the X stands it
+                 down (the Settings rail badge stays until the update UI is
+                 actually seen). Starts collapsed — it exists purely for
+                 UpdateService.UpdateFound. -->
+            <Border x:Name="UpdateToast" Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                    Margin="0,0,20,20" Background="{DynamicResource B.SCHighest}" CornerRadius="14"
+                    BorderBrush="{DynamicResource B.OutlineVariant}" BorderThickness="1"
+                    Padding="16,10,10,10" Visibility="Collapsed" Panel.ZIndex="14"
+                    Cursor="Hand" MouseLeftButtonUp="UpdateToast_Click">
+                <Border.Effect>
+                    <DropShadowEffect ShadowDepth="4" BlurRadius="18" Direction="270" Opacity="0.35"/>
+                </Border.Effect>
+                <Border.RenderTransform>
+                    <TranslateTransform x:Name="ToastMove" Y="0"/>
+                </Border.RenderTransform>
+                <StackPanel Orientation="Horizontal">
+                    <controls:IconGlyph IconName="AutoAwesome" Width="17" Height="17"
+                                        Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
+                    <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="ToastTitle" Text="A new version is out" FontSize="12.5"
+                                   FontWeight="SemiBold" Foreground="{DynamicResource B.OnSurface}"/>
+                        <TextBlock x:Name="ToastSub" Text="" FontSize="11.5"
+                                   Foreground="{DynamicResource B.OnSurfaceVariant}" Margin="0,1,0,0"/>
+                    </StackPanel>
+                    <Button x:Name="ToastClose" Style="{StaticResource ChromeButton}" Width="28" Height="28"
+                            Margin="12,0,0,0" Click="ToastClose_Click" ToolTip="Dismiss">
+                        <controls:IconGlyph IconName="Close" Width="12" Height="12"/>
+                    </Button>
+                </StackPanel>
+            </Border>
+
             <!-- the entire window edge: one crisp 1px line just inside the
                  client rect. No corner radius, no region, no layered curves -
                  the silhouette and this line are the same rectangle, so the

@@ -1,0 +1,19 @@
+{
+  "version": "0.2.1",
+  "description": "FFX Compatibility Tool 0.2.1 lets one batch convert every preset to several After Effects versions at once, remembers your last-used conversion settings, and turns the app self-updating — a quiet update check, a live what's-new panel, and an in-place updater that verifies what it downloads.",
+  "date": "2026-09-17",
+  "url": "https://github.com/marbou92/FFX-Compatibility-Tool/releases/tag/v0.2.1",
+  "file": "FFXCompatibilityTool-0.2.1.exe",
+  "sha256": "",
+  "changelog": [
+    {
+      "title": "✨ What's New",
+      "items": [
+        "Multi-target batches — the file manager's new Targets field picks several AE versions, and every preset converts once per checked one: 30 presets × 2 versions = 60 outputs in a single pass, each named with its version suffix. In-place overwrite stays a single-target job; with several versions picked the app asks for another output mode instead of letting one version erase the others.",
+        "Your last-used conversion settings are remembered — target version, batch targets, output mode, the include-subfolders and remove-missing-effects checkboxes, and the folders you last opened, browsed and saved to. Open the app and everything is where you left it.",
+        "The app updates itself — a silent, throttled check (on by default, off in Settings → About) notices a new release and raises a small toast plus a Settings badge, never a popup. The updater window then shows the release's what's-new notes, downloads the new exe, verifies it against the release's SHA-256 and swaps it in place — nothing is installed, and a failed swap puts the old build back.",
+        "A live what's-new panel in Settings → About — every release now ships a machine-readable changelog.json beside the exe, so the About page reads the newest version's notes right inside the app, offline from the embedded copy, fresh from the release when online."
+      ]
+    }
+  ]
+}

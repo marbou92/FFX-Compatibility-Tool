@@ -104,6 +104,14 @@ namespace FfxTool.Gui
             new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
         // the queued preset currently open for editing (null = file manager)
         private string _queueEditPath;
+        // the batch's multi-target set (the 0.2.1 round): internal target
+        // keys in chronological order; empty = the batch converts to the
+        // single Target version picked below the file manager
+        private readonly List<string> _queueTargets = new List<string>();
+        // when the Targets dropdown last closed by itself — clicking the
+        // button that owns an open popup closes it first (StaysOpen=False),
+        // and re-opening on that same click would make the button feel broken
+        private DateTime _targetsPopupClosedAt = DateTime.MinValue;
         // file rows in _queue order — the worker indexes these; the display
         // collection interleaves the subfolder group headers
         private readonly List<QueueFileVm> _queueRowFiles = new List<QueueFileVm>();
@@ -156,7 +164,12 @@ namespace FfxTool.Gui
                 .Select(DisplayNameFor)
                 .ToList();
             TargetCombo.SelectedIndex = 0;
-            TargetCombo.SelectionChanged += (s, e) => UpdateTargetNote();
+            TargetCombo.SelectionChanged += (s, e) =>
+            {
+                UpdateTargetNote();
+                ConvertSettings.SetTarget(InternalKeyFor(
+                    TargetCombo.SelectedItem as string ?? "After Effects CS5.5"));
+            };
             UpdateTargetNote();
 
             EffectList.ItemsSource = _rows;
@@ -164,6 +177,17 @@ namespace FfxTool.Gui
             // the edits whenever a row toggles
             EffectList.AddHandler(CheckBox.CheckedEvent, new RoutedEventHandler((s, e) => QueueEditToggled()));
             EffectList.AddHandler(CheckBox.UncheckedEvent, new RoutedEventHandler((s, e) => QueueEditToggled()));
+
+            // remembered-settings writes (convert.json): every picker and
+            // checkbox below reports its change the moment it happens
+            RemoveMissingCheck.Checked += (s, e) => ConvertSettings.SetQueueRemoveMissing(true);
+            RemoveMissingCheck.Unchecked += (s, e) => ConvertSettings.SetQueueRemoveMissing(false);
+            OverwriteCheck.Checked += (s, e) => ConvertSettings.SetOverwriteOriginal(true);
+            OverwriteCheck.Unchecked += (s, e) => ConvertSettings.SetOverwriteOriginal(false);
+            QueueTargetsPopup.Closed += (s, e) => _targetsPopupClosedAt = DateTime.UtcNow;
+
+            // ---- last-used settings (the 0.2.1 round): restore before first use ----
+            LoadRememberedSettings();
 
             Console.Log("[SYSTEM] Engine initialized.");
             Console.Log("[INFO] Waiting for file input…");
@@ -186,6 +210,102 @@ namespace FfxTool.Gui
                 : "AE's own format, untouched — effects you don't own are removed and indexes repaired while the preset stays in the era the source wrote it. The safe choice for every AE after CS5.5.";
         }
 
+        // ---------- remembered settings (the "last-used" half of the 0.2.1 round) ----------
+
+        /// <summary>The batch target candidates in run order — CS5.5 first,
+        /// then every modern release chronologically.</summary>
+        private static IEnumerable<string> AllTargetKeys() =>
+            new[] { "cs5.5" }.Concat(Pipeline.ModernTargets);
+
+        /// <summary>Restores everything convert.json remembers: the pickers,
+        /// the checkboxes and the batch's target set, once per process right
+        /// after the controls exist. The remembered batch set is filtered to
+        /// versions this build actually knows and re-ordered chronologically.</summary>
+        private void LoadRememberedSettings()
+        {
+            ConvertSettings.Load();
+
+            string target = ConvertSettings.Target;
+            if (!string.IsNullOrEmpty(target))
+            {
+                int idx = TargetCombo.Items.IndexOf(DisplayNameFor(target));
+                if (idx >= 0) TargetCombo.SelectedIndex = idx;
+            }
+
+            QueueRecursive.IsChecked = ConvertSettings.QueueRecursive;
+            RemoveMissingCheck.IsChecked = ConvertSettings.QueueRemoveMissing;
+            OverwriteCheck.IsChecked = ConvertSettings.OverwriteOriginal;
+            if (ConvertSettings.QueueOutputIndex >= 0 &&
+                ConvertSettings.QueueOutputIndex < QueueOutput.Items.Count)
+                QueueOutput.SelectedIndex = ConvertSettings.QueueOutputIndex;
+
+            _queueTargets.Clear();
+            foreach (string key in AllTargetKeys())
+                if (ConvertSettings.QueueTargets.Contains(key)) _queueTargets.Add(key);
+            BuildQueueTargetsList();
+            UpdateQueueTargetsUi();
+        }
+
+        /// <summary>The Targets dropdown's fifteen rows — one checkbox per
+        /// AE version, checked state from the batch's current set. IsChecked
+        /// is assigned in the initializer BEFORE the handlers are attached,
+        /// so restoring state can never fire a save.</summary>
+        private void BuildQueueTargetsList()
+        {
+            QueueTargetsList.Children.Clear();
+            foreach (string key in AllTargetKeys())
+            {
+                var check = new CheckBox
+                {
+                    Content = DisplayNameFor(key),
+                    Style = (Style)FindResource("Md3CheckBox"),
+                    Margin = new Thickness(10, 3, 10, 3),
+                    Tag = key,
+                    IsChecked = _queueTargets.Contains(key)
+                };
+                check.Checked += QueueTargetCheck_Changed;
+                check.Unchecked += QueueTargetCheck_Changed;
+                QueueTargetsList.Children.Add(check);
+            }
+        }
+
+        private void QueueTargetsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if ((DateTime.UtcNow - _targetsPopupClosedAt).TotalMilliseconds < 250) return;
+            QueueTargetsPopup.IsOpen = true;
+        }
+
+        /// <summary>A checkbox flipped in the Targets dropdown: rebuild the
+        /// set in chronological order (stable run order, stable summary),
+        /// refresh the button and the CTA, remember it.</summary>
+        private void QueueTargetCheck_Changed(object sender, RoutedEventArgs e)
+        {
+            _queueTargets.Clear();
+            foreach (CheckBox c in QueueTargetsList.Children)
+                if (c.IsChecked == true) _queueTargets.Add((string)c.Tag);
+            UpdateQueueTargetsUi();
+            ConvertSettings.SetQueueTargets(_queueTargets);
+        }
+
+        /// <summary>The dropdown button's one-line summary of the batch's
+        /// target set; the CTA follows it because the conversion count
+        /// changes with it.</summary>
+        private void UpdateQueueTargetsUi()
+        {
+            if (_queueTargets.Count == 0)
+                QueueTargetsText.Text = "Same as the Target version picker";
+            else if (_queueTargets.Count == 1)
+                QueueTargetsText.Text = DisplayNameFor(_queueTargets[0]);
+            else
+            {
+                string names = string.Join(", ", _queueTargets.Take(2).Select(DisplayNameFor));
+                int more = _queueTargets.Count - 2;
+                QueueTargetsText.Text = _queueTargets.Count + " targets — " + names +
+                                        (more > 0 ? " +" + more + " more" : "");
+            }
+            UpdateCta();
+        }
+
         public void OnShown() { }
 
         public void OnProfileChanged()
@@ -198,7 +318,10 @@ namespace FfxTool.Gui
         public void OpenFile()
         {
             var dlg = new OpenFileDialog { Filter = "After Effects Presets (*.ffx)|*.ffx", Multiselect = true };
+            if (Directory.Exists(ConvertSettings.LastOpenDir))
+                dlg.InitialDirectory = ConvertSettings.LastOpenDir;
             if (dlg.ShowDialog() != true) return;
+            ConvertSettings.RememberOpenDir(Path.GetDirectoryName(dlg.FileNames[0]));
             if (dlg.FileNames.Length == 1) { LoadFile(dlg.FileNames[0]); return; }
             LoadQueue(dlg.FileNames.Where(File.Exists).ToList(), null);
         }
@@ -224,7 +347,10 @@ namespace FfxTool.Gui
                 Description = "Pick the folder that holds the .ffx presets.",
                 ShowNewFolderButton = false
             };
+            if (Directory.Exists(ConvertSettings.LastFolderDir))
+                dlg.SelectedPath = ConvertSettings.LastFolderDir;
             if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+            ConvertSettings.RememberFolderDir(dlg.SelectedPath);
             LoadQueue(FolderScan.Collect(dlg.SelectedPath, QueueRecursive.IsChecked == true), dlg.SelectedPath);
         }
 
@@ -234,6 +360,7 @@ namespace FfxTool.Gui
         private void QueueOption_Changed(object sender, RoutedEventArgs e)
         {
             if (!IsInitialized) return;
+            ConvertSettings.SetQueueRecursive(QueueRecursive.IsChecked == true);
             // only a folder source has a walk to redo; a dropped file list is fixed
             if (_queue != null && !string.IsNullOrEmpty(_queueRoot))
                 LoadQueue(FolderScan.Collect(_queueRoot, QueueRecursive.IsChecked == true), _queueRoot);
@@ -403,6 +530,19 @@ namespace FfxTool.Gui
             QueueTree.ItemsSource = FolderScan.BuildTree(files, root, f => byPath[f]);
             QueuePanel.Visibility = Visibility.Visible;
 
+            // the batch's Targets follow the remembered set; on the very
+            // first folder load (nothing remembered, nothing checked) they
+            // are seeded from the single Target version picker so the two
+            // never disagree — and the seed is remembered like any setting
+            if (_queueTargets.Count == 0)
+            {
+                _queueTargets.Add(InternalKeyFor(
+                    TargetCombo.SelectedItem as string ?? "After Effects CS5.5"));
+                BuildQueueTargetsList();
+                UpdateQueueTargetsUi();
+                ConvertSettings.SetQueueTargets(_queueTargets);
+            }
+
             StatusText.Text = files.Count + " preset" + (files.Count == 1 ? "" : "s") + " queued";
             Console.Log($"[INFO] Queue loaded: {files.Count} preset(s)" +
                         (root != null ? " from " + root : "") + ".");
@@ -528,8 +668,12 @@ namespace FfxTool.Gui
             if (_queue != null && _queueEditPath == null)
             {
                 ConvertBtn.IsEnabled = true;
-                ConvertBtn.Content = "Convert · " + _queue.Count +
-                                     " preset" + (_queue.Count == 1 ? "" : "s");
+                int nTargets = _queueTargets.Count;
+                string presets = _queue.Count + " preset" + (_queue.Count == 1 ? "" : "s");
+                ConvertBtn.Content = nTargets <= 1
+                    ? "Convert · " + presets
+                    : "Convert · " + presets + " × " + nTargets + " targets — " +
+                      (_queue.Count * nTargets) + " conversions";
                 return;
             }
             if (_inputData == null)
@@ -596,9 +740,12 @@ namespace FfxTool.Gui
                     FileName = SuggestedFileName(targetKey)
                 };
                 var dir = string.IsNullOrEmpty(_inputPath) ? null : Path.GetDirectoryName(_inputPath);
+                if (!Directory.Exists(dir) && Directory.Exists(ConvertSettings.LastSaveDir))
+                    dir = ConvertSettings.LastSaveDir; // the input's own folder first, the last save second
                 if (Directory.Exists(dir)) dlg.InitialDirectory = dir;
                 if (dlg.ShowDialog() != true) { Console.Log("[INFO] Save cancelled."); return; }
                 outPath = dlg.FileName;
+                ConvertSettings.RememberSaveDir(Path.GetDirectoryName(outPath));
                 try { File.WriteAllBytes(outPath, result.Data); }
                 catch (Exception ex)
                 {
@@ -633,6 +780,20 @@ namespace FfxTool.Gui
         {
             var files = new List<string>(_queue);
             var output = (QueueOutputMode)Math.Max(0, QueueOutput.SelectedIndex);
+            // the batch's target set: the checked Targets, or the single
+            // Target version picker when nothing is checked
+            string comboKey = InternalKeyFor(TargetCombo.SelectedItem as string ?? "After Effects CS5.5");
+            List<string> targets = _queueTargets.Count > 0
+                ? new List<string>(_queueTargets)
+                : new List<string> { comboKey };
+            if (output == QueueOutputMode.Overwrite && targets.Count > 1)
+            {
+                MessageBox.Show(this.FindWindow(),
+                    "Overwrite works with a single target — with several versions selected, the last conversion written would erase every other one.\n\n" +
+                    "Pick one target, or choose another output mode.",
+                    "Too many targets for overwrite", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             if (output == QueueOutputMode.Overwrite)
             {
                 var choice = MessageBox.Show(this.FindWindow(),
@@ -641,7 +802,6 @@ namespace FfxTool.Gui
                     "Overwrite originals", MessageBoxButton.YesNo, MessageBoxImage.Warning);
                 if (choice != MessageBoxResult.Yes) return;
             }
-            string targetKey = InternalKeyFor(TargetCombo.SelectedItem as string ?? "After Effects CS5.5");
             bool removeMissing = RemoveMissingCheck.IsChecked == true;
 
             // output root for the subfolder mode: the source folder, or the
@@ -725,7 +885,12 @@ namespace FfxTool.Gui
             SaveBanner.Visibility = Visibility.Collapsed;
             SaveBannerTitle.Text = "Batch finished";
             int total = files.Count;
-            Console.Log($"[SYSTEM] Batch conversion started — {total} preset(s) → {targetKey}.");
+            int conversions = total * targets.Count;
+            Console.Log("[SYSTEM] Batch conversion started — " + total + " preset" +
+                        (total == 1 ? "" : "s") + " × " + targets.Count + " target" +
+                        (targets.Count == 1 ? "" : "s") + " = " + conversions +
+                        " conversion" + (conversions == 1 ? "" : "s") +
+                        (targets.Count == 1 ? " (" + targets[0] + ")" : "") + ".");
             var reporter = new Progress<(int done, string text)>(v =>
                 ConvertBtn.Content = v.text);
 
@@ -733,11 +898,11 @@ namespace FfxTool.Gui
             bool cancelled = false;
             string fatal = null;
             // conversion-report.csv rows: header first, one row per
-            // preset in queue order (which is folder-grouped), written
-            // into the derived outputs after the run
+            // conversion (preset × target) in run order, written into
+            // the derived outputs after the run
             var report = new List<string[]>
             {
-                new[] { "File", "Folder", "Status", "Kept", "Removed", "Note" }
+                new[] { "File", "Folder", "Target", "Status", "Kept", "Removed", "Note" }
             };
             try
             {
@@ -750,8 +915,6 @@ namespace FfxTool.Gui
                         string name = Path.GetFileName(path);
                         var row = _queueRowFiles[i];
                         Dispatcher.BeginInvoke(new Action(() => row.Status = "Converting…"));
-                        ((IProgress<(int, string)>)reporter).Report((done,
-                            "Converting… " + (done + 1) + "/" + total + " — " + name));
                         _queueRemovals.TryGetValue(path, out var userRemove);
                         // relFolder: the REAL subfolders between the source
                         // root and the preset — the only thing the mirror
@@ -762,30 +925,75 @@ namespace FfxTool.Gui
                         string relFull = FolderScan.RelUnder(_queueRoot, path);
                         int relSlash = relFull.LastIndexOf('\\');
                         string relFolder = relSlash >= 0 ? relFull.Substring(0, relSlash) : "";
-                        string forcedOut = null;
-                        if (output == QueueOutputMode.ZipTree || output == QueueOutputMode.FolderTree)
+                        // per-file aggregate across the file's targets: the
+                        // file manager carries one row per PRESET, so a
+                        // 2-of-3-target file reads WARN with the shortfall
+                        // spelled out in the note
+                        int fileOk = 0, fileWarn = 0, fileFailed = 0;
+                        string firstError = null, warnNote = null;
+                        for (int t = 0; t < targets.Count; t++)
                         {
-                            string baseDir = output == QueueOutputMode.ZipTree ? staging : outBase;
-                            forcedOut = Path.Combine(baseDir, relFolder, Path.GetFileName(path));
+                            _cts.Token.ThrowIfCancellationRequested();
+                            string targetKey = targets[t];
+                            string targetLabel = DisplayNameFor(targetKey);
+                            ((IProgress<(int, string)>)reporter).Report((done,
+                                "Converting… " + (done + 1) + "/" + conversions + " — " + name +
+                                (targets.Count > 1 ? " → " + targetLabel : "")));
+                            string forcedOut = null;
+                            if (output == QueueOutputMode.ZipTree || output == QueueOutputMode.FolderTree)
+                            {
+                                string baseDir = output == QueueOutputMode.ZipTree ? staging : outBase;
+                                // a multi-target mirror run must not let the
+                                // second version overwrite the first — the
+                                // target suffix rides in exactly like the
+                                // subfolder/suffix modes always wrote
+                                string outName = targets.Count > 1
+                                    ? Path.GetFileNameWithoutExtension(path) + "_" +
+                                      targetKey.Replace(".", "").ToLowerInvariant() + ".ffx"
+                                    : Path.GetFileName(path);
+                                forcedOut = Path.Combine(baseDir, relFolder, outName);
+                            }
+                            var r = QueueConvertOne(path, targetKey, removeMissing, output, outDir,
+                                                    userRemove, forcedOut);
+                            done++;
+                            removedTotal += r.Removed;
+                            report.Add(new[] { name, relFolder, targetLabel,
+                                               !r.Ok ? "FAILED" : r.Warn ? "WARN" : "OK",
+                                               r.Kept.ToString(), r.Removed.ToString(), r.Note ?? "" });
+                            string label = targets.Count > 1 ? " → " + targetLabel : "";
+                            string line = !r.Ok
+                                ? "[ERROR] " + name + label + " — " + r.Note
+                                : "[OK] " + name + label + " — " + r.Kept + " effect(s) kept"
+                                  + (r.Removed > 0 ? " · " + r.Removed + " removed" : "")
+                                  + (r.Warn ? " — warnings: " + r.Note : "");
+                            Dispatcher.BeginInvoke(new Action(() => Console.Log(line)));
+                            if (!r.Ok) { failed++; fileFailed++; firstError = firstError ?? r.Note; }
+                            else
+                            {
+                                ok++;
+                                fileOk++;
+                                if (r.Warn) { warned++; fileWarn++; warnNote = warnNote ?? r.Note; }
+                            }
                         }
-                        var r = QueueConvertOne(path, targetKey, removeMissing, output, outDir,
-                                                userRemove, forcedOut);
-                        done++;
-                        if (!r.Ok) failed++;
-                        else { ok++; if (r.Warn) warned++; }
-                        removedTotal += r.Removed;
-                        string rowStatus = !r.Ok ? "FAILED" : r.Warn ? "WARN" : "OK";
-                        string rowNote = r.Note ?? "";
-                        report.Add(new[] { name, relFolder, rowStatus,
-                                           r.Kept.ToString(), r.Removed.ToString(), rowNote });
+                        string rowStatus, rowNote;
+                        if (fileOk == 0)
+                        {
+                            rowStatus = "FAILED";
+                            rowNote = firstError ?? "";
+                        }
+                        else if (fileFailed > 0)
+                        {
+                            rowStatus = "WARN";
+                            rowNote = "converted to " + fileOk + " of " + targets.Count +
+                                      " target(s)" + (firstError != null ? " — " + firstError : "");
+                        }
+                        else
+                        {
+                            rowStatus = fileWarn > 0 ? "WARN" : "OK";
+                            rowNote = warnNote ?? "";
+                        }
                         Dispatcher.BeginInvoke(new Action(() =>
                         { row.Status = rowStatus; row.Note = rowNote; }));
-                        string line = !r.Ok
-                            ? "[ERROR] " + name + " — " + r.Note
-                            : "[OK] " + name + " — " + r.Kept + " effect(s) kept"
-                              + (r.Removed > 0 ? " · " + r.Removed + " removed" : "")
-                              + (r.Warn ? " — warnings: " + r.Note : "");
-                        Dispatcher.BeginInvoke(new Action(() => Console.Log(line)));
                     }
                 });
             }
@@ -809,7 +1017,7 @@ namespace FfxTool.Gui
                 Console.Log("[ERROR] The job stopped early: " + fatal);
             string summary = done == 0
                 ? "Nothing was processed."
-                : done + " of " + total + " processed — " + ok + " ok · " + warned +
+                : done + " of " + conversions + " processed — " + ok + " ok · " + warned +
                   " warning" + (warned == 1 ? "" : "s") + " · " + failed + " failed" +
                   (removedTotal > 0 ? " · " + removedTotal + " effects removed" : "") +
                   (cancelled ? " · cancelled" : "");
@@ -1030,6 +1238,7 @@ namespace FfxTool.Gui
             int i = QueueOutput.SelectedIndex;
             bool mirror = i == (int)QueueOutputMode.ZipTree || i == (int)QueueOutputMode.FolderTree;
             MirrorCaption.Visibility = mirror ? Visibility.Visible : Visibility.Collapsed;
+            ConvertSettings.SetQueueOutput(Math.Max(0, i));
         }
 
         private void Cancel_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)

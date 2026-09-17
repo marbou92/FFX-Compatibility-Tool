@@ -78,6 +78,10 @@ until that listing is live, the download above is the way to go.
 - Drop presets — or a whole folder — anywhere on the window, or browse.
 - Pick the target AE version: **CS5.5** for the verified full downgrade, or
   the exact version you're bringing presets to for native-format conversion.
+- **Multi-target batches** — in a folder's file manager, the **Targets**
+  field picks several AE versions and every preset converts once per checked
+  one: 30 presets × 2 versions = 60 outputs in a single pass, each named
+  with its version suffix.
 - A folder opens as a file manager with the source subfolder layout; every
   row fills in with its live conversion status. Presets referencing plugins
   you don't own get a warning badge — double-click a preset to toggle its
@@ -87,6 +91,9 @@ until that listing is live, the download above is the way to go.
 - Five output modes: a `converted` subfolder, a version suffix beside the
   originals, overwrite, or one ZIP / one folder that mirrors the subfolders.
   Every run is a clean rebuild and writes a `conversion-report.csv`.
+- Your conversion settings are **remembered between sessions** — target,
+  batch targets, output mode, the checkboxes, and the folders you last
+  opened and saved to.
 
 <table>
   <tr>
@@ -125,9 +132,12 @@ until that listing is live, the download above is the way to go.
   Windows theme** to track the system setting and switch live.
 - **Verbose Logging** — per-file conversion steps in the session log; turn
   on when reporting a bug.
-- **Storage cleanup** and **Check for Updates** — the only network call the
-  app ever makes, and when it finds a new version the link opens straight
-  to that release's page.
+- **Storage cleanup** and **Check for Updates** — the app's only network
+  traffic. An automatic check (on by default, off in About) notices a new
+  release quietly — a toast and a Settings badge, never a popup — and the
+  updater shows the release's what's-new notes, downloads the exe, verifies
+  it against the release's SHA-256 and swaps it in place. The release page
+  is always there when you prefer to fetch it yourself.
 
 <p align="center">
   <img src="docs/screenshots/settings.png" width="720" alt="Settings page — dark mode switch and the four color palettes Teal, Blue, Purple and Orange" /><br />

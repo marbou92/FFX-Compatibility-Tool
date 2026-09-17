@@ -26,7 +26,6 @@ namespace FfxTool.Gui
         };
 
         private bool _syncing;
-        private string _latestReleaseTag;
 
         public SettingsPage(ProfilePage profilePage)
         {
@@ -43,6 +42,22 @@ namespace FfxTool.Gui
             VerboseCheck.Unchecked += (s, e) => LogService.Verbose = false;
             VerboseCheck.IsChecked = LogService.Verbose;
 
+            // ---- updates ----
+            AutoCheckCheck.IsChecked = UpdateService.AutoCheckEnabled;
+            AutoCheckCheck.Checked += (s, e) => UpdateService.SetAutoCheck(true);
+            AutoCheckCheck.Unchecked += (s, e) => UpdateService.SetAutoCheck(false);
+            if (!string.IsNullOrEmpty(UpdateService.LastCheckMessage))
+                UpdateStatusText.Text = UpdateService.LastCheckMessage;
+            // checks run on worker threads (the startup auto-check included)
+            // — refresh the status line on the dispatcher whatever thread
+            // the answer arrives on
+            UpdateService.CheckFinished += result => Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (!string.IsNullOrEmpty(UpdateService.LastCheckMessage))
+                    UpdateStatusText.Text = UpdateService.LastCheckMessage;
+            }));
+
+            BuildWhatsNew();
             BuildPaletteSwatches();
             SyncFromTheme();
 
@@ -177,41 +192,44 @@ namespace FfxTool.Gui
         private void Logs_Click(object sender, RoutedEventArgs e) =>
             LogService.RevealLatest();
 
-        // ---------- update check ----------
+        // ---------- updates ----------
 
-        /// <summary>
-        /// One redirect lookup of the project's releases/latest on a
-        /// worker thread; the answer lands back on the UI dispatcher. The
-        /// button disables itself for the flight so a slow network can't
-        /// stack two checks.
-        /// </summary>
+        /// <summary>The button opens the updater window, which owns the
+        /// whole flow now — check, what's-new offer, download with the
+        /// SHA-256 verification, and the in-place restart.</summary>
         private void CheckUpdates_Click(object sender, RoutedEventArgs e)
         {
-            CheckUpdatesButton.IsEnabled = false;
-            CheckUpdatesButton.Content = "Checking…";
-            UpdateStatusText.Text = "Contacting GitHub releases…";
-            UpdateLink.Visibility = Visibility.Collapsed;
-
-            UpdateChecker.CheckAsync(result => Dispatcher.BeginInvoke(new Action(() =>
-            {
-                CheckUpdatesButton.IsEnabled = true;
-                CheckUpdatesButton.Content = "Check for Updates";
-                UpdateStatusText.Text = result.Message;
-                if (result.Status == UpdateCheckStatus.UpdateAvailable)
-                {
-                    _latestReleaseTag = result.LatestVersion;
-                    UpdateLink.Visibility = Visibility.Visible;
-                }
-                LogService.Append("update check: " + result.Message);
-            })));
+            var win = new UpdateWindow();
+            win.Owner = Window.GetWindow(this);
+            win.ShowDialog();
         }
 
-        private void UpdateLink_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) =>
-            // straight to the found version's page when a check produced one,
-            // the releases list as the ever-true fallback
-            OpenUrl(string.IsNullOrEmpty(_latestReleaseTag)
-                ? RepoUrl + "/releases"
-                : RepoUrl + "/releases/tag/v" + _latestReleaseTag);
+        /// <summary>Renders the vivi-style what's-new panel from the
+        /// changelog feed. The embedded snapshot (the newest release the
+        /// build shipped with) fills it instantly; a successful online
+        /// fetch of a DIFFERENT (newer) version's feed replaces it, so the
+        /// panel never claims the wrong version.</summary>
+        private void BuildWhatsNew()
+        {
+            var entry = ChangelogFeed.LoadEmbedded();
+            if (entry == null)
+            {
+                WhatsNewTitle.Text = "What's new in this build";
+                return;
+            }
+            WhatsNewTitle.Text = "What's new in v" + entry.Version;
+            ChangelogView.BuildInto(WhatsNewPanel, entry, includeDescription: true);
+
+            ChangelogFeed.FetchAsync(fresh =>
+            {
+                if (fresh == null || fresh.Version == entry.Version) return;
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    WhatsNewTitle.Text = "What's new in v" + fresh.Version + " — the latest release";
+                    ChangelogView.BuildInto(WhatsNewPanel, fresh, includeDescription: true);
+                }));
+            });
+        }
 
         private static void OpenUrl(string url)
         {
