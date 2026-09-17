@@ -2,10 +2,13 @@ name: Nightly Build
 
 # The rolling test channel. Every push to main (i.e. every uploaded
 # round) plus a daily schedule builds the whole solution and publishes
-# the result as a pre-release tagged "nightly" — so new features can be
-# tested the moment they land, without hand-making a portable zip.
-# Tagged releases (v*) are still handled by build.yml; this channel is
-# deliberately separate and always marked as a pre-release.
+# the exe to the "nightly" branch — one always-current file, force-pushed
+# on every build, deliberately NOT a release. That keeps the Releases
+# page a clean history of real versioned releases (the nightly used to
+# sit on top of it, above the latest stable), while the README's Nightly
+# link — the only pointer to the channel — keeps working forever: the
+# branch file's name never changes. Tagged releases (v*) are still
+# handled by build.yml; the two channels stay fully separate.
 #
 # Same toolchain as build.yml: windows-latest carries the .NET Framework
 # 4.8 targeting pack (required to build net48 at all), and the .NET 8
@@ -18,7 +21,7 @@ on:
     - cron: "30 2 * * *" # 02:30 UTC daily — refreshes the channel even when main is quiet
   workflow_dispatch:
 
-# publishing the rolling release needs release + tag write access
+# publishing the rolling branch needs contents write access
 permissions:
   contents: write
 
@@ -106,7 +109,7 @@ jobs:
           path: ${{ steps.pack.outputs.exename }}
           retention-days: 14
 
-      - name: Publish the rolling "nightly" release
+      - name: Publish the rolling nightly to the nightly branch
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -114,34 +117,46 @@ jobs:
         run: |
           SHA7="${GITHUB_SHA:0:7}"
           DATE="$(date -u +%Y-%m-%d)"
-          {
-            echo "Automated portable build of main — ${DATE} (${SHA7})."
-            echo ""
-            echo "This is the rolling test channel for new features. It is built"
-            echo "straight from the repository head and may be less stable than a"
-            echo "tagged release. Tests ran green before this was packaged."
-            echo ""
-            echo "The app version says the latest release followed by"
-            echo "\"-nightly\" — or just \"nightly\" until the first release"
-            echo "exists — in the exe's Windows file properties and in the"
-            echo "app's own About page. The build date and commit in the"
-            echo "file name are what distinguish one nightly from the next."
-            echo ""
-            echo "${EXENAME} is the whole app: every dependency and the"
-            echo "seed tables are merged/embedded inside. Download it and"
-            echo "run it — no zip, no installer."
-            echo ""
-            echo "If it crashes, the app writes a readable report to"
-            echo "%LOCALAPPDATA%\FFXCompatibilityTool\crash.log — include it when"
-            echo "reporting."
-          } > nightly_notes.md
 
-          # one rolling pre-release: remove yesterday's (release + tag),
-          # then re-tag at the commit that was just built and tested
-          gh release delete nightly --yes --cleanup-tag || echo "no previous nightly to replace"
-          git push origin :refs/tags/nightly || echo "tag already gone"
-          gh release create nightly "$EXENAME" \
-            --title "Nightly build — ${DATE} (${SHA7})" \
-            --prerelease \
-            --target "$GITHUB_SHA" \
-            --notes-file nightly_notes.md
+          # one-time migration: retire the old-style rolling release (and
+          # its tag) so the Releases page only ever lists real versioned
+          # releases; once gone these two lines are silent no-ops
+          gh release delete nightly --yes --cleanup-tag >/dev/null 2>&1 || true
+          git push origin :refs/tags/nightly >/dev/null 2>&1 || true
+
+          # publish the exe on the "nightly" branch as a single-commit
+          # orphan history, force-pushed on every build — the branch is
+          # always exactly the latest nightly. The fixed file name keeps
+          # the README's download link stable; the exe itself carries its
+          # version stamp (latest release + "-nightly") in its file
+          # properties, About page and status bar.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan nightly-publish
+          git rm -rf --cached . >/dev/null 2>&1
+          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name "$EXENAME" -exec rm -rf {} +
+          mv "$EXENAME" FFXCompatibilityTool-nightly.exe
+          cat > README.md <<'NOTES'
+          # Nightly build
+
+          This branch carries the rolling nightly build of FFX Compatibility
+          Tool — a single `FFXCompatibilityTool-nightly.exe` replaced on
+          every push to `main`. It is the project's test channel: built
+          straight from the repository head, tests green before packaging,
+          but less proven than a tagged release.
+
+          The download link lives in the
+          [project README](https://github.com/marbou92/FFX-Compatibility-Tool#readme).
+          The exe's version (latest release followed by "-nightly") shows in
+          its Windows file properties and in the app's About page and status
+          bar.
+
+          Windows shows a "publisher could not be verified" warning on first
+          run — the app is unsigned open source. Click Run, or tick Unblock
+          in the exe's Properties. If it crashes, include
+          `%LOCALAPPDATA%\FFXCompatibilityTool\crash.log` when reporting.
+          NOTES
+          echo "Build ${DATE} — commit ${GITHUB_SHA}." >> README.md
+          git add README.md FFXCompatibilityTool-nightly.exe
+          git commit -m "nightly build ${DATE} (${SHA7})"
+          git push --force origin HEAD:refs/heads/nightly

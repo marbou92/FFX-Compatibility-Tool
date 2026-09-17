@@ -1,0 +1,108 @@
+# Winget — every published release offers itself to the winget-pkgs
+# catalog, but only once the package actually exists there.
+#
+# Getting listed the first time is a human-reviewed pull request (the
+# 0.1.0 new-package PR), and that review can take weeks. This workflow
+# therefore runs on two triggers and never goes red while it waits:
+#
+#   * release published — the fast path. If the catalog already carries
+#     the package, the newest released version is submitted right away.
+#   * daily schedule — the patient path. It re-checks every day until
+#     the catalog has the package, then submits the newest released
+#     version. Release 0.2.0 whenever it is ready: the day the
+#     new-package PR merges, this workflow opens the 0.2.0 update PR
+#     on its own — no re-release, no manual step.
+#
+# One-time setup (see packaging/winget/README.md for the long version):
+#   1. GitHub → Settings → Developer settings → Personal access tokens
+#      (classic) → generate a token with the `public_repo` scope.
+#   2. Store it in this repository as the secret WINGET_SUBMIT_TOKEN.
+# Without the secret the run stays green and skips with a notice; the
+# manual copy-paste steps in packaging/winget/README.md remain the
+# fallback.
+
+name: Winget
+
+on:
+  release:
+    types: [published]
+  schedule:
+    - cron: "25 4 * * *" # 04:25 UTC daily — catches the catalog the day the new-package PR merges
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# a release landing next to the daily check must not double-submit
+concurrency:
+  group: winget
+
+jobs:
+  submit:
+    name: Offer the newest release to winget-pkgs
+    runs-on: windows-latest
+    steps:
+      - name: Install the .NET 6 runtime winget-create needs
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 6.0.x
+
+      - name: Decide whether a submission is due
+        id: decide
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # the newest real release: not a draft, not a prerelease, tag v*
+          # (the list is newest-first, so the first hit is the latest)
+          TAG="$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+            --jq '[.[] | select((.draft | not) and (.prerelease | not) and (.tag_name | startswith("v")))][0].tag_name // empty' 2>/dev/null || true)"
+          TAG="${TAG//\"/}"
+          if [ -z "$TAG" ]; then
+            echo "::notice::No real release exists yet — nothing to offer to winget-pkgs."
+            echo "reason=no-release" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          VERSION="${TAG#v}"
+
+          # has the package been accepted into the catalog at all?
+          # (the first submission is a human-reviewed pull request)
+          if ! gh api "repos/microsoft/winget-pkgs/contents/manifests/m/Marbou92/FFXCompatibilityTool" > /dev/null 2>&1; then
+            echo "::notice::FFXCompatibilityTool is not in the winget-pkgs catalog yet (the new-package pull request is still in review) — waiting. This check runs daily, so the update PR opens by itself the day the PR merges."
+            echo "reason=waiting" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # is the newest release already listed?
+          if gh api "repos/microsoft/winget-pkgs/contents/manifests/m/Marbou92/FFXCompatibilityTool/$VERSION" > /dev/null 2>&1; then
+            echo "::notice::winget-pkgs already lists $VERSION — nothing to do."
+            echo "reason=already" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # due for submission — take the exe asset off that release
+          URL="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/$TAG" \
+            --jq '[.assets[] | select(.name | endswith(".exe"))][0].browser_download_url // empty')"
+          if [ -z "$URL" ]; then
+            echo "::error::Release $TAG has no .exe asset — build.yml should have attached FFXCompatibilityTool-$VERSION.exe."
+            exit 1
+          fi
+          echo "reason=submit" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Submit the manifest update through winget-create
+        if: steps.decide.outputs.reason == 'submit'
+        shell: pwsh
+        env:
+          WINGET_SUBMIT_TOKEN: ${{ secrets.WINGET_SUBMIT_TOKEN }}
+          VERSION: ${{ steps.decide.outputs.version }}
+          ASSET_URL: ${{ steps.decide.outputs.url }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WINGET_SUBMIT_TOKEN)) {
+            Write-Host "::notice::WINGET_SUBMIT_TOKEN is not set - skipping the winget submission. See packaging/winget/README.md for the one-time setup."
+            exit 0
+          }
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          Write-Host "Offering FFX Compatibility Tool $env:VERSION to winget-pkgs: $env:ASSET_URL"
+          ./wingetcreate.exe update Marbou92.FFXCompatibilityTool --version $env:VERSION --urls $env:ASSET_URL --submit --token $env:WINGET_SUBMIT_TOKEN
