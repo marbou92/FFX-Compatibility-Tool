@@ -19,7 +19,7 @@ no installer, no runtime download on Windows 10/11.
 [![License](https://img.shields.io/github/license/marbou92/FFX-Compatibility-Tool?label=license&color=6e7781)](LICENSE)
 [![winget](https://img.shields.io/badge/winget-manifest%20ready-8250df)](packaging/winget)
 
-[Download](https://github.com/marbou92/FFX-Compatibility-Tool/releases/latest) · [Nightly](https://github.com/marbou92/FFX-Compatibility-Tool/releases/tag/nightly) · [Report an issue](https://github.com/marbou92/FFX-Compatibility-Tool/issues)
+[Download](https://github.com/marbou92/FFX-Compatibility-Tool/releases/latest) · [Nightly](https://github.com/marbou92/FFX-Compatibility-Tool/raw/nightly/FFXCompatibilityTool-nightly.exe) · [Report an issue](https://github.com/marbou92/FFX-Compatibility-Tool/issues)
 
 <img src="docs/screenshots/lister-inspector.png" width="720" alt="Effect Lister with a preset open — installed and compatible effects listed on the left, the Exposure effect's animated value graph drawn on the right" />
 
@@ -68,8 +68,10 @@ the community catalog at `microsoft/winget-pkgs` through a pull request —
 until that listing is live, the download above is the way to go.
 
 > 🌙 Want new features early? The rolling
-> [nightly](https://github.com/marbou92/FFX-Compatibility-Tool/releases/tag/nightly)
-> pre-release is rebuilt from every push to main.
+> [nightly build](https://github.com/marbou92/FFX-Compatibility-Tool/raw/nightly/FFXCompatibilityTool-nightly.exe)
+> is rebuilt from every push to main and lives on the `nightly` branch —
+> never on the Releases page, which stays a clean history of stable
+> versions. The link always fetches the latest build.
 
 ## 🎬 Convert
 
@@ -155,7 +157,8 @@ dotnet build FfxTool.sln --configuration Release
 ```
 
 CI runs on every push: **CI** (test.yml), **Nightly** (nightly.yml — the
-rolling pre-release), **Release** (build.yml — push a `v*` tag, or use its
+rolling build, published to the `nightly` branch, not to Releases),
+**Release** (build.yml — push a `v*` tag, or use its
 Run workflow page with a version number to publish exactly that version).
 
 ## ⚖️ License
