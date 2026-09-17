@@ -6,16 +6,20 @@ name: Build & Release
 # version (the tag is created on the built commit); an empty input builds
 # an artifact without publishing anything.
 #
-# On a release run the description is written by the notes bot: it reads
-# the commit subjects between the previous release tag and the commit
-# being released — the whole history when no earlier release exists — and
-# turns them into a changelog that reads like one: multi-entry commit
-# messages are split so every change gets its own bullet, identical
-# repeated entries fold into their first appearance, GitHub's "Add files
-# via upload" commits collapse into a single line, every subject is cut
-# to its pre-em-dash summary and capped at a word boundary, and install
-# steps plus the SHA-256 of the attached exe are added. GitHub's own
-# generated notes (the compare link) are appended on top of that body.
+# On a release run the page follows the vivi-music pattern: a curated
+# per-release file — Changelog/Stablemd/<version without the leading
+# v>.md (Changelog/Stablemd/0.3.0.md for tag v0.3.0), written for users,
+# not committers — becomes the body verbatim, the install steps and the
+# SHA-256 of the attached exe follow, the commit-derived list folds into
+# a <details> block, and a Support section closes the page. Without that
+# file the body falls back to the plain commit-derived changelog:
+# multi-entry commit messages are split so every change gets its own
+# bullet, identical repeated entries fold into their first appearance,
+# GitHub's "Add files via upload" commits collapse into a single line,
+# and every subject is cut to its pre-em-dash summary and capped at a
+# word boundary. GitHub's own generated notes (the compare link) are
+# appended on top of the body either way, and an already-existing
+# release is skipped politely instead of dying on a re-run.
 #
 # Note on why this is simpler than the old Python/PyInstaller build.yml:
 # .NET Framework (net48) apps don't need PyInstaller-style bundling. A
@@ -143,12 +147,11 @@ jobs:
           if [ -n "$PREV" ]; then RANGE="${PREV}..HEAD"; fi
           SUM="$(sha256sum "${{ steps.pack.outputs.exename }}" | cut -d' ' -f1)"
           {
-            echo "FFX Compatibility Tool ${TAG} — the portable Windows build."
-            echo ""
-            echo "## What's changed"
-            echo ""
             # a release must not die over its own description — if the
-            # commit log cannot be read, the fallback bullet publishes it
+            # commit log cannot be read, the fallback bullet publishes it.
+            # the list is built unconditionally: without a curated notes
+            # file it IS the changelog, with one it becomes the folded
+            # tail of the page
             git log ${RANGE:+"$RANGE"} --format='%s' \
               | sed -E 's/ and (chore|feat|fix|ci|docs|test|build|refactor|perf)\(/\n\1(/g' \
               | awk '
@@ -178,9 +181,22 @@ jobs:
                 }
               ' > release_commits.txt || true
             if [ -s release_commits.txt ]; then
-              cat release_commits.txt
+              CHANGELOG="$(cat release_commits.txt)"
             else
-              echo "- (no commit notes could be read for this range)"
+              CHANGELOG="- (no commit notes could be read for this range)"
+            fi
+            # the vivi-music pattern: Changelog/Stablemd/<version without
+            # the leading v>.md is the release body verbatim when present —
+            # an empty or missing file keeps the plain commit-derived layout
+            CURATED="Changelog/Stablemd/${TAG#v}.md"
+            if [ -s "$CURATED" ]; then
+              cat "$CURATED"
+            else
+              echo "FFX Compatibility Tool ${TAG} — the portable Windows build."
+              echo ""
+              echo "## What's changed"
+              echo ""
+              echo "$CHANGELOG"
             fi
             echo ""
             echo "## Install"
@@ -188,7 +204,7 @@ jobs:
             echo "1. Download **${EXENAME}** below — that single file is the whole app."
             echo "2. Run it — no installer, no zip, no DLL pile, no data folder: everything is inside the exe."
             echo "3. Requires .NET Framework 4.8 (preinstalled on Windows 10/11; Windows 7 SP1 needs the 4.8 runtime installed once)."
-            echo '4. Windows shows a "publisher could not be verified" warning on first run — this app is unsigned open source, and Windows says that about every fresh download. Match the SHA-256 above, then click **Run**.'
+            echo '4. Windows shows a "publisher could not be verified" warning on first run — this app is unsigned open source, and Windows says that about every fresh download. Match the SHA-256 in the Verify section below, then click **Run**.'
             echo "5. If the prompt gets old: right-click the exe → Properties → tick **Unblock**."
             echo ""
             echo "## Verify"
@@ -197,11 +213,45 @@ jobs:
             echo "SHA-256  ${SUM}  ${EXENAME}"
             echo '```'
             echo ""
+            if [ -s "$CURATED" ]; then
+              echo "<details>"
+              echo "<summary>Every change in ${TAG} — the full commit list</summary>"
+              echo ""
+              echo "$CHANGELOG"
+              echo ""
+              echo "</details>"
+              echo ""
+            fi
             echo "The in-app **Check for Updates** (Settings → About) resolves this releases page — publishing a release is what announces the new version to installed builds."
+            if [ -s "$CURATED" ]; then
+              echo ""
+              echo "## Support"
+              echo ""
+              echo "- Found a bug or a preset that misbehaves? Open an issue: https://github.com/marbou92/FFX-Compatibility-Tool/issues — verbose logs welcome"
+              echo "- Docs, screenshots and the rolling nightly: the README"
+              echo "- Free, open source (MIT) and local-first — your preset files never leave your machine"
+            fi
           } > release_notes.md
 
-      - name: Create GitHub Release
+      - name: Check if the release already exists
         if: steps.ver.outputs.tag != ''
+        id: relcheck
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # the vivi-music guard: a re-run (a retry after a failed publish,
+          # or a manual dispatch for a version that already shipped) skips
+          # politely with a notice instead of dying on the create call
+          if gh release view "${{ steps.ver.outputs.tag }}" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Release ${{ steps.ver.outputs.tag }} already exists — skipping release creation."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        if: steps.ver.outputs.tag != '' && steps.relcheck.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
           # a tag push: the tag exists and target_commitish is ignored.
