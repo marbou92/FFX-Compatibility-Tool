@@ -184,7 +184,7 @@ jobs:
                 continue
               }
               if ($line -match '^[-*\u2022]+\s+(.+)$') {
-                if ($curItems -ne $null) { $curItems.Add($Matches[1].Trim()) }
+                if ($null -ne $curItems) { $curItems.Add($Matches[1].Trim()) } 
                 continue
               }
               $t = $line.Trim()
@@ -208,7 +208,7 @@ jobs:
             url = "https://github.com/$env:GITHUB_REPOSITORY/releases/tag/$tag"
             file = $env:EXENAME
             sha256 = $sha
-            changelog = @($sections)
+            changelog = $sections.ToArray()
           }
           ConvertTo-Json -InputObject $feed -Depth 6 | Set-Content -Path changelog.json -Encoding utf8
           Write-Host "changelog.json written for $version ($($sections.Count) section(s))"
