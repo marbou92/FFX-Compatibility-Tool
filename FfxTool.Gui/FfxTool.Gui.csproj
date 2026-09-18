@@ -13,7 +13,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>FFXCompatibilityTool</AssemblyName>
     <RootNamespace>FfxTool.Gui</RootNamespace>
-    <Version>0.2.1</Version>
+    <Version>0.2.2</Version>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <!-- who made this: fills the Windows "Properties → Details" tab
          (file description, product name, copyright) and what Task

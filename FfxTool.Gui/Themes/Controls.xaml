@@ -448,13 +448,16 @@
                                 <Thumb Focusable="False">
                                     <Thumb.Template>
                                         <ControlTemplate TargetType="Thumb">
-                                            <Border x:Name="ThumbBg" Background="{DynamicResource B.OutlineVariant}" CornerRadius="4" Margin="2,0"/>
+                                            <Border x:Name="ThumbBg" Background="{DynamicResource B.OutlineVariant}"
+                                                    CornerRadius="4" Margin="2,0" Opacity="0.55"/>
                                             <ControlTemplate.Triggers>
                                                 <Trigger Property="IsMouseOver" Value="True">
                                                     <Setter TargetName="ThumbBg" Property="Background" Value="{DynamicResource B.OnSurfaceVariant}"/>
+                                                    <Setter TargetName="ThumbBg" Property="Opacity" Value="0.9"/>
                                                 </Trigger>
                                                 <Trigger Property="IsDragging" Value="True">
                                                     <Setter TargetName="ThumbBg" Property="Background" Value="{DynamicResource B.OnSurface}"/>
+                                                    <Setter TargetName="ThumbBg" Property="Opacity" Value="1"/>
                                                 </Trigger>
                                             </ControlTemplate.Triggers>
                                         </ControlTemplate>
@@ -497,13 +500,16 @@
                                 <Thumb Focusable="False">
                                     <Thumb.Template>
                                         <ControlTemplate TargetType="Thumb">
-                                            <Border x:Name="ThumbBg" Background="{DynamicResource B.OutlineVariant}" CornerRadius="4" Margin="0,2"/>
+                                            <Border x:Name="ThumbBg" Background="{DynamicResource B.OutlineVariant}"
+                                                    CornerRadius="4" Margin="0,2" Opacity="0.55"/>
                                             <ControlTemplate.Triggers>
                                                 <Trigger Property="IsMouseOver" Value="True">
                                                     <Setter TargetName="ThumbBg" Property="Background" Value="{DynamicResource B.OnSurfaceVariant}"/>
+                                                    <Setter TargetName="ThumbBg" Property="Opacity" Value="0.9"/>
                                                 </Trigger>
                                                 <Trigger Property="IsDragging" Value="True">
                                                     <Setter TargetName="ThumbBg" Property="Background" Value="{DynamicResource B.OnSurface}"/>
+                                                    <Setter TargetName="ThumbBg" Property="Opacity" Value="1"/>
                                                 </Trigger>
                                             </ControlTemplate.Triggers>
                                         </ControlTemplate>
@@ -519,7 +525,8 @@
         </Style.Triggers>
     </Style>
 
-    <!-- ToolTip -->
+    <!-- ToolTip: elevated card — rounded corner, soft shadow, comfortable
+         padding (0.2.2 settings pass) -->
     <Style TargetType="ToolTip">
         <Setter Property="Background" Value="{DynamicResource B.SCHighest}"/>
         <Setter Property="Foreground" Value="{DynamicResource B.OnSurface}"/>
@@ -527,12 +534,42 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToolTip">
-                    <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="10,6">
+                    <Border Background="{TemplateBinding Background}" CornerRadius="10" Padding="12,8"
+                            BorderBrush="{DynamicResource B.OutlineVariant}" BorderThickness="1">
+                        <Border.Effect>
+                            <DropShadowEffect ShadowDepth="3" BlurRadius="12" Direction="270" Opacity="0.28"/>
+                        </Border.Effect>
                         <ContentPresenter/>
                     </Border>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- ===== Settings building blocks (0.2.2 settings pass) ===== -->
+    <!-- A settings row: the shared card-in-card container every
+         Appearance/Storage/About row uses — one style keeps padding,
+         radius and the hover state identical everywhere. -->
+    <Style x:Key="SettingsRow" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource B.SC}"/>
+        <Setter Property="CornerRadius" Value="14"/>
+        <Setter Property="Padding" Value="18,12"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource B.SCHigh}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    <!-- Clickable variant (link rows, timeline toggle): hand cursor; the
+         hover fill comes from the base style (Border has no IsPressed
+         property, so pressed state is intentionally omitted here). -->
+    <Style x:Key="SettingsRowClickable" TargetType="Border" BasedOn="{StaticResource SettingsRow}">
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <!-- Small uppercase group label inside a card -->
+    <Style x:Key="GroupHeader" TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
 
     <!-- ListBox (transparent host; items styled per-page) -->

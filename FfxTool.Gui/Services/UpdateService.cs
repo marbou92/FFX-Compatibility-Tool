@@ -67,7 +67,28 @@ namespace FfxTool.Gui
         /// <summary>Human-readable result of the last completed check.</summary>
         public static string LastCheckMessage;
 
+        /// <summary>Status of the last completed check — null before the
+        /// first check of the session. The About page's status card reads
+        /// this to pick between its up-to-date / available / error faces
+        /// without re-parsing the message string.</summary>
+        public static UpdateCheckStatus? LastCheckStatus;
+
+        /// <summary>When the last check ran (UTC), or null before the first
+        /// one — persisted in updates.json across sessions, so the status
+        /// card can show "last checked 2 hours ago" on a fresh start.</summary>
+        public static DateTime? LastCheckUtc
+        {
+            get { return _lastCheckUtc == DateTime.MinValue ? (DateTime?)null : _lastCheckUtc; }
+        }
+
         private const int AutoCheckIntervalHours = 6;
+
+        /// <summary>True while a check is in flight — the status card
+        /// shows its checking face when the page opens mid-check.</summary>
+        public static bool IsChecking
+        {
+            get { return System.Threading.Interlocked.CompareExchange(ref _checking, 0, 0) == 1; }
+        }
 
         public static bool AutoCheckEnabled { get; private set; } = true;
         private static DateTime _lastCheckUtc = DateTime.MinValue;
@@ -171,6 +192,7 @@ namespace FfxTool.Gui
                     var result = UpdateChecker.Check();
                     TouchLastCheck();
                     LastCheckMessage = result.Message;
+                    LastCheckStatus = result.Status;
                     LogService.Append("update auto-check: " + result.Message);
 
                     if (result.Status == UpdateCheckStatus.UpdateAvailable)
@@ -206,6 +228,7 @@ namespace FfxTool.Gui
             var result = UpdateChecker.Check();
             TouchLastCheck();
             LastCheckMessage = result.Message;
+            LastCheckStatus = result.Status;
             LogService.Append("update check: " + result.Message);
             if (result.Status == UpdateCheckStatus.UpdateAvailable)
                 PendingUpdate = ChangelogFeed.Fetch() ?? MinimalEntry(result.LatestVersion);

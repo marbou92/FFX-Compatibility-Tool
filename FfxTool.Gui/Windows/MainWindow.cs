@@ -192,6 +192,63 @@ namespace FfxTool.Gui
             HideUpdateToast(); // badge stays until the update UI is seen
         }
 
+        // ---------- info toast (generic settings feedback) ----------
+
+        private System.Windows.Threading.DispatcherTimer _infoToastTimer;
+
+        /// <summary>Settles the generic info pill into the bottom-right
+        /// corner — delete confirmations and the like. Same motion as the
+        /// update toast; auto-stands-down after 4 s, a click dismisses
+        /// early. Re-showing just refreshes the text and restarts the
+        /// timer. Safe from any thread: foreign callers are marshalled.</summary>
+        public void ShowInfoToast(string title, string sub)
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(() => ShowInfoToast(title, sub)));
+                return;
+            }
+            InfoToastTitle.Text = title ?? "";
+            InfoToastSub.Text = sub ?? "";
+            InfoToastSub.Visibility = string.IsNullOrEmpty(sub) ? Visibility.Collapsed : Visibility.Visible;
+
+            InfoToast.Visibility = Visibility.Visible;
+            InfoToast.Opacity = 0;
+            InfoToastMove.Y = 14;
+            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+            var dur = TimeSpan.FromMilliseconds(260);
+            InfoToast.BeginAnimation(UIElement.OpacityProperty,
+                new DoubleAnimation(0, 1, dur) { EasingFunction = ease });
+            InfoToastMove.BeginAnimation(TranslateTransform.YProperty,
+                new DoubleAnimation(14, 0, dur) { EasingFunction = ease });
+
+            if (_infoToastTimer == null)
+            {
+                _infoToastTimer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromSeconds(4)
+                };
+                _infoToastTimer.Tick += (s, e) => HideInfoToast();
+            }
+            _infoToastTimer.Stop();
+            _infoToastTimer.Start();
+        }
+
+        private void HideInfoToast()
+        {
+            if (_infoToastTimer != null) _infoToastTimer.Stop();
+            InfoToast.BeginAnimation(UIElement.OpacityProperty, null);
+            InfoToastMove.BeginAnimation(TranslateTransform.YProperty, null);
+            InfoToast.Opacity = 1;
+            InfoToastMove.Y = 0;
+            InfoToast.Visibility = Visibility.Collapsed;
+        }
+
+        private void InfoToast_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            HideInfoToast();
+        }
+
         /// <summary>The one updater-window entry point — owned, modal,
         /// prefetched entry when the auto-check already knows the answer.</summary>
         private void OpenUpdateWindow(ChangelogEntry known)
@@ -264,6 +321,19 @@ namespace FfxTool.Gui
                 Rail.SelectWithoutNotify(index);
                 ShowSection(index);
                 e.Handled = true;
+            }
+            else if (Keyboard.Modifiers == ModifierKeys.Alt && e.Key >= Key.D1 && e.Key <= Key.D4)
+            {
+                // Alt+1..4: the Settings sub-tabs — the Ctrl range is taken
+                // by the section shortcuts (Ctrl+3 opens Settings itself),
+                // so the sub-nav rides the next modifier up. Only meaningful
+                // while Settings is the active section.
+                if (Rail.SelectedIndex == 2)
+                {
+                    int sub = (int)e.Key - (int)Key.D1;
+                    _settings.SelectSubTab(sub);
+                    e.Handled = true;
+                }
             }
         }
 

@@ -44,6 +44,7 @@ namespace FfxTool.Gui
                 ThemeService.Load(); // must run before any window reads theme colors
                 LogService.LoadSettings(); // verbose preference — before anything can log verbosely
                 UpdateService.LoadSettings(); // auto-check preference + last-check stamp
+                UiPrefs.Load(); // which Settings sub-tab was last visited
                 new MainWindow().Show();
 
                 // a self-update leaves the previous exe as <exe>.old beside

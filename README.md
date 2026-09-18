@@ -128,16 +128,26 @@ until that listing is live, the download above is the way to go.
 
 - **Plugin profile** — which plugin suites you own, so compatibility
   warnings match your machine.
-- **Theme** — four color palettes in light and dark, or **Follow the
-  Windows theme** to track the system setting and switch live.
+- **Settings search** — type in the box at the top of Settings and pick a
+  match: the app opens the right panel and flashes the row you asked for.
+- **Theme** — one three-way **Light / Dark / System** control, four color
+  palettes with a checkmark on the chosen swatch, a live preview card, and
+  a two-step **Restore Defaults** that tells you what it did.
 - **Verbose Logging** — per-file conversion steps in the session log; turn
   on when reporting a bug.
-- **Storage cleanup** and **Check for Updates** — the app's only network
-  traffic. An automatic check (on by default, off in About) notices a new
-  release quietly — a toast and a Settings badge, never a popup — and the
-  updater shows the release's what's-new notes, downloads the exe, verifies
-  it against the release's SHA-256 and swaps it in place. The release page
-  is always there when you prefer to fetch it yourself.
+- **Storage cleanup** — a stacked meter shows what the plugin scan catalog,
+  the recent-presets history and the session logs occupy; deletes confirm
+  in place for three seconds instead of a popup, then settle with a toast,
+  and the storage folder and logs open from rows like everything else.
+- **Check for Updates** — the app's only network traffic. An automatic
+  check (on by default, off in About) notices a new release quietly — a
+  toast and a Settings badge, never a popup — and the About card shows
+  four honest faces: up to date with the last-checked time, a spinner
+  while checking, an accent card with a Download button when a version is
+  out, and a retry on error. The updater shows the release's what's-new
+  notes, downloads the exe, verifies it against the release's SHA-256 and
+  swaps it in place. The release page is always there when you prefer to
+  fetch it yourself.
 
 <p align="center">
   <img src="docs/screenshots/settings.png" width="720" alt="Settings page — dark mode switch and the four color palettes Teal, Blue, Purple and Orange" /><br />

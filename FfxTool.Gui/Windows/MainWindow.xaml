@@ -137,6 +137,38 @@
                 </StackPanel>
             </Border>
 
+            <!-- ============ info toast ============
+                 The generic feedback pill (0.2.2 settings pass): delete
+                 confirmations and small confirmations settle into the
+                 bottom-right corner the same way the update toast does,
+                 and auto-stand-down after a few seconds. Hidden until
+                 MainWindow.ShowInfoToast is asked for it. -->
+            <Border x:Name="InfoToast" Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                    Margin="0,0,20,20" Background="{DynamicResource B.SCHighest}" CornerRadius="14"
+                    BorderBrush="{DynamicResource B.OutlineVariant}" BorderThickness="1"
+                    Padding="16,10" Visibility="Collapsed" Panel.ZIndex="15"
+                    Cursor="Hand" MouseLeftButtonUp="InfoToast_Click">
+                <Border.Effect>
+                    <DropShadowEffect ShadowDepth="4" BlurRadius="18" Direction="270" Opacity="0.35"/>
+                </Border.Effect>
+                <Border.RenderTransform>
+                    <TranslateTransform x:Name="InfoToastMove" Y="0"/>
+                </Border.RenderTransform>
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="30" Height="30" CornerRadius="15" Background="{DynamicResource B.PrimaryContainer}"
+                            VerticalAlignment="Center">
+                        <controls:IconGlyph IconName="Check" Width="15" Height="15"
+                                            Foreground="{DynamicResource B.OnPrimaryContainer}"/>
+                    </Border>
+                    <StackPanel Margin="11,0,6,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="InfoToastTitle" Text="" FontSize="12.5"
+                                   FontWeight="SemiBold" Foreground="{DynamicResource B.OnSurface}"/>
+                        <TextBlock x:Name="InfoToastSub" Text="" FontSize="11.5"
+                                   Foreground="{DynamicResource B.OnSurfaceVariant}" Margin="0,1,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
             <!-- the entire window edge: one crisp 1px line just inside the
                  client rect. No corner radius, no region, no layered curves -
                  the silhouette and this line are the same rectangle, so the

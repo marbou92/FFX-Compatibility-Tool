@@ -1,18 +1,20 @@
 {
-  "version": "0.2.1",
-  "description": "FFX Compatibility Tool 0.2.1 lets one batch convert every preset to several After Effects versions at once, remembers your last-used conversion settings, and turns the app self-updating — a quiet update check, a live what's-new panel, and an in-place updater that verifies what it downloads.",
-  "date": "2026-09-17",
-  "url": "https://github.com/marbou92/FFX-Compatibility-Tool/releases/tag/v0.2.1",
-  "file": "FFXCompatibilityTool-0.2.1.exe",
+  "version": "0.2.2",
+  "description": "FFX Compatibility Tool 0.2.2 is a settings-page overhaul — the four panels are rebuilt on one shared row system under a search box that jumps to any setting, the theme controls become a segmented Light / Dark / System picker with a live preview, storage reads as a real disk meter with in-place delete confirms, and the About panel grows a proper update status card and an earlier-releases timeline.",
+  "date": "2026-09-18",
+  "url": "https://github.com/marbou92/FFX-Compatibility-Tool/releases/tag/v0.2.2",
+  "file": "FFXCompatibilityTool-0.2.2.exe",
   "sha256": "",
   "changelog": [
     {
       "title": "✨ What's New",
       "items": [
-        "Multi-target batches — the file manager's new Targets field picks several AE versions, and every preset converts once per checked one: 30 presets × 2 versions = 60 outputs in a single pass, each named with its version suffix. In-place overwrite stays a single-target job; with several versions picked the app asks for another output mode instead of letting one version erase the others.",
-        "Your last-used conversion settings are remembered — target version, batch targets, output mode, the include-subfolders and remove-missing-effects checkboxes, and the folders you last opened, browsed and saved to. Open the app and everything is where you left it.",
-        "The app updates itself — a silent, throttled check (on by default, off in Settings → About) notices a new release and raises a small toast plus a Settings badge, never a popup. The updater window then shows the release's what's-new notes, downloads the new exe, verifies it against the release's SHA-256 and swaps it in place — nothing is installed, and a failed swap puts the old build back.",
-        "A live what's-new panel in Settings → About — every release now ships a machine-readable changelog.json beside the exe, so the About page reads the newest version's notes right inside the app, offline from the embedded copy, fresh from the release when online."
+        "A settings search that jumps — type in the box at the top of Settings and pick a match: the app switches to the right panel and flashes the row you asked for. Eighteen rows are indexed across Appearance, Storage, Plugin Profiles and About, so \"logs\", \"palette\" or \"version\" all land somewhere useful.",
+        "One shared row system — every setting now sits in the same rounded row (icon tile, title, caption, control on the right) with a hover state, grouped under small uppercase headers inside each card: Theme, Palette, Preview, Disk usage, Maintenance, What's new, Project, Updates.",
+        "The theme controls grow up — the dark-mode switch and the follow-the-Windows-theme checkbox become one three-way Light / Dark / System segmented control, the chosen palette swatch shows a checkmark with a small spring, a live preview card re-renders as you pick, and Restore Defaults is now a real two-step button that tells you what it did instead of a silent surprise.",
+        "Storage tells the truth at a glance — a stacked meter shows what the plugin scan catalog, the recent-presets history and the session logs actually occupy; deletes confirm in place (the button turns into a red \"Confirm delete?\" for three seconds — no popup) and settle with a toast, and opening the storage folder or the logs is a row like everything else.",
+        "An About panel that answers — the update card has four honest faces: up to date (with the last-checked time), a spinner while checking, an accent card with the new version and a Download button when a release is out, and an error face with retry. The version line copies on click with a \"Copied\" hint, and an earlier-releases timeline lists the published versions straight from GitHub.",
+        "Everything remembers where you were — Settings reopens on the last sub-tab you visited, Alt+1…4 switches sub-tabs from the keyboard, tooltips got rounded corners and a shadow, and the scrollbars fade back when you stop scrolling."
       ]
     }
   ]
