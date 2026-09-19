@@ -39,6 +39,7 @@ namespace FfxTool.Gui
         public string Url;          // release page
         public string File;         // exe asset file name (null on the minimal fallback)
         public string Sha256;       // "" or null = verification not possible
+        public string ImageUrl;     // hero image (Stablemd "image::" line) or null
         public List<ChangelogSection> Sections = new List<ChangelogSection>();
 
         /// <summary>Parses a changelog.json document; null when the text
@@ -177,6 +178,180 @@ namespace FfxTool.Gui
                 }
             }
             catch { return null; }
+        }
+
+        // ---------- the release list (the changelog drill-in) ----------
+
+        /// <summary>One row of GitHub's release list, exactly what the
+        /// changelog drill-in needs: tag, date, page URL and the raw
+        /// Stablemd body (parsed lazily by StablemdParser on selection).</summary>
+        public sealed class ReleaseSummary
+        {
+            public string Tag;         // "v0.2.1"
+            public string DateIso;     // "2026-09-10" or null
+            public string Url;         // release page
+            public string Body;        // the release's Stablemd markdown
+            public bool Prerelease;
+        }
+
+        /// <summary>Fetches the project's release list (newest first, up to
+        /// 30, drafts skipped) on a worker thread. The callback fires on
+        /// that thread with the list — or null plus a human error line
+        /// when GitHub couldn't be reached. The same endpoint the old
+        /// About-page timeline used; prereleases (the rolling nightly)
+        /// come back flagged so the caller can decide whether to show
+        /// them.</summary>
+        public static void FetchReleasesAsync(Action<List<ReleaseSummary>, string> done)
+        {
+            System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+            {
+                string json = null;
+                string error = null;
+                try
+                {
+                    ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+                    var req = (HttpWebRequest)WebRequest.Create(
+                        RepoUrl + "/releases?per_page=30");
+                    req.Method = "GET";
+                    req.UserAgent = "FFXCompatibilityTool/" + AppInfo.Version;
+                    req.Accept = "application/vnd.github+json";
+                    req.Timeout = 8000;
+                    req.ReadWriteTimeout = 8000;
+                    req.CachePolicy = new System.Net.Cache.RequestCachePolicy(
+                        System.Net.Cache.RequestCacheLevel.BypassCache);
+                    using (var resp = (HttpWebResponse)req.GetResponse())
+                    using (var ms = new MemoryStream())
+                    {
+                        resp.GetResponseStream().CopyTo(ms);
+                        json = Encoding.UTF8.GetString(ms.ToArray());
+                    }
+                }
+                catch (Exception ex) { error = ex.Message; }
+
+                var releases = new List<ReleaseSummary>();
+                if (json != null)
+                {
+                    try
+                    {
+                        using (var doc = JsonDocument.Parse(json))
+                        {
+                            foreach (var el in doc.RootElement.EnumerateArray())
+                            {
+                                if (el.ValueKind != JsonValueKind.Object) continue;
+                                bool draft = el.TryGetProperty("draft", out var d) && d.ValueKind == JsonValueKind.True;
+                                if (draft) continue;
+                                string tag = Str(el, "tag_name");
+                                string url = Str(el, "html_url");
+                                if (tag == null || url == null) continue;
+                                var r = new ReleaseSummary
+                                {
+                                    Tag = tag,
+                                    Url = url,
+                                    Body = Str(el, "body") ?? "",
+                                    Prerelease = el.TryGetProperty("prerelease", out var pr) && pr.ValueKind == JsonValueKind.True
+                                };
+                                if (el.TryGetProperty("published_at", out var pub) &&
+                                    pub.ValueKind == JsonValueKind.String &&
+                                    DateTime.TryParse(pub.GetString(), CultureInfo.InvariantCulture,
+                                        DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var dt))
+                                    r.DateIso = dt.ToLocalTime().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                                releases.Add(r);
+                            }
+                        }
+                    }
+                    catch { releases.Clear(); error = "the release list didn't parse"; }
+                }
+                done(releases.Count > 0 ? releases : null, error);
+            });
+        }
+
+        private static string Str(JsonElement obj, string name)
+        {
+            if (obj.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String)
+                return v.GetString();
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Parses a release body written in the project's curated Stablemd
+    /// format into a ChangelogEntry — the SAME rules the release workflow
+    /// uses when it generates changelog.json (skip "description::" and
+    /// "#" lines; the first "##" is the document title; every later "##"
+    /// opens a section; lines starting with - * or • are bullets; the
+    /// description is the first free-standing line before the first
+    /// section). The drill-in runs this on the release body GitHub
+    /// returns, so the in-app changelog renders exactly what the release
+    /// page was curated from — including the "image::" hero, which the
+    /// workflow drops but the viewer keeps.
+    /// </summary>
+    public static class StablemdParser
+    {
+        public static ChangelogEntry Parse(string tag, string dateIso, string url, string body)
+        {
+            var entry = new ChangelogEntry
+            {
+                Version = tag != null ? tag.TrimStart('v') : null,
+                Date = dateIso,
+                Url = url
+            };
+            if (string.IsNullOrEmpty(body)) return entry;
+
+            ChangelogSection current = null;
+            bool firstHeadingSkipped = false;
+            foreach (string rawLine in body.Replace("\r\n", "\n").Split('\n'))
+            {
+                string line = rawLine.Trim();
+                if (line.Length == 0) continue;
+
+                // metadata lines the workflow also skips — except image::,
+                // which is the drill-in's hero
+                if (line.StartsWith("image::", StringComparison.Ordinal))
+                {
+                    string img = line.Substring(7).Trim();
+                    if (img.Length > 0 && entry.ImageUrl == null) entry.ImageUrl = img;
+                    continue;
+                }
+                if (line.StartsWith("description::", StringComparison.Ordinal)) continue;
+
+                if (line.StartsWith("#", StringComparison.Ordinal))
+                {
+                    // the first "##" is the document title; later ones open
+                    // sections (a lone "#" h1 never opens one)
+                    if (line.StartsWith("##", StringComparison.Ordinal))
+                    {
+                        if (!firstHeadingSkipped)
+                        {
+                            firstHeadingSkipped = true;
+                            continue;
+                        }
+                        current = new ChangelogSection
+                        {
+                            Title = line.TrimStart('#').Trim()
+                        };
+                        entry.Sections.Add(current);
+                    }
+                    continue;
+                }
+
+                if (line.StartsWith("-", StringComparison.Ordinal) ||
+                    line.StartsWith("*", StringComparison.Ordinal) ||
+                    line.StartsWith("•", StringComparison.Ordinal))
+                {
+                    string item = line.TrimStart('-', '*', '•').Trim();
+                    if (item.Length == 0) continue;
+                    if (current == null)
+                        current = new ChangelogSection { Title = "Changes" };
+                    if (entry.Sections.IndexOf(current) < 0) entry.Sections.Add(current);
+                    current.Items.Add(item);
+                    continue;
+                }
+
+                // free-standing prose before the first section = description
+                if (current == null && entry.Description == null)
+                    entry.Description = line;
+            }
+            return entry;
         }
     }
 

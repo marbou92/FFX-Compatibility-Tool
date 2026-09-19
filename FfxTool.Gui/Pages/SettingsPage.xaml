@@ -2,13 +2,18 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:FfxTool.Gui">
-    <!-- Sub-settings hub, 0.2.2 edition: search box over everything, a
-         sub-nav with a sliding M3 active-indicator pill (mirrors the
-         NavRail's), Alt+1..4 shortcuts, remembered last tab, grouped rows
-         on a shared SettingsRow style, a Light/Dark/System segmented
-         control, a live theme preview, a disk-usage meter, in-row delete
-         confirms with toast feedback, an update status card with real
-         states, an earlier-releases timeline and click-to-copy version. -->
+    <!-- Sub-settings hub, 0.2.2 second pass: five sub-pages now —
+         Appearance, Storage, Plugin Profiles, Updates and About. The
+         update machinery moved out of About into its own Updates page in
+         the vivi-music "Update Settings" shape: status rows (system
+         update / app version / flavour), behavior switches (auto check /
+         include nightlies / notifications), a clear-downloads row and a
+         history group whose Changelog row drills into a version-pill
+         viewer fed straight from GitHub's release list. About keeps only
+         the identity row, the specs chips and the project links. Every
+         boolean row carries a real Md3Switch (the checkmark era is over:
+         selectors read as mini-pills), and the switch tracks the palette
+         like everything else. -->
     <UserControl.Resources>
         <!-- Sub-nav item: NO selected pill of its own — the floating
              SubNavPill behind the ListBox is the selected indicator and
@@ -172,6 +177,19 @@
                             <TextBlock Text="Plugin Profiles" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </ListBoxItem>
+                    <ListBoxItem x:Name="NavUpdates" Style="{StaticResource SettingsNavItem}"
+                                 Padding="12,10" Margin="0,0,0,4">
+                        <StackPanel Orientation="Horizontal">
+                            <controls:IconGlyph IconName="Refresh" Width="19" Height="19" VerticalAlignment="Center"/>
+                            <TextBlock Text="Updates" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                            <!-- the update-found dot: a silent find lights this
+                                 up even with the toast switched off -->
+                            <Border x:Name="NavUpdatesDot" Width="8" Height="8" CornerRadius="4"
+                                    Background="{DynamicResource B.Primary}" VerticalAlignment="Center"
+                                    Margin="9,0,0,0" Visibility="Collapsed"
+                                    ToolTip="An update is waiting on the Updates tab"/>
+                        </StackPanel>
+                    </ListBoxItem>
                     <ListBoxItem x:Name="NavAbout" Style="{StaticResource SettingsNavItem}"
                                  Padding="12,10" Margin="0,0,0,4">
                         <StackPanel Orientation="Horizontal">
@@ -181,7 +199,7 @@
                     </ListBoxItem>
                 </ListBox>
                     <!-- keyboard hint for the shortcuts (suggestion 22) -->
-                    <TextBlock Text="Alt+1–4 switches tabs" Style="{StaticResource Caption}"
+                    <TextBlock Text="Alt+1–5 switches tabs" Style="{StaticResource Caption}"
                                Margin="12,12,0,0" Opacity="0.8"/>
                 </StackPanel>
             </Grid>
@@ -239,7 +257,10 @@
                                            Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="2,0,0,22"
                                            MaxWidth="520" HorizontalAlignment="Left"/>
 
-                                <!-- PALETTE group -->
+                                <!-- PALETTE group: the swatches carry a
+                                     mini-pill badge now — a miniature of the
+                                     settings switch, dot parked right — where
+                                     a checkmark chip used to sit -->
                                 <TextBlock Text="PALETTE" Style="{StaticResource GroupHeader}" Margin="0,0,0,12"/>
                                 <StackPanel x:Name="PaletteRow" Orientation="Horizontal" Margin="0,0,0,22"/>
 
@@ -259,17 +280,22 @@
                                         <Border Height="1" Background="{DynamicResource B.OutlineVariant}" Opacity="0.6" Margin="0,0,0,14"/>
                                         <TextBlock Text="The quick brown fox jumps over the lazy dog."
                                                    Style="{StaticResource Body}" FontSize="13.5" Margin="0,0,0,14"/>
-                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                                        <StackPanel Orientation="Horizontal">
                                             <Button Content="Convert" Height="34" MinWidth="110"/>
                                             <Button Content="Browse" Style="{StaticResource OutlinedButton}"
                                                     Height="34" MinWidth="96" Margin="10,0,0,0"/>
                                         </StackPanel>
-                                        <StackPanel Orientation="Horizontal">
+                                        <!-- the live switch demo, solo: the demo
+                                             checkbox that used to sit beside it is
+                                             gone — booleans are switches now, and
+                                             one honest switch beats two rivals -->
+                                        <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
                                             <ToggleButton Style="{StaticResource Md3Switch}" IsChecked="True"
                                                           VerticalAlignment="Center"
                                                           ToolTip="A live switch — click it, it's real"/>
-                                            <CheckBox Style="{StaticResource Md3CheckBox}" IsChecked="True"
-                                                      Content="Include subfolders" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Every boolean in this app is a switch like this one."
+                                                       Style="{StaticResource Caption}" Margin="14,0,0,0"
+                                                       VerticalAlignment="Center" Opacity="0.85"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </Border>
@@ -361,8 +387,11 @@
                                     </Grid>
                                 </Border>
 
-                                <!-- verbose logging row -->
-                                <Border x:Name="VerboseRow" Style="{StaticResource SettingsRow}" Margin="0,0,0,10">
+                                <!-- verbose logging row: the checkbox became a
+                                     switch, and the whole row toggles it -->
+                                <Border x:Name="VerboseRow" Style="{StaticResource SettingsRowClickable}" Margin="0,0,0,10"
+                                        MouseLeftButtonUp="VerboseRow_Click"
+                                        ToolTip="Toggles verbose logging">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -373,8 +402,8 @@
                                             <TextBlock Text="Per-file conversion steps in the session log — turn on when reporting a bug, off again afterwards"
                                                        Style="{StaticResource Caption}" Margin="0,2,0,0" TextWrapping="Wrap"/>
                                         </StackPanel>
-                                        <CheckBox x:Name="VerboseCheck" Grid.Column="1" Style="{StaticResource Md3CheckBox}"
-                                                  VerticalAlignment="Center"/>
+                                        <ToggleButton x:Name="VerboseCheck" Grid.Column="1" Style="{StaticResource Md3Switch}"
+                                                      VerticalAlignment="Center"/>
                                     </Grid>
                                 </Border>
 
@@ -481,7 +510,376 @@
                     </Grid>
                 </Grid>
 
-                <!-- ==================== About ==================== -->
+                <!-- ==================== Updates ====================
+                     the vivi-music "Update Settings" page: the update
+                     machinery out of About, laid out as status rows,
+                     behavior switches, a maintenance row and a history
+                     group. The Changelog row drills into the version-pill
+                     viewer (ChangelogPane below). -->
+                <Grid x:Name="UpdatesView" Visibility="Collapsed">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <Border Style="{StaticResource Card}" MaxWidth="760" VerticalAlignment="Top">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                                    <Border Width="40" Height="40" CornerRadius="12" Background="{DynamicResource B.SCHigh}"
+                                            VerticalAlignment="Center">
+                                        <controls:IconGlyph IconName="Refresh" Width="22" Height="22"
+                                                            Foreground="{DynamicResource B.Primary}"/>
+                                    </Border>
+                                    <TextBlock Text="Updates" Style="{StaticResource SectionTitle}" FontSize="17"
+                                               Margin="14,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+
+                                <!-- STATUS group -->
+                                <TextBlock Text="STATUS" Style="{StaticResource GroupHeader}" Margin="0,0,0,10"/>
+
+                                <!-- the one update row: the old status card's
+                                     four faces folded into a value + an
+                                     expandable detail strip. Click = check now
+                                     (or open the updater when something's
+                                     already waiting). -->
+                                <Border x:Name="UpdateStatusRow" Style="{StaticResource SettingsRowClickable}" Margin="0,0,0,10"
+                                        MouseLeftButtonUp="UpdateStatusRow_Click"
+                                        ToolTip="Checks GitHub's releases page — or opens the updater when an update is waiting">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                                Background="{DynamicResource B.SCHighest}" VerticalAlignment="Center">
+                                            <controls:IconGlyph IconName="Refresh" Width="17" Height="17"
+                                                                Foreground="{DynamicResource B.Primary}"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="System update" Style="{StaticResource Body}" FontWeight="Medium"/>
+                                            <TextBlock x:Name="UpdateCheckedCaption" Style="{StaticResource Caption}" Margin="0,2,0,0"
+                                                       Text="No check has run this session"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <controls:IconGlyph x:Name="UpdateStatusSpinner" IconName="Refresh" Width="15" Height="15"
+                                                                Foreground="{DynamicResource B.OnSurfaceVariant}"
+                                                                VerticalAlignment="Center" Visibility="Collapsed"
+                                                                RenderTransformOrigin="0.5,0.5">
+                                                <controls:IconGlyph.RenderTransform>
+                                                    <RotateTransform x:Name="StatusSpin" Angle="0"/>
+                                                </controls:IconGlyph.RenderTransform>
+                                            </controls:IconGlyph>
+                                            <TextBlock x:Name="UpdateStatusValue" Text="Not checked yet" Style="{StaticResource Body}"
+                                                       VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- the detail strip: visible only when a
+                                     check came back with something to say -->
+                                <Border x:Name="UpdateDetailPanel" Background="{DynamicResource B.SCLow}" CornerRadius="12"
+                                        Padding="14,12" Margin="0,0,0,10" Visibility="Collapsed">
+                                    <StackPanel>
+                                        <TextBlock x:Name="UpdateAvailSub" Style="{StaticResource Caption}" TextWrapping="Wrap"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                            <Button x:Name="UpdateOpenButton" Content="See what's new" Style="{StaticResource TonalButton}"
+                                                    MinWidth="130" Click="UpdateOpenButton_Click"
+                                                    ToolTip="Opens the updater — it shows the release's what's-new notes and can download, verify and install it in place"/>
+                                            <TextBlock x:Name="UpdatePageLink" Text="Release page" Style="{StaticResource M3Link}"
+                                                       Margin="14,0,0,0" VerticalAlignment="Center"
+                                                       MouseLeftButtonUp="UpdatePageLink_Click"/>
+                                            <TextBlock x:Name="UpdateSkipLink" Text="Skip this version" Style="{StaticResource M3Link}"
+                                                       Margin="14,0,0,0" VerticalAlignment="Center"
+                                                       MouseLeftButtonUp="UpdateSkipLink_Click"
+                                                       ToolTip="Stay quiet about this version — the next release speaks up again"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- app version: click copies, chip confirms -->
+                                <Border x:Name="AppVersionRow" Style="{StaticResource SettingsRowClickable}" Margin="0,0,0,10"
+                                        MouseLeftButtonUp="AppVersionRow_Click"
+                                        ToolTip="Click to copy the version number">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                                Background="{DynamicResource B.SCHighest}" VerticalAlignment="Center">
+                                            <controls:IconGlyph IconName="Description" Width="17" Height="17"
+                                                                Foreground="{DynamicResource B.Primary}"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="App version" Style="{StaticResource Body}" FontWeight="Medium"/>
+                                            <TextBlock Text="The number the release page publishes" Style="{StaticResource Caption}" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Border x:Name="AppVersionChip" Background="{DynamicResource B.Primary}" CornerRadius="9"
+                                                    Padding="10,5" Margin="0,0,8,0" Visibility="Collapsed">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <controls:IconGlyph IconName="Check" Width="12" Height="12"
+                                                                        Foreground="{DynamicResource B.OnPrimary}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="Copied" FontSize="11.5" Foreground="{DynamicResource B.OnPrimary}"
+                                                               FontWeight="SemiBold" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
+                                            <TextBlock x:Name="AppVersionValue" Style="{StaticResource Body}"
+                                                       Foreground="{DynamicResource B.OnSurfaceVariant}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- flavour: which kind of build this exe is -->
+                                <Border x:Name="FlavourRow" Style="{StaticResource SettingsRow}" Margin="0,0,0,20">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                                Background="{DynamicResource B.SCHighest}" VerticalAlignment="Center">
+                                            <controls:IconGlyph IconName="Diamond" Width="17" Height="17"
+                                                                Foreground="{DynamicResource B.Primary}"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Flavour" Style="{StaticResource Body}" FontWeight="Medium"/>
+                                            <TextBlock Text="Stable releases update in place; nightlies are the rolling build"
+                                                       Style="{StaticResource Caption}" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                        <TextBlock x:Name="FlavourValue" Style="{StaticResource Body}"
+                                                   Foreground="{DynamicResource B.OnSurfaceVariant}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- BEHAVIOR group: three real switches -->
+                                <TextBlock Text="BEHAVIOR" Style="{StaticResource GroupHeader}" Margin="0,0,0,10"/>
+
+                                <Border x:Name="AutoCheckRow" Style="{StaticResource SettingsRowClickable}" Margin="0,0,0,10"
+                                        MouseLeftButtonUp="AutoCheckRow_Click"
+                                        ToolTip="Toggles the automatic update check">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                                Background="{DynamicResource B.SCHighest}" VerticalAlignment="Center">
+                                            <controls:IconGlyph IconName="Schedule" Width="17" Height="17"
+                                                                Foreground="{DynamicResource B.Primary}"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Automatic update check" Style="{StaticResource Body}" FontWeight="Medium"/>
+                                            <TextBlock Text="Once per session, at most every 6 hours — a find lights this tab up, never a popup"
+                                                       Style="{StaticResource Caption}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                        <ToggleButton x:Name="AutoCheckSwitch" Grid.Column="2" Style="{StaticResource Md3Switch}"
+                                                      VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border x:Name="BetaCheckRow" Style="{StaticResource SettingsRowClickable}" Margin="0,0,0,10"
+                                        MouseLeftButtonUp="BetaCheckRow_Click"
+                                        ToolTip="Toggles nightly / prerelease checks">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                                Background="{DynamicResource B.SCHighest}" VerticalAlignment="Center">
+                                            <controls:IconGlyph IconName="AutoAwesome" Width="17" Height="17"
+                                                                Foreground="{DynamicResource B.Primary}"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Include nightlies" Style="{StaticResource Body}" FontWeight="Medium"/>
+                                            <TextBlock Text="Also check the rolling nightly builds — a nightly hit opens its release page instead of installing"
+                                                       Style="{StaticResource Caption}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                        <ToggleButton x:Name="BetaCheckSwitch" Grid.Column="2" Style="{StaticResource Md3Switch}"
+                                                      VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border x:Name="NotifyRow" Style="{StaticResource SettingsRowClickable}" Margin="0,0,0,20"
+                                        MouseLeftButtonUp="NotifyRow_Click"
+                                        ToolTip="Toggles the update toast">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                                Background="{DynamicResource B.SCHighest}" VerticalAlignment="Center">
+                                            <controls:IconGlyph IconName="Bell" Width="17" Height="17"
+                                                                Foreground="{DynamicResource B.Primary}"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Notify when an update is found" Style="{StaticResource Body}" FontWeight="Medium"/>
+                                            <TextBlock Text="The toast pill in the corner — the dot on this tab shows either way"
+                                                       Style="{StaticResource Caption}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                        <ToggleButton x:Name="NotifySwitch" Grid.Column="2" Style="{StaticResource Md3Switch}"
+                                                      VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- MAINTENANCE group -->
+                                <TextBlock Text="MAINTENANCE" Style="{StaticResource GroupHeader}" Margin="0,0,0,10"/>
+
+                                <Border x:Name="ClearDownloadsRow" Style="{StaticResource SettingsRowClickable}" Margin="0,0,0,20"
+                                        MouseLeftButtonUp="ClearDownloadsRow_Click"
+                                        ToolTip="Deletes the updater's staged download">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                                Background="{DynamicResource B.SCHighest}" VerticalAlignment="Center">
+                                            <controls:IconGlyph IconName="Trash" Width="17" Height="17"
+                                                                Foreground="{DynamicResource B.Primary}"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Clear downloaded updates" Style="{StaticResource Body}" FontWeight="Medium"/>
+                                            <TextBlock x:Name="ClearDownloadsCaption" Style="{StaticResource Caption}" Margin="0,2,0,0"
+                                                       Text="No staged update on disk"/>
+                                        </StackPanel>
+                                        <controls:IconGlyph Grid.Column="2" IconName="Info" Width="15" Height="15"
+                                                            Foreground="{DynamicResource B.OnSurfaceVariant}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- HISTORY group -->
+                                <TextBlock Text="HISTORY" Style="{StaticResource GroupHeader}" Margin="0,0,0,10"/>
+
+                                <Border x:Name="ChangelogRow" Style="{StaticResource SettingsRowClickable}" Margin="0,0,0,10"
+                                        MouseLeftButtonUp="ChangelogRow_Click"
+                                        ToolTip="Every release's notes, straight from GitHub">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                                Background="{DynamicResource B.SCHighest}" VerticalAlignment="Center">
+                                            <controls:IconGlyph IconName="History" Width="17" Height="17"
+                                                                Foreground="{DynamicResource B.Primary}"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Changelog" Style="{StaticResource Body}" FontWeight="Medium"/>
+                                            <TextBlock Text="View version history — pick any release from the pill strip"
+                                                       Style="{StaticResource Caption}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                        <controls:IconGlyph Grid.Column="2" IconName="ArrowDrop" Width="15" Height="15"
+                                                            Foreground="{DynamicResource B.OnSurfaceVariant}" VerticalAlignment="Center"
+                                                            RenderTransformOrigin="0.5,0.5">
+                                            <controls:IconGlyph.RenderTransform>
+                                                <RotateTransform Angle="-90"/>
+                                            </controls:IconGlyph.RenderTransform>
+                                        </controls:IconGlyph>
+                                    </Grid>
+                                </Border>
+                                <Border x:Name="CommitsRow" Style="{StaticResource SettingsRowClickable}" Margin="0,0,0,10"
+                                        MouseLeftButtonUp="CommitsRow_Click"
+                                        ToolTip="Opens the main branch's commit history on GitHub">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                                Background="{DynamicResource B.SCHighest}" VerticalAlignment="Center">
+                                            <controls:IconGlyph IconName="Logo" Width="17" Height="17"
+                                                                Foreground="{DynamicResource B.Primary}"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Commits" Style="{StaticResource Body}" FontWeight="Medium"/>
+                                            <TextBlock Text="Browse recent changes on the main branch"
+                                                       Style="{StaticResource Caption}" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                        <controls:IconGlyph Grid.Column="2" IconName="OpenInNew" Width="15" Height="15"
+                                                            Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+
+                                <TextBlock Style="{StaticResource Caption}" Opacity="0.85" TextWrapping="Wrap"
+                                           Text="Checks hit GitHub's releases page only — nothing else leaves this machine. The updater downloads the new exe, verifies it against the release's SHA-256 and swaps it in place."/>
+                            </StackPanel>
+                        </Border>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- ==================== Changelog (drill-in) ====================
+                     the vivi-music changelog viewer: a horizontal strip of
+                     version pills over the selected release's notes —
+                     heading, date, hero image and the same bullet rows the
+                     feed renders everywhere. Fed by the release list fetch,
+                     parsed with the workflow's own Stablemd rules. -->
+                <Grid x:Name="ChangelogPane" Visibility="Collapsed">
+                    <Grid MaxWidth="760" HorizontalAlignment="Stretch">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,14">
+                            <Border x:Name="ChangelogBackButton" Width="34" Height="34" CornerRadius="10"
+                                    Background="{DynamicResource B.SCHigh}" VerticalAlignment="Center" Cursor="Hand"
+                                    MouseLeftButtonUp="ChangelogBack_Click" ToolTip="Back to Updates">
+                                <controls:IconGlyph IconName="ChevLeft" Width="17" Height="17"
+                                                    Foreground="{DynamicResource B.Primary}"/>
+                            </Border>
+                            <TextBlock Text="Changelog" Style="{StaticResource SectionTitle}" FontSize="17"
+                                       Margin="14,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <!-- the version pill strip -->
+                        <Border Grid.Row="1" Background="{DynamicResource B.SC}" CornerRadius="14" Padding="10,8"
+                                Margin="0,0,0,14">
+                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                                <StackPanel x:Name="VersionPills" Orientation="Horizontal"/>
+                            </ScrollViewer>
+                        </Border>
+                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                            <Border Style="{StaticResource Card}" Padding="18" VerticalAlignment="Top" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="ReleaseTitle" Text="No release selected"
+                                                   Style="{StaticResource SectionTitle}" FontSize="17"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="ReleaseDate" Style="{StaticResource Caption}" Grid.Column="1"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Border x:Name="ReleaseHero" CornerRadius="14" Margin="0,0,0,14"
+                                            Visibility="Collapsed" HorizontalAlignment="Left">
+                                        <Image x:Name="ReleaseHeroImage" MaxWidth="620" MaxHeight="240" Stretch="Uniform"
+                                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                                    </Border>
+                                    <TextBlock x:Name="ReleaseIntro" Style="{StaticResource BodySecondary}"
+                                               TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                    <StackPanel x:Name="ReleaseSections"/>
+                                    <TextBlock x:Name="ReleaseLink" Text="Full release notes on GitHub"
+                                               Style="{StaticResource M3Link}" Margin="0,12,0,0"
+                                               HorizontalAlignment="Left" Visibility="Collapsed"
+                                               MouseLeftButtonUp="ReleaseLink_Click"/>
+                                </StackPanel>
+                            </Border>
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
+
+                <!-- ==================== About ====================
+                     links and details only — the update machinery lives on
+                     the Updates tab now -->
                 <Grid x:Name="AboutView" Visibility="Collapsed">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <Border Style="{StaticResource CardElevated}" MaxWidth="760" VerticalAlignment="Top">
@@ -497,7 +895,8 @@
                                 </StackPanel>
 
                                 <!-- identity row — clicking the version copies
-                                     it (suggestion 19) -->
+                                     it (suggestion 19); the Copied chip fades
+                                     in where the checkmark text used to sit -->
                                 <Border x:Name="VersionRow" Style="{StaticResource SettingsRowClickable}" Margin="0,0,0,16"
                                         MouseLeftButtonUp="VersionRow_Click"
                                         ToolTip="Click to copy the version number">
@@ -515,93 +914,76 @@
                                         <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock Text="FFX Compatibility Tool" Style="{StaticResource Body}" FontWeight="SemiBold" FontSize="14"/>
-                                                <controls:IconGlyph IconName="Copy" Width="13" Height="13"
-                                                                    Foreground="{DynamicResource B.OnSurfaceVariant}"
-                                                                    Margin="8,1,0,0" VerticalAlignment="Center"/>
+                                                <Border x:Name="VersionChannel" CornerRadius="6" Padding="6,2"
+                                                        Background="{DynamicResource B.PrimaryContainer}" Margin="8,0,0,0"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock x:Name="VersionChannelText" Text="STABLE" FontSize="9.5"
+                                                               FontWeight="SemiBold" Foreground="{DynamicResource B.OnPrimaryContainer}"/>
+                                                </Border>
                                             </StackPanel>
                                             <TextBlock x:Name="VersionText" Style="{StaticResource Caption}" Margin="0,2,0,0"/>
                                             <TextBlock Text="Made by marbou92" Style="{StaticResource Caption}" Margin="0,2,0,0"/>
                                         </StackPanel>
-                                        <TextBlock x:Name="CopyHint" Grid.Column="2" Text="Copied ✓" FontSize="11.5"
-                                                   Foreground="{DynamicResource B.Primary}" FontWeight="SemiBold"
-                                                   VerticalAlignment="Center" Margin="0,0,2,0" Visibility="Collapsed"/>
+                                        <Border x:Name="AboutCopyChip" Grid.Column="2" Background="{DynamicResource B.Primary}"
+                                                CornerRadius="9" Padding="10,5" VerticalAlignment="Center" Visibility="Collapsed">
+                                            <StackPanel Orientation="Horizontal">
+                                                <controls:IconGlyph IconName="Check" Width="12" Height="12"
+                                                                    Foreground="{DynamicResource B.OnPrimary}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Copied" FontSize="11.5" Foreground="{DynamicResource B.OnPrimary}"
+                                                           FontWeight="SemiBold" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
                                     </Grid>
                                 </Border>
 
-                                <TextBlock Style="{StaticResource BodySecondary}" TextWrapping="Wrap"
-                                           Text="A professional-grade utility designed for motion designers and video editors."/>
-                                <TextBlock Style="{StaticResource Body}" Foreground="{DynamicResource B.Primary}" TextWrapping="Wrap"
-                                           Margin="0,8,0,0"
-                                           Text="This tool specializes in downgrading After Effects presets (.ffx) to ensure cross-version compatibility."/>
-                                <TextBlock Style="{StaticResource BodySecondary}" TextWrapping="Wrap" Margin="0,8,0,18"
-                                           Text="Designed with precision to maintain keyframe data and expression integrity across different software generations."/>
+                                <!-- one lead line + the specs chips: the old
+                                     three-paragraph wall, made scannable -->
+                                <TextBlock Style="{StaticResource BodySecondary}" TextWrapping="Wrap" Margin="0,0,0,12"
+                                           Text="Downgrades After Effects presets (.ffx) for cross-version compatibility — keyframe data and expression integrity stay intact across software generations."/>
+                                <WrapPanel x:Name="SpecsRow" Margin="0,0,0,20">
+                                    <Border Background="{DynamicResource B.SCHighest}" BorderBrush="{DynamicResource B.OutlineVariant}"
+                                            BorderThickness="1" CornerRadius="9" Padding="10,4" Margin="0,0,8,8">
+                                        <TextBlock Text="Windows 10+" Style="{StaticResource Caption}"/>
+                                    </Border>
+                                    <Border Background="{DynamicResource B.SCHighest}" BorderBrush="{DynamicResource B.OutlineVariant}"
+                                            BorderThickness="1" CornerRadius="9" Padding="10,4" Margin="0,0,8,8">
+                                        <TextBlock Text=".NET Framework 4.8" Style="{StaticResource Caption}"/>
+                                    </Border>
+                                    <Border Background="{DynamicResource B.SCHighest}" BorderBrush="{DynamicResource B.OutlineVariant}"
+                                            BorderThickness="1" CornerRadius="9" Padding="10,4" Margin="0,0,8,8">
+                                        <TextBlock Text="Single exe" Style="{StaticResource Caption}"/>
+                                    </Border>
+                                    <Border Background="{DynamicResource B.SCHighest}" BorderBrush="{DynamicResource B.OutlineVariant}"
+                                            BorderThickness="1" CornerRadius="9" Padding="10,4" Margin="0,0,8,8">
+                                        <TextBlock Text="No installer" Style="{StaticResource Caption}"/>
+                                    </Border>
+                                </WrapPanel>
 
-                                <!-- WHAT'S NEW group: the vivi-style in-app
-                                     changelog + the earlier-releases timeline
-                                     (suggestion 18) -->
-                                <TextBlock Text="WHAT'S NEW" Style="{StaticResource GroupHeader}" Margin="0,0,0,10"/>
-                                <Border x:Name="WhatsNewCard" Background="{DynamicResource B.SC}" CornerRadius="14"
-                                        Padding="16,14" Margin="0,0,0,10">
-                                    <StackPanel>
-                                        <!-- the sub-setting header: sparkle tile +
-                                             version + release date, so the feed
-                                             below can be pure rows -->
-                                        <Grid Margin="0,0,0,10">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Border Width="34" Height="34" CornerRadius="10"
-                                                    Background="{DynamicResource B.PrimaryContainer}"
-                                                    VerticalAlignment="Center">
-                                                <controls:IconGlyph IconName="AutoAwesome" Width="18" Height="18"
-                                                                    Foreground="{DynamicResource B.OnPrimaryContainer}"/>
-                                            </Border>
-                                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                                                <TextBlock x:Name="WhatsNewTitle" Text="What's new" Style="{StaticResource Body}"
-                                                           FontWeight="SemiBold"/>
-                                                <TextBlock x:Name="WhatsNewDate" Style="{StaticResource Caption}" Margin="0,2,0,0"
-                                                           Visibility="Collapsed"/>
-                                            </StackPanel>
-                                        </Grid>
-                                        <ScrollViewer MaxHeight="340" VerticalScrollBarVisibility="Auto"
-                                                      HorizontalScrollBarVisibility="Disabled">
-                                            <StackPanel x:Name="WhatsNewPanel"/>
-                                        </ScrollViewer>
-                                        <TextBlock x:Name="WhatsNewNotesLink" Text="Full release notes on GitHub"
-                                                   Style="{StaticResource M3Link}" Margin="0,10,0,0"
-                                                   HorizontalAlignment="Left" Visibility="Collapsed"
-                                                   MouseLeftButtonUp="WhatsNewNotesLink_Click"
-                                                   ToolTip="Opens this release's page in your browser"/>
-                                    </StackPanel>
-                                </Border>
-
-                                <!-- earlier releases toggle -->
-                                <Border x:Name="TimelineToggle" Style="{StaticResource SettingsRowClickable}" Margin="0,0,0,8"
-                                        MouseLeftButtonUp="TimelineToggle_Click"
-                                        ToolTip="Lists the project's published releases, straight from GitHub">
-                                    <StackPanel Orientation="Horizontal">
-                                        <controls:IconGlyph IconName="ArrowDrop" Width="16" Height="16"
-                                                            VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
-                                            <controls:IconGlyph.RenderTransform>
-                                                <RotateTransform x:Name="TimelineChevronRotate" Angle="-90"/>
-                                            </controls:IconGlyph.RenderTransform>
-                                        </controls:IconGlyph>
-                                        <TextBlock Text="Earlier releases" Style="{StaticResource Body}" FontWeight="Medium" Margin="9,0,0,0"/>
-                                        <TextBlock x:Name="TimelineCount" Style="{StaticResource Caption}" Margin="10,0,0,0"
-                                                   Text="tap to load from GitHub" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border x:Name="TimelinePanel" Background="{DynamicResource B.SC}" CornerRadius="14"
-                                        Padding="8,6" MaxHeight="260" Margin="0,0,0,20" Visibility="Collapsed">
-                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                        <StackPanel x:Name="TimelineList"/>
-                                    </ScrollViewer>
-                                </Border>
-
-                                <!-- PROJECT group: link rows instead of bare
-                                     text links (suggestion 20) -->
+                                <!-- PROJECT group -->
                                 <TextBlock Text="PROJECT" Style="{StaticResource GroupHeader}" Margin="0,0,0,10"/>
+                                <Border x:Name="ShaRow" Style="{StaticResource SettingsRowClickable}" Margin="0,0,0,10"
+                                        MouseLeftButtonUp="ShaRow_Click"
+                                        ToolTip="Computes and copies this exe's SHA-256">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                                Background="{DynamicResource B.SCHighest}" VerticalAlignment="Center">
+                                            <controls:IconGlyph IconName="Verified" Width="17" Height="17"
+                                                                Foreground="{DynamicResource B.Primary}"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Copy SHA-256 of this exe" Style="{StaticResource Body}" FontWeight="Medium"/>
+                                            <TextBlock Text="The hash the release page publishes — verify your install against it"
+                                                       Style="{StaticResource Caption}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                        <controls:IconGlyph Grid.Column="2" IconName="Copy" Width="15" Height="15"
+                                                            Foreground="{DynamicResource B.Primary}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
                                 <Border x:Name="RepoRow" Style="{StaticResource SettingsRowClickable}" Margin="0,0,0,10"
                                         MouseLeftButtonUp="RepoRow_Click"
                                         ToolTip="Opens github.com in your browser">
@@ -647,116 +1029,8 @@
                                     </Grid>
                                 </Border>
 
-                                <!-- UPDATES group -->
-                                <TextBlock Text="UPDATES" Style="{StaticResource GroupHeader}" Margin="0,0,0,10"/>
-
-                                <!-- the startup check: silent, throttled, and off
-                                     entirely for nightlies (their numeric version
-                                     stays at the csproj default, so comparing them
-                                     against releases would nag forever) -->
-                                <Border x:Name="AutoCheckRow" Style="{StaticResource SettingsRow}" Margin="0,0,0,10">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="Check for updates automatically" Style="{StaticResource Body}" FontWeight="Medium"/>
-                                            <TextBlock Text="Once per session, at most every 6 hours — finding an update raises the Settings badge and a small toast, never a popup"
-                                                       Style="{StaticResource Caption}" Margin="0,2,0,0" TextWrapping="Wrap"/>
-                                        </StackPanel>
-                                        <CheckBox x:Name="AutoCheckCheck" Grid.Column="1" Style="{StaticResource Md3CheckBox}"
-                                                  VerticalAlignment="Center" Margin="12,0,0,0"/>
-                                    </Grid>
-                                </Border>
-
-                                <!-- the update status card (suggestion 17):
-                                     one card, four faces — idle/up-to-date,
-                                     checking, update available, error -->
-                                <Border x:Name="UpdateCard" CornerRadius="14" Padding="18,14" Margin="0,0,0,10"
-                                        Background="{DynamicResource B.SC}">
-                                    <Grid>
-                                        <!-- idle / up-to-date -->
-                                        <StackPanel x:Name="StateIdle" Orientation="Horizontal">
-                                            <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource B.PrimaryContainer}"
-                                                    VerticalAlignment="Center">
-                                                <controls:IconGlyph IconName="Check" Width="16" Height="16"
-                                                                    Foreground="{DynamicResource B.OnPrimaryContainer}"/>
-                                            </Border>
-                                            <StackPanel Margin="13,0,0,0" VerticalAlignment="Center">
-                                                <TextBlock x:Name="UpdateStateTitle" Text="You're up to date" Style="{StaticResource Body}" FontWeight="Medium"/>
-                                                <TextBlock x:Name="UpdateStateSub" Style="{StaticResource Caption}" Margin="0,2,0,0"
-                                                           TextWrapping="Wrap" Text="Not checked yet — the check resolves the project's latest release on GitHub; nothing else leaves this machine."/>
-                                                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                                    <Button x:Name="UpdateCheckAgainButton" Content="Check for updates" MinWidth="150"
-                                                            Click="UpdateCheckNow_Click"/>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </StackPanel>
-
-                                        <!-- checking -->
-                                        <StackPanel x:Name="StateChecking" Orientation="Horizontal" Visibility="Collapsed">
-                                            <Grid Width="34" Height="34" VerticalAlignment="Center">
-                                                <controls:IconGlyph IconName="Refresh" Width="20" Height="20"
-                                                                    Foreground="{DynamicResource B.Primary}" RenderTransformOrigin="0.5,0.5">
-                                                    <controls:IconGlyph.RenderTransform>
-                                                        <RotateTransform x:Name="SpinnerRotate" Angle="0"/>
-                                                    </controls:IconGlyph.RenderTransform>
-                                                </controls:IconGlyph>
-                                            </Grid>
-                                            <StackPanel Margin="13,0,0,0" VerticalAlignment="Center">
-                                                <TextBlock Text="Checking for updates…" Style="{StaticResource Body}" FontWeight="Medium"/>
-                                                <TextBlock Style="{StaticResource Caption}" Margin="0,2,0,0"
-                                                           Text="Asking the project's releases page — nothing else leaves this machine."/>
-                                            </StackPanel>
-                                        </StackPanel>
-
-                                        <!-- update available -->
-                                        <StackPanel x:Name="StateAvailable" Orientation="Horizontal" Visibility="Collapsed">
-                                            <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource B.Primary}"
-                                                    VerticalAlignment="Center">
-                                                <controls:IconGlyph IconName="AutoAwesome" Width="16" Height="16"
-                                                                    Foreground="{DynamicResource B.OnPrimary}"/>
-                                            </Border>
-                                            <StackPanel Margin="13,0,0,0" VerticalAlignment="Center">
-                                                <TextBlock x:Name="UpdateAvailTitle" Text="A new version is out" Style="{StaticResource Body}" FontWeight="Medium"/>
-                                                <TextBlock x:Name="UpdateAvailSub" Style="{StaticResource Caption}" Margin="0,2,0,0"
-                                                           TextWrapping="Wrap" Text=""/>
-                                                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                                    <Button x:Name="UpdateOpenButton" Content="See what's new" MinWidth="130"
-                                                            Style="{StaticResource TonalButton}"
-                                                            Click="UpdateOpenButton_Click"
-                                                            ToolTip="Opens the updater — it shows the release's what's-new notes and can download, verify and install it in place"/>
-                                                    <TextBlock x:Name="UpdatePageLink" Text="Release page" Style="{StaticResource M3Link}"
-                                                               Margin="14,0,0,0" VerticalAlignment="Center"
-                                                               MouseLeftButtonUp="UpdatePageLink_Click"/>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </StackPanel>
-
-                                        <!-- error -->
-                                        <StackPanel x:Name="StateError" Orientation="Horizontal" Visibility="Collapsed">
-                                            <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource B.ErrorContainer}"
-                                                    VerticalAlignment="Center">
-                                                <controls:IconGlyph IconName="Warning" Width="16" Height="16"
-                                                                    Foreground="{DynamicResource B.OnErrorContainer}"/>
-                                            </Border>
-                                            <StackPanel Margin="13,0,0,0" VerticalAlignment="Center">
-                                                <TextBlock Text="Couldn't check for updates" Style="{StaticResource Body}" FontWeight="Medium"/>
-                                                <TextBlock x:Name="UpdateErrorSub" Style="{StaticResource Caption}" Margin="0,2,0,0"
-                                                           TextWrapping="Wrap" Text=""/>
-                                                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                                    <Button x:Name="UpdateRetryButton" Content="Try again" MinWidth="110"
-                                                            Style="{StaticResource OutlinedButton}"
-                                                            Click="UpdateCheckNow_Click"/>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-
                                 <TextBlock Style="{StaticResource Caption}" Opacity="0.85" TextWrapping="Wrap"
-                                           Text="The updater downloads the new exe, verifies it against the release's SHA-256 and swaps it in place — publishing a release is the whole announcement."/>
+                                           Text="The update status, the switches and the changelog live on the Updates tab."/>
                             </StackPanel>
                         </Border>
                     </ScrollViewer>

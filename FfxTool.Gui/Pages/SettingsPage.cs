@@ -17,18 +17,20 @@ using System.Windows.Threading;
 namespace FfxTool.Gui
 {
     /// <summary>
-    /// Settings hub, 0.2.2 edition. Four sub-pages on a shared M3 system:
-    /// Appearance (Light/Dark/System segmented control, palette swatches
-    /// with selection checkmarks, a live theme preview, a two-step restore),
-    /// Storage (disk-usage meter, two-step delete confirms with toast
-    /// feedback, the storage-folder and log rows), Plugin Profiles (the
-    /// existing ProfilePage embedded verbatim, in matching chrome) and
-    /// About (click-to-copy version, what's-new feed, an earlier-releases
-    /// timeline fetched from GitHub, link rows, and an update status card
-    /// with idle / checking / available / error faces).
-    /// Above it all: a search box that jumps to any row, a sub-nav whose
-    /// pill slides between items, Alt+1..4 shortcuts and a remembered
-    /// last-visited tab (UiPrefs).
+    /// Settings hub, 0.2.2 second pass. Five sub-pages on a shared M3
+    /// system: Appearance (Light/Dark/System segmented control, palette
+    /// swatches badged with mini-pills, a live theme preview, a two-step
+    /// restore), Storage (disk-usage meter, two-step delete confirms,
+    /// file-location rows), Plugin Profiles (embedded verbatim in matching
+    /// chrome), Updates (the vivi-music "Update Settings" shape: a status
+    /// row with the check folded in, app version + flavour, three behavior
+    /// switches, a clear-downloads row and a history group whose Changelog
+    /// row drills into a version-pill viewer fed from GitHub's release
+    /// list) and About (identity, specs chips, project links — links and
+    /// details only). Every boolean is a real Md3Switch; the former
+    /// checkmarks on selectors read as mini-pills. Above it all: a search
+    /// box that jumps to any row, a sub-nav whose pill slides between
+    /// five items, Alt+1..5 shortcuts and a remembered last tab (UiPrefs).
     /// Theme changes apply instantly via ThemeService.
     /// </summary>
     public partial class SettingsPage : UserControl, ISection
@@ -66,18 +68,10 @@ namespace FfxTool.Gui
         }
         private readonly List<SearchEntry> _searchIndex = new List<SearchEntry>();
 
-        // earlier-releases timeline
-        private sealed class ReleaseRow
-        {
-            public string Tag;
-            public string Date;
-            public string Url;
-        }
-        private bool _timelineOpen;
-        private bool _timelineLoaded;
-        private bool _timelineLoading;
-
-        private DispatcherTimer _copyHintTimer;
+        // changelog drill-in (the Updates page's version-pill viewer)
+        private List<ChangelogFeed.ReleaseSummary> _releases;
+        private bool _releasesLoading;
+        private bool _changelogOpen;
 
         public SettingsPage(ProfilePage profilePage)
         {
@@ -91,36 +85,61 @@ namespace FfxTool.Gui
             SegDark.Checked += (s, e) => ApplyMode(Md3Mode.Dark);
             SegSystem.Checked += (s, e) => ApplyFollow(true);
 
-            // ---- storage ----
+            // ---- storage: the switch + the whole row toggles it ----
             VerboseCheck.Checked += (s, e) => LogService.Verbose = true;
             VerboseCheck.Unchecked += (s, e) => LogService.Verbose = false;
             VerboseCheck.IsChecked = LogService.Verbose;
 
-            // ---- updates ----
-            AutoCheckCheck.IsChecked = UpdateService.AutoCheckEnabled;
-            AutoCheckCheck.Checked += (s, e) => UpdateService.SetAutoCheck(true);
-            AutoCheckCheck.Unchecked += (s, e) => UpdateService.SetAutoCheck(false);
-            // checks run on worker threads (the startup auto-check included)
-            // — refresh the status card on the dispatcher whatever thread
-            // the answer arrives on
+            // ---- updates: the three switches bind straight to the
+            //      service's persisted settings ----
+            AutoCheckSwitch.IsChecked = UpdateService.AutoCheckEnabled;
+            AutoCheckSwitch.Checked += (s, e) => UpdateService.SetAutoCheck(true);
+            AutoCheckSwitch.Unchecked += (s, e) => UpdateService.SetAutoCheck(false);
+
+            BetaCheckSwitch.IsChecked = UpdateService.BetaCheckEnabled;
+            BetaCheckSwitch.Checked += (s, e) => UpdateService.SetBetaCheck(true);
+            BetaCheckSwitch.Unchecked += (s, e) => UpdateService.SetBetaCheck(false);
+
+            NotifySwitch.IsChecked = UpdateService.NotifyEnabled;
+            NotifySwitch.Checked += (s, e) => UpdateService.SetNotify(true);
+            NotifySwitch.Unchecked += (s, e) => UpdateService.SetNotify(false);
+
+            AppVersionValue.Text = "v" + AppInfo.DisplayVersion;
+            FlavourValue.Text = UpdateService.IsNightlyBuild ? "Nightly" : "Stable";
+            VersionChannelText.Text = UpdateService.IsNightlyBuild ? "NIGHTLY" : "STABLE";
+
+            // checks run on worker threads (the startup auto-check
+            // included) — refresh the status row on the dispatcher
+            // whatever thread the answer arrives on
             UpdateService.CheckFinished += result => Dispatcher.BeginInvoke(new Action(() =>
             {
                 _manualChecking = false;
-                RefreshUpdateCard();
+                RefreshUpdateStatus();
+            }));
+            // a silent find lights the Updates tab's dot (the toast is
+            // MainWindow's, gated by the notify switch)
+            UpdateService.UpdateFound += entry => Dispatcher.BeginInvoke(new Action(() =>
+            {
+                NavUpdatesDot.Visibility = Visibility.Visible;
+                RefreshUpdateStatus();
+            }));
+            UpdateService.UpdateSeen += () => Dispatcher.BeginInvoke(new Action(() =>
+            {
+                NavUpdatesDot.Visibility = Visibility.Collapsed;
             }));
 
-            BuildWhatsNew();
             BuildSearchIndex();
             BuildPaletteSwatches();
             SyncFromTheme();
-            RefreshUpdateCard();
+            RefreshUpdateStatus();
+            RefreshClearDownloadsRow();
 
             // remember the last-visited sub-tab (suggestion 1): restoring
             // fires SelectionChanged, which applies the views and saves the
             // value back; equal to the default index 0 it simply no-ops and
             // the XAML's own initial visibility carries the day.
             int saved = UiPrefs.SettingsTab;
-            if (saved < 0 || saved > 3) saved = 0;
+            if (saved < 0 || saved > 4) saved = 0;
             SubNav.SelectedIndex = saved;
 
             // the sliding pill needs real layout — align it as soon as the
@@ -140,16 +159,17 @@ namespace FfxTool.Gui
         public void OnShown()
         {
             // the pill can drift if the page was laid out while hidden —
-            // re-align, and freshen the status card's "last checked" line
+            // re-align, and freshen the status row's "last checked" line
             MoveSubNavPill(false);
-            RefreshUpdateCard();
+            RefreshUpdateStatus();
+            RefreshClearDownloadsRow();
         }
 
-        /// <summary>Keyboard sub-tab switching (Alt+1..4, wired from
+        /// <summary>Keyboard sub-tab switching (Alt+1..5, wired from
         /// MainWindow) — also used by the search results to navigate.</summary>
         public void SelectSubTab(int index)
         {
-            if (index < 0 || index > 3) return;
+            if (index < 0 || index > 4) return;
             SubNav.SelectedIndex = index;
         }
 
@@ -166,17 +186,27 @@ namespace FfxTool.Gui
             if (!IsInitialized) return;
 
             int idx = SubNav.SelectedIndex;
-            bool appearance = idx == 0, storage = idx == 1, profile = idx == 2, about = idx == 3;
+            bool appearance = idx == 0, storage = idx == 1, profile = idx == 2,
+                 updates = idx == 3, about = idx == 4;
+            // any nav switch leaves the changelog drill-in
+            CloseChangelog();
             AppearanceView.Visibility = appearance ? Visibility.Visible : Visibility.Collapsed;
             StorageView.Visibility = storage ? Visibility.Visible : Visibility.Collapsed;
             ProfileView.Visibility = profile ? Visibility.Visible : Visibility.Collapsed;
+            UpdatesView.Visibility = updates ? Visibility.Visible : Visibility.Collapsed;
             AboutView.Visibility = about ? Visibility.Visible : Visibility.Collapsed;
 
             if (storage) RefreshStorageInfo();
+            if (updates)
+            {
+                RefreshUpdateStatus();
+                RefreshClearDownloadsRow();
+            }
 
             AnimateViewIn(appearance ? (UIElement)AppearanceView
                            : storage ? (UIElement)StorageView
                            : profile ? (UIElement)ProfileView
+                           : updates ? (UIElement)UpdatesView
                            : (UIElement)AboutView);
             MoveSubNavPill(true);
             UiPrefs.SettingsTab = idx;
@@ -243,14 +273,20 @@ namespace FfxTool.Gui
             AddSearch(1, "Storage", "Recent presets", "history delete recent files recent_files", HistoryRow);
             AddSearch(1, "Storage", "Open storage folder", "explorer appdata folder files data", OpenFolderRow);
             AddSearch(1, "Storage", "Open session logs", "console log files verbose reveal", LogsRow);
-            AddSearch(2, "Plugin Profiles", "Vendor checkboxes", "plugins profile vendors after effects versions", null);
-            AddSearch(3, "About", "Version", "copy version number about build", VersionRow);
-            AddSearch(3, "About", "What's new", "changelog release notes feed vivi", WhatsNewCard);
-            AddSearch(3, "About", "Earlier releases", "history versions timeline github releases", TimelineToggle);
-            AddSearch(3, "About", "Check for updates automatically", "auto silent startup badge toast", AutoCheckRow);
-            AddSearch(3, "About", "Update status", "latest version download install up to date error retry", UpdateCard);
-            AddSearch(3, "About", "GitHub repository", "source code repo open", RepoRow);
-            AddSearch(3, "About", "Report an issue", "bug feedback problem support", IssueRow);
+            AddSearch(2, "Plugin Profiles", "Vendor switches", "plugins profile vendors after effects linked available", null);
+            AddSearch(3, "Updates", "System update", "check update status available up to date latest", UpdateStatusRow);
+            AddSearch(3, "Updates", "App version", "copy version number build", AppVersionRow);
+            AddSearch(3, "Updates", "Flavour", "stable nightly build kind", FlavourRow);
+            AddSearch(3, "Updates", "Automatic update check", "auto silent startup throttle schedule", AutoCheckRow);
+            AddSearch(3, "Updates", "Include nightlies", "beta prerelease nightly rolling build", BetaCheckRow);
+            AddSearch(3, "Updates", "Notify when an update is found", "toast notification badge bell", NotifyRow);
+            AddSearch(3, "Updates", "Clear downloaded updates", "staged download delete disk space", ClearDownloadsRow);
+            AddSearch(3, "Updates", "Changelog", "what's new release notes version history", ChangelogRow);
+            AddSearch(3, "Updates", "Commits", "main branch history github changes", CommitsRow);
+            AddSearch(4, "About", "Version", "copy about identity made by", VersionRow);
+            AddSearch(4, "About", "SHA-256", "hash verify checksum copy", ShaRow);
+            AddSearch(4, "About", "GitHub repository", "source code repo open", RepoRow);
+            AddSearch(4, "About", "Report an issue", "bug feedback problem support", IssueRow);
         }
 
         private void AddSearch(int pageIndex, string page, string title, string keywords, FrameworkElement row)
@@ -623,16 +659,12 @@ namespace FfxTool.Gui
                     RenderTransformOrigin = new Point(0.5, 0.5),
                     RenderTransform = new ScaleTransform(1, 1)
                 };
-                // selection badge — borrowed from the Plugin Profiles cards:
-                // a small rounded chip (B.SCHighest) carrying the same
-                // primary-tinted check as the "Profile linked" badge, docked
-                // over the swatch's bottom-right instead of a bare white
-                // check floating on the color
-                var badge = new Border
+                // selection badge — the mini-pill: a 22×12 primary pill
+                // with the white dot parked right, a miniature of the
+                // settings switch. Replaces the checkmark chip the same
+                // way every other selector checkmark went mini-pill
+                var badge = new MiniPill
                 {
-                    Width = 20,
-                    Height = 20,
-                    CornerRadius = new CornerRadius(10),
                     HorizontalAlignment = HorizontalAlignment.Right,
                     VerticalAlignment = VerticalAlignment.Bottom,
                     Margin = new Thickness(0, 0, 2, 2),
@@ -640,10 +672,6 @@ namespace FfxTool.Gui
                     RenderTransformOrigin = new Point(0.5, 0.5),
                     RenderTransform = new ScaleTransform(0, 0)
                 };
-                badge.SetResourceReference(Border.BackgroundProperty, "B.SCHighest");
-                var check = new IconGlyph { IconName = "Check", Width = 12, Height = 12 };
-                check.SetResourceReference(IconGlyph.ForegroundProperty, "B.Primary");
-                badge.Child = check;
 
                 var ring = new System.Windows.Shapes.Ellipse
                 {
@@ -723,263 +751,264 @@ namespace FfxTool.Gui
             _lastSelectedPalette = ThemeService.Palette;
         }
 
-        // ---------- about: identity, what's new, timeline ----------
+        // ---------- about: identity row (click-to-copy chip) ----------
 
         private void VersionRow_Click(object sender, MouseButtonEventArgs e)
         {
             try { Clipboard.SetText(AppInfo.DisplayVersion); }
             catch { /* a locked clipboard just skips the copy */ }
-            CopyHint.Visibility = Visibility.Visible;
-            if (_copyHintTimer == null)
-            {
-                _copyHintTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.6) };
-                _copyHintTimer.Tick += (s, e2) =>
-                {
-                    _copyHintTimer.Stop();
-                    CopyHint.Visibility = Visibility.Collapsed;
-                };
-            }
-            _copyHintTimer.Stop();
-            _copyHintTimer.Start();
+            ShowCopiedChip(AboutCopyChip);
         }
 
-        /// <summary>Renders the vivi-style what's-new panel from the
-        /// changelog feed. The embedded snapshot (the newest release the
-        /// build shipped with) fills it instantly; a successful online
-        /// fetch of a DIFFERENT (newer) version's feed replaces it, so the
-        /// panel never claims the wrong version.</summary>
-        private void BuildWhatsNew()
+        private void AppVersionRow_Click(object sender, MouseButtonEventArgs e)
         {
-            var entry = ChangelogFeed.LoadEmbedded();
-            if (entry == null)
-            {
-                WhatsNewTitle.Text = "What's new in this build";
-                ShowWhatsNewMeta(null, null);
-                return;
-            }
-            WhatsNewTitle.Text = "What's new in v" + entry.Version;
-            ShowWhatsNewMeta(entry.Date, entry.Url);
-            ChangelogView.BuildInto(WhatsNewPanel, entry, includeDescription: true, showSectionTitles: false);
-
-            ChangelogFeed.FetchAsync(fresh =>
-            {
-                if (fresh == null || fresh.Version == entry.Version) return;
-                Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    WhatsNewTitle.Text = "What's new in v" + fresh.Version + " — the latest release";
-                    ShowWhatsNewMeta(fresh.Date, fresh.Url);
-                    ChangelogView.BuildInto(WhatsNewPanel, fresh, includeDescription: true, showSectionTitles: false);
-                }));
-            });
+            try { Clipboard.SetText(AppInfo.DisplayVersion); }
+            catch { /* a locked clipboard just skips the copy */ }
+            ShowCopiedChip(AppVersionChip);
         }
 
-        /// <summary>The what's-new card's meta line: the release date under
-        /// the title and a "full notes" link when the entry knows its URL —
-        /// both stay quiet until a real entry provides them.</summary>
-        private void ShowWhatsNewMeta(string dateIso, string url)
+        /// <summary>Computes the running exe's SHA-256 (the hash the
+        /// release page publishes) and copies it — the same value the
+        /// updater verifies downloads against.</summary>
+        private void ShaRow_Click(object sender, MouseButtonEventArgs e)
         {
-            if (DateTime.TryParseExact(dateIso, "yyyy-MM-dd",
-                    CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
-                WhatsNewDate.Text = "Released " + dt.ToString("d MMMM yyyy", CultureInfo.InvariantCulture);
+            try
+            {
+                string exe = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                if (string.IsNullOrEmpty(exe) || !File.Exists(exe))
+                {
+                    InfoToast("Couldn't hash", "The running exe's path could not be located.");
+                    return;
+                }
+                string hash;
+                using (var fs = File.OpenRead(exe))
+                using (var sha = System.Security.Cryptography.SHA256.Create())
+                {
+                    var sb = new System.Text.StringBuilder();
+                    foreach (byte b in sha.ComputeHash(fs)) sb.Append(b.ToString("x2"));
+                    hash = sb.ToString();
+                }
+                Clipboard.SetText(hash);
+                ShaRow.ToolTip = hash; // the full hash, one hover away
+                InfoToast("SHA-256 copied", hash.Substring(0, 16) + "…");
+            }
+            catch { InfoToast("Couldn't hash", "Reading the running exe failed."); }
+        }
+
+        /// <summary>The "Copied" chip: fades in over the row, holds a
+        /// breath, fades out. Replaces the old corner-text checkmark.</summary>
+        private void ShowCopiedChip(Border chip)
+        {
+            chip.Visibility = Visibility.Visible;
+            chip.BeginAnimation(UIElement.OpacityProperty,
+                new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(130))
+                {
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                });
+            if (chip.Tag is DispatcherTimer timer)
+            {
+                timer.Stop();
+            }
             else
-                WhatsNewDate.Text = null;
-            WhatsNewDate.Visibility = string.IsNullOrEmpty(WhatsNewDate.Text)
-                ? Visibility.Collapsed : Visibility.Visible;
-
-            WhatsNewNotesLink.Tag = string.IsNullOrEmpty(url) ? null : url;
-            WhatsNewNotesLink.Visibility = string.IsNullOrEmpty(url)
-                ? Visibility.Collapsed : Visibility.Visible;
-        }
-
-        private void WhatsNewNotesLink_Click(object sender, MouseButtonEventArgs e)
-        {
-            if (WhatsNewNotesLink.Tag is string url) OpenUrl(url);
-        }
-
-        // ---------- about: earlier-releases timeline (suggestion 18) ----------
-
-        private void TimelineToggle_Click(object sender, MouseButtonEventArgs e)
-        {
-            _timelineOpen = !_timelineOpen;
-            TimelinePanel.Visibility = _timelineOpen ? Visibility.Visible : Visibility.Collapsed;
-            var chevron = new DoubleAnimation(_timelineOpen ? 0 : -90, TimeSpan.FromMilliseconds(180))
             {
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-            TimelineChevronRotate.BeginAnimation(RotateTransform.AngleProperty, chevron);
-            if (!_timelineOpen)
-            {
-                TimelineCount.Text = _timelineLoaded ? TimelineCount.Text : "tap to load from GitHub";
-                return;
+                timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.4) };
+                timer.Tick += (s, e) =>
+                {
+                    timer.Stop();
+                    var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(220))
+                    {
+                        EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+                    };
+                    fadeOut.Completed += (s2, e2) => chip.Visibility = Visibility.Collapsed;
+                    chip.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+                };
+                chip.Tag = timer;
             }
-            if (!_timelineLoaded && !_timelineLoading) LoadTimeline();
+            timer.Start();
         }
 
-        private void LoadTimeline()
+        // ---------- updates: the switches' whole rows toggle them ----------
+
+        private void VerboseRow_Click(object sender, MouseButtonEventArgs e)
         {
-            _timelineLoading = true;
-            TimelineCount.Text = "loading…";
-            TimelineList.Children.Clear();
+            if (e.OriginalSource is System.Windows.Controls.Primitives.ToggleButton) return;
+            VerboseCheck.IsChecked = VerboseCheck.IsChecked != true;
+        }
+
+        private void AutoCheckRow_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (e.OriginalSource is System.Windows.Controls.Primitives.ToggleButton) return;
+            AutoCheckSwitch.IsChecked = AutoCheckSwitch.IsChecked != true;
+        }
+
+        private void BetaCheckRow_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (e.OriginalSource is System.Windows.Controls.Primitives.ToggleButton) return;
+            BetaCheckSwitch.IsChecked = BetaCheckSwitch.IsChecked != true;
+        }
+
+        private void NotifyRow_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (e.OriginalSource is System.Windows.Controls.Primitives.ToggleButton) return;
+            NotifySwitch.IsChecked = NotifySwitch.IsChecked != true;
+        }
+
+        // ---------- updates: maintenance ----------
+
+        private void ClearDownloadsRow_Click(object sender, MouseButtonEventArgs e)
+        {
+            int removed = UpdateService.ClearStagedUpdate();
+            RefreshClearDownloadsRow();
+            InfoToast(removed > 0 ? "Staged download cleared" : "Nothing to clear",
+                removed > 0 ? "The updater's staging folder is empty again."
+                            : "No staged update on disk.");
+        }
+
+        /// <summary>The clear-downloads row's caption — honest about what
+        /// (if anything) a previous download left staged.</summary>
+        private void RefreshClearDownloadsRow()
+        {
+            string info = UpdateService.StagedUpdateInfo;
+            ClearDownloadsCaption.Text = info != null
+                ? "Staged: " + info + " — click to delete"
+                : "No staged update on disk";
+        }
+
+        // ---------- updates: the changelog drill-in ----------
+
+        private void ChangelogRow_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (_changelogOpen) return;
+            _changelogOpen = true;
+            UpdatesView.Visibility = Visibility.Collapsed;
+            ChangelogPane.Visibility = Visibility.Visible;
+            AnimateViewIn(ChangelogPane);
+            if (_releases == null && !_releasesLoading) LoadReleases();
+        }
+
+        /// <summary>Leaves the drill-in. Called by the back button (the
+        /// user means it) and by every sub-nav switch (which returns to
+        /// whatever tab was picked — the drill-in never traps a nav).</summary>
+        private void ChangelogBack_Click(object sender, MouseButtonEventArgs e) => CloseChangelog();
+
+        private void CloseChangelog()
+        {
+            if (!_changelogOpen) return;
+            _changelogOpen = false;
+            ChangelogPane.Visibility = Visibility.Collapsed;
+            UpdatesView.Visibility = SubNav.SelectedIndex == 3
+                ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void CommitsRow_Click(object sender, MouseButtonEventArgs e) =>
+            OpenUrl(RepoUrl + "/commits/main");
+
+        /// <summary>Loads the release list once (newest first, drafts
+        /// skipped) and renders the pill strip. Stable releases only — the
+        /// rolling nightly is a moving target the pills would never settle
+        /// on; the current build's pill is preselected when its tag is in
+        /// the list.</summary>
+        private void LoadReleases()
+        {
+            _releasesLoading = true;
+            VersionPills.Children.Clear();
             var loading = new TextBlock
             {
                 Text = "Asking GitHub for the release list…",
-                Margin = new Thickness(6, 6, 6, 8),
-                FontSize = 12
+                FontSize = 12,
+                Margin = new Thickness(4, 2, 4, 2)
             };
             loading.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
-            TimelineList.Children.Add(loading);
+            VersionPills.Children.Add(loading);
 
-            ThreadPool.QueueUserWorkItem(_ =>
+            ChangelogFeed.FetchReleasesAsync((list, error) => Dispatcher.BeginInvoke(new Action(() =>
             {
-                string json = null;
-                string error = null;
+                _releasesLoading = false;
+                VersionPills.Children.Clear();
+                if (list == null)
+                {
+                    var err = new TextBlock
+                    {
+                        Text = "Couldn't load the release list" +
+                               (error != null ? " — " + error : "") + ".",
+                        FontSize = 12,
+                        TextWrapping = TextWrapping.Wrap
+                    };
+                    err.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
+                    VersionPills.Children.Add(err);
+                    ReleaseTitle.Text = "No releases loaded";
+                    return;
+                }
+                _releases = list;
+
+                var stable = list.Where(r => !r.Prerelease).ToList();
+                if (stable.Count == 0) stable = list;
+                string current = AppInfo.DisplayVersion;
+                int selectIdx = 0;
+                for (int i = 0; i < stable.Count; i++)
+                {
+                    var r = stable[i];
+                    var pill = new RadioButton
+                    {
+                        GroupName = "ReleasePills",
+                        Content = r.Tag,
+                        Style = (Style)FindResource("Md3PillChip"),
+                        Margin = new Thickness(0, 0, 8, 0),
+                        ToolTip = (r.DateIso != null ? r.DateIso + " — " : "") + "release notes"
+                    };
+                    pill.Checked += (s2, e2) => ShowRelease(r);
+                    VersionPills.Children.Add(pill);
+                    if (string.Equals(r.Tag.TrimStart('v'), current.TrimStart('v'),
+                            StringComparison.OrdinalIgnoreCase))
+                        selectIdx = i;
+                }
+                ((RadioButton)VersionPills.Children[selectIdx]).IsChecked = true;
+            })));
+        }
+
+        /// <summary>Renders one release: heading, date, hero (the
+        /// Stablemd "image::" line), description and the same bullet rows
+        /// the feed renderer lays out everywhere — parsed with the
+        /// workflow's own Stablemd rules.</summary>
+        private void ShowRelease(ChangelogFeed.ReleaseSummary r)
+        {
+            ReleaseTitle.Text = r.Tag;
+            if (DateTime.TryParseExact(r.DateIso, "yyyy-MM-dd", CultureInfo.InvariantCulture,
+                    DateTimeStyles.None, out var dt))
+                ReleaseDate.Text = "Released " + dt.ToString("d MMMM yyyy", CultureInfo.InvariantCulture);
+            else
+                ReleaseDate.Text = null;
+
+            var entry = StablemdParser.Parse(r.Tag, r.DateIso, r.Url, r.Body);
+            ReleaseIntro.Text = entry.Description ?? "This release carries no description.";
+
+            ReleaseHero.Visibility = Visibility.Collapsed;
+            ReleaseHeroImage.Source = null;
+            if (!string.IsNullOrEmpty(entry.ImageUrl))
+            {
                 try
                 {
-                    ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
-                    var req = (HttpWebRequest)WebRequest.Create(
-                        RepoUrl + "/releases?per_page=30");
-                    req.Method = "GET";
-                    req.UserAgent = "FFXCompatibilityTool/" + AppInfo.Version;
-                    req.Accept = "application/vnd.github+json";
-                    req.Timeout = 8000;
-                    req.ReadWriteTimeout = 8000;
-                    req.CachePolicy = new System.Net.Cache.RequestCachePolicy(
-                        System.Net.Cache.RequestCacheLevel.BypassCache);
-                    using (var resp = (HttpWebResponse)req.GetResponse())
-                    using (var ms = new MemoryStream())
-                    {
-                        resp.GetResponseStream().CopyTo(ms);
-                        json = System.Text.Encoding.UTF8.GetString(ms.ToArray());
-                    }
+                    var bmp = new BitmapImage();
+                    bmp.BeginInit();
+                    bmp.UriSource = new Uri(entry.ImageUrl);
+                    bmp.EndInit();
+                    ReleaseHeroImage.Source = bmp; // decodes async off the UI thread
+                    ReleaseHero.Visibility = Visibility.Visible;
                 }
-                catch (Exception ex) { error = ex.Message; }
-
-                var releases = new List<ReleaseRow>();
-                if (json != null)
-                {
-                    try
-                    {
-                        using (var doc = JsonDocument.Parse(json))
-                        {
-                            foreach (var el in doc.RootElement.EnumerateArray())
-                            {
-                                if (el.ValueKind != JsonValueKind.Object) continue;
-                                bool draft = el.TryGetProperty("draft", out var d) && d.ValueKind == JsonValueKind.True;
-                                bool pre = el.TryGetProperty("prerelease", out var pr) && pr.ValueKind == JsonValueKind.True;
-                                if (draft || pre) continue; // the nightly never answers here anyway
-                                string tag = Str(el, "tag_name");
-                                string url = Str(el, "html_url");
-                                if (tag == null || url == null) continue;
-                                string date = null;
-                                if (el.TryGetProperty("published_at", out var pub) &&
-                                    pub.ValueKind == JsonValueKind.String &&
-                                    DateTime.TryParse(pub.GetString(), CultureInfo.InvariantCulture,
-                                        DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var dt))
-                                    date = dt.ToLocalTime().ToString("d MMM yyyy", CultureInfo.InvariantCulture);
-                                releases.Add(new ReleaseRow { Tag = tag, Date = date, Url = url });
-                                if (releases.Count >= 15) break;
-                            }
-                        }
-                    }
-                    catch { releases.Clear(); error = "the release list didn't parse"; }
-                }
-
-                Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    _timelineLoading = false;
-                    TimelineList.Children.Clear();
-                    if (json == null || (releases.Count == 0 && error != null))
-                    {
-                        _timelineLoaded = false; // the next expand retries
-                        var err = new TextBlock
-                        {
-                            Text = "Couldn't load the release list" +
-                                   (error != null ? " — " + error : "") + ".",
-                            TextWrapping = TextWrapping.Wrap,
-                            Margin = new Thickness(6, 6, 6, 4),
-                            FontSize = 12
-                        };
-                        err.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
-                        TimelineList.Children.Add(err);
-                        TimelineList.Children.Add(MakeTimelineLinkRow("Open the releases page in your browser",
-                            RepoUrl + "/releases"));
-                        TimelineCount.Text = "couldn't load";
-                        return;
-                    }
-                    foreach (var r in releases) TimelineList.Children.Add(MakeTimelineReleaseRow(r));
-                    TimelineCount.Text = releases.Count + (releases.Count == 1 ? " release" : " releases");
-                    _timelineLoaded = true;
-                }));
-            });
-        }
-
-        private static string Str(JsonElement obj, string name)
-        {
-            if (obj.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String)
-                return v.GetString();
-            return null;
-        }
-
-        private Border MakeTimelineReleaseRow(ReleaseRow r)
-        {
-            var grid = new Grid { Margin = new Thickness(6, 3, 6, 3) };
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            var clock = new IconGlyph { IconName = "Schedule", Width = 14, Height = 14, VerticalAlignment = VerticalAlignment.Center };
-            clock.SetResourceReference(IconGlyph.ForegroundProperty, "B.OnSurfaceVariant");
-            Grid.SetColumn(clock, 0);
-
-            var stack = new StackPanel { Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-            var tagText = new TextBlock { Text = r.Tag, FontSize = 12.5, FontWeight = FontWeights.Medium };
-            tagText.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurface");
-            stack.Children.Add(tagText);
-            if (r.Date != null)
-            {
-                var dateText = new TextBlock { Text = r.Date, FontSize = 10.5, Margin = new Thickness(0, 1, 0, 0) };
-                dateText.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
-                stack.Children.Add(dateText);
+                catch { /* a dead image URL just stays hidden */ }
             }
-            Grid.SetColumn(stack, 1);
 
-            var open = new IconGlyph { IconName = "OpenInNew", Width = 13, Height = 13, VerticalAlignment = VerticalAlignment.Center };
-            open.SetResourceReference(IconGlyph.ForegroundProperty, "B.Primary");
-            Grid.SetColumn(open, 2);
+            ChangelogView.BuildInto(ReleaseSections, entry,
+                includeDescription: false, showSectionTitles: true);
 
-            grid.Children.Add(clock);
-            grid.Children.Add(stack);
-            grid.Children.Add(open);
-
-            var border = new Border
-            {
-                Child = grid,
-                CornerRadius = new CornerRadius(10),
-                Padding = new Thickness(10, 7, 10, 7),
-                Background = Brushes.Transparent,
-                Cursor = Cursors.Hand,
-                ToolTip = "Opens " + r.Tag + " on GitHub"
-            };
-            border.MouseEnter += (s, e) => border.SetResourceReference(Border.BackgroundProperty, "B.SCHigh");
-            border.MouseLeave += (s, e) => border.Background = Brushes.Transparent;
-            border.MouseLeftButtonUp += (s, e) => OpenUrl(r.Url);
-            return border;
+            ReleaseLink.Tag = string.IsNullOrEmpty(r.Url) ? null : r.Url;
+            ReleaseLink.Visibility = string.IsNullOrEmpty(r.Url)
+                ? Visibility.Collapsed : Visibility.Visible;
         }
 
-        private Border MakeTimelineLinkRow(string text, string url)
+        private void ReleaseLink_Click(object sender, MouseButtonEventArgs e)
         {
-            var label = new TextBlock { Text = text, FontSize = 12.5, Margin = new Thickness(6, 4, 6, 6) };
-            label.SetResourceReference(TextBlock.ForegroundProperty, "B.Primary");
-            var border = new Border
-            {
-                Child = label,
-                CornerRadius = new CornerRadius(10),
-                Padding = new Thickness(10, 4, 10, 4),
-                Background = Brushes.Transparent,
-                Cursor = Cursors.Hand
-            };
-            border.MouseLeftButtonUp += (s, e) => OpenUrl(url);
-            return border;
+            if (ReleaseLink.Tag is string url) OpenUrl(url);
         }
 
         // ---------- about: project links (suggestion 20) ----------
@@ -990,21 +1019,29 @@ namespace FfxTool.Gui
         private void IssueRow_Click(object sender, MouseButtonEventArgs e) =>
             OpenUrl(RepoUrl + "/issues/new");
 
-        // ---------- about: update status card (suggestion 17) ----------
+        // ---------- updates: the status row (the four faces, one row) ----------
 
-        private void UpdateCheckNow_Click(object sender, RoutedEventArgs e)
+        private void UpdateStatusRow_Click(object sender, MouseButtonEventArgs e)
         {
+            if (UpdateService.PendingUpdate != null)
+            {
+                // something's already waiting — the row opens the updater
+                OpenUpdater();
+                return;
+            }
             _manualChecking = true;
-            RefreshUpdateCard(); // the checking face, immediately
+            RefreshUpdateStatus(); // the checking state, immediately
             UpdateService.CheckNowAsync((result, entry) =>
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
                     _manualChecking = false;
-                    RefreshUpdateCard();
+                    RefreshUpdateStatus();
                 })));
         }
 
-        private void UpdateOpenButton_Click(object sender, RoutedEventArgs e)
+        private void UpdateOpenButton_Click(object sender, RoutedEventArgs e) => OpenUpdater();
+
+        private void OpenUpdater()
         {
             // the updater window owns the whole flow and stands the badge
             // and toast down via MarkSeen
@@ -1013,7 +1050,7 @@ namespace FfxTool.Gui
                 : new UpdateWindow();
             win.Owner = Window.GetWindow(this);
             win.ShowDialog();
-            RefreshUpdateCard();
+            RefreshUpdateStatus();
         }
 
         private void UpdatePageLink_Click(object sender, MouseButtonEventArgs e)
@@ -1024,11 +1061,22 @@ namespace FfxTool.Gui
             OpenUrl(url);
         }
 
-        /// <summary>Picks the status card's face from the service's last
-        /// answer: checking → available → error → up-to-date/never-checked.
-        /// The "available" face tints the whole card primary-container so
-        /// it reads as the one state that wants action.</summary>
-        private void RefreshUpdateCard()
+        private void UpdateSkipLink_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (UpdateService.PendingUpdate == null) return;
+            string version = UpdateService.PendingUpdate.Version;
+            UpdateService.SetSkipVersion(version);
+            UpdateService.PendingUpdate = null;
+            UpdateService.MarkSeen();
+            RefreshUpdateStatus();
+            InfoToast("Version skipped", "v" + version + " stays quiet — the next release speaks up.");
+        }
+
+        /// <summary>Picks the status row's value from the service's last
+        /// answer: checking → available → error → up-to-date / skipped /
+        /// never-checked. "Available" is the one state that unfurls the
+        /// detail strip (notes line + actions, skip included).</summary>
+        private void RefreshUpdateStatus()
         {
             bool checking = _manualChecking || UpdateService.IsChecking;
             var status = UpdateService.LastCheckStatus;
@@ -1036,57 +1084,78 @@ namespace FfxTool.Gui
             if (UpdateService.LastCheckUtc.HasValue)
                 ago = HistoryStore.TimeAgo(UpdateService.LastCheckUtc.Value.ToLocalTime());
 
-            bool checkingFace = checking;
-            bool availableFace = !checking &&
+            bool available = !checking &&
                 status == UpdateCheckStatus.UpdateAvailable &&
                 UpdateService.PendingUpdate != null;
-            bool errorFace = !checking && !availableFace && status == UpdateCheckStatus.Error;
-            bool idleFace = !checking && !availableFace && !errorFace;
+            bool error = !checking && !available && status == UpdateCheckStatus.Error;
 
-            StateChecking.Visibility = checkingFace ? Visibility.Visible : Visibility.Collapsed;
-            StateAvailable.Visibility = availableFace ? Visibility.Visible : Visibility.Collapsed;
-            StateError.Visibility = errorFace ? Visibility.Visible : Visibility.Collapsed;
-            StateIdle.Visibility = idleFace ? Visibility.Visible : Visibility.Collapsed;
-
-            if (checkingFace)
+            UpdateStatusSpinner.Visibility = checking ? Visibility.Visible : Visibility.Collapsed;
+            if (checking)
             {
                 var spin = new DoubleAnimation(0, 360, TimeSpan.FromMilliseconds(900))
                 {
                     RepeatBehavior = RepeatBehavior.Forever
                 };
-                SpinnerRotate.BeginAnimation(RotateTransform.AngleProperty, spin);
+                StatusSpin.BeginAnimation(RotateTransform.AngleProperty, spin);
             }
             else
             {
-                SpinnerRotate.BeginAnimation(RotateTransform.AngleProperty, null);
+                StatusSpin.BeginAnimation(RotateTransform.AngleProperty, null);
             }
 
-            if (availableFace)
+            UpdateCheckedCaption.Text = ago != null
+                ? "Last checked " + ago
+                : "No check has run this session";
+
+            if (checking)
             {
-                UpdateCard.SetResourceReference(Border.BackgroundProperty, "B.PrimaryContainer");
-                UpdateAvailTitle.Text = "v" + UpdateService.PendingUpdate.Version + " is out";
+                UpdateStatusValue.Text = "Checking…";
+                UpdateStatusValue.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
+                UpdateDetailPanel.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            if (available)
+            {
+                UpdateStatusValue.Text = "v" + UpdateService.PendingUpdate.Version + " available";
+                UpdateStatusValue.SetResourceReference(TextBlock.ForegroundProperty, "B.Primary");
                 UpdateAvailSub.Text = "You're on v" + AppInfo.Version +
                     " — see what's new, then let the updater download, verify and swap it in.";
+                UpdatePageLink.Visibility = Visibility.Visible;
+                UpdateSkipLink.Visibility = Visibility.Visible;
+                UpdateDetailPanel.Visibility = Visibility.Visible;
+                return;
+            }
+
+            if (error)
+            {
+                UpdateStatusValue.Text = "Check failed";
+                UpdateStatusValue.SetResourceReference(TextBlock.ForegroundProperty, "B.Error");
+                UpdateAvailSub.Text = UpdateService.LastCheckMessage ??
+                    "The releases page couldn't be reached.";
+                UpdatePageLink.Visibility = Visibility.Visible;
+                UpdateSkipLink.Visibility = Visibility.Collapsed;
+                UpdateDetailPanel.Visibility = Visibility.Visible;
+                return;
+            }
+
+            // idle: genuinely current, skipped-quiet, or never checked
+            bool skipped = status == UpdateCheckStatus.UpdateAvailable &&
+                           UpdateService.PendingUpdate == null;
+            bool known = status == UpdateCheckStatus.UpToDate;
+            UpdateStatusValue.Text = known ? "Up to date" : skipped ? "Skipped" : "Not checked yet";
+            UpdateStatusValue.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
+            if (skipped)
+            {
+                UpdateAvailSub.Text = "v" + (UpdateService.SkipVersion ?? "?") +
+                    " is skipped — the next release speaks up again. The release page still has it.";
+                UpdatePageLink.Visibility = Visibility.Visible;
+                UpdateSkipLink.Visibility = Visibility.Collapsed;
+                UpdateDetailPanel.Visibility = Visibility.Visible;
             }
             else
             {
-                UpdateCard.SetResourceReference(Border.BackgroundProperty, "B.SC");
-            }
-
-            if (errorFace)
-            {
-                UpdateErrorSub.Text = UpdateService.LastCheckMessage ??
-                    "The releases page couldn't be reached.";
-            }
-
-            if (idleFace)
-            {
-                bool known = status == UpdateCheckStatus.UpToDate;
-                UpdateStateTitle.Text = known ? "You're up to date" : "Not checked yet";
-                string stamp = ago != null ? "Last checked " + ago : "No check has run this session";
-                UpdateStateSub.Text = known
-                    ? stamp + " · v" + AppInfo.Version + " is the latest published version."
-                    : stamp + " — the check resolves the project's latest release on GitHub; nothing else leaves this machine.";
+                UpdateDetailPanel.Visibility = Visibility.Collapsed;
             }
         }
 

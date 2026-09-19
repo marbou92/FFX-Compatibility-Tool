@@ -170,5 +170,103 @@ namespace FfxTool.Gui
 
         private static string Truncate(string s, int max) =>
             string.IsNullOrEmpty(s) ? "" : (s.Length <= max ? s : s.Substring(0, max) + "…");
+
+        // ---------- the prerelease check ("Include nightlies") ----------
+
+        /// <summary>
+        /// The beta-path check: is there a release — the rolling nightly
+        /// included — published after this build landed on disk? Nightly
+        /// tags carry no comparable version number (the numeric version
+        /// stays at the csproj default on purpose), so the comparison is
+        /// by PUBLISH DATE against the running exe's own write time: the
+        /// updater's File.Copy preserves the source timestamp, a manual
+        /// download lands with the download moment, and a fresh build
+        /// carries its build time — in every case "the exe is older than
+        /// the release" reads honestly as "a newer build exists".
+        /// Hits the plain /releases endpoint (newest first, prereleases
+        /// included) instead of releases/latest, which never answers with
+        /// one. A pre-release find reports its tag; the caller routes it
+        /// to the release page, since the feed's exe+hash shape only
+        /// exists for full releases.
+        /// </summary>
+        public static UpdateCheckResult CheckPrereleases(DateTime installedOnUtc)
+        {
+            try
+            {
+                ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+                var req = (HttpWebRequest)WebRequest.Create(
+                    "https://github.com/marbou92/FFX-Compatibility-Tool/releases?per_page=1");
+                req.Method = "GET";
+                req.UserAgent = "FFXCompatibilityTool/" + AppInfo.Version;
+                req.Accept = "application/vnd.github+json";
+                req.Timeout = 6000;
+                req.ReadWriteTimeout = 6000;
+                req.CachePolicy = new System.Net.Cache.RequestCachePolicy(
+                    System.Net.Cache.RequestCacheLevel.BypassCache);
+
+                using (var resp = (HttpWebResponse)req.GetResponse())
+                using (var ms = new MemoryStream())
+                {
+                    resp.GetResponseStream().CopyTo(ms);
+                    var json = System.Text.Encoding.UTF8.GetString(ms.ToArray());
+
+                    using (var doc = System.Text.Json.JsonDocument.Parse(json))
+                    {
+                        foreach (var el in doc.RootElement.EnumerateArray())
+                        {
+                            if (el.ValueKind != System.Text.Json.JsonValueKind.Object) continue;
+                            string tag = el.TryGetProperty("tag_name", out var t) &&
+                                         t.ValueKind == System.Text.Json.JsonValueKind.String
+                                ? t.GetString() : null;
+                            if (string.IsNullOrEmpty(tag)) continue;
+
+                            DateTime publishedUtc = DateTime.MinValue;
+                            if (el.TryGetProperty("published_at", out var pub) &&
+                                pub.ValueKind == System.Text.Json.JsonValueKind.String &&
+                                DateTime.TryParse(pub.GetString(), System.Globalization.CultureInfo.InvariantCulture,
+                                    System.Globalization.DateTimeStyles.AssumeUniversal |
+                                    System.Globalization.DateTimeStyles.AdjustToUniversal, out var dt))
+                                publishedUtc = dt;
+
+                            string when = publishedUtc > DateTime.MinValue
+                                ? publishedUtc.ToLocalTime().ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture)
+                                : "recently";
+
+                            if (publishedUtc > installedOnUtc)
+                                return new UpdateCheckResult
+                                {
+                                    Status = UpdateCheckStatus.UpdateAvailable,
+                                    CurrentVersion = AppInfo.Version,
+                                    LatestVersion = tag,
+                                    Message = "Update available — " + tag + " was published " + when +
+                                              ", after this build."
+                                };
+                            return new UpdateCheckResult
+                            {
+                                Status = UpdateCheckStatus.UpToDate,
+                                CurrentVersion = AppInfo.Version,
+                                LatestVersion = tag,
+                                Message = "No newer build than this one — " + tag + " predates it."
+                            };
+                        }
+                    }
+                    return new UpdateCheckResult
+                    {
+                        Status = UpdateCheckStatus.UpToDate,
+                        CurrentVersion = AppInfo.Version,
+                        Message = "No releases published yet — this build is current."
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                return new UpdateCheckResult
+                {
+                    Status = UpdateCheckStatus.Error,
+                    CurrentVersion = AppInfo.Version,
+                    Message = "Couldn't check for updates — " + ex.Message
+                };
+            }
+        }
     }
 }

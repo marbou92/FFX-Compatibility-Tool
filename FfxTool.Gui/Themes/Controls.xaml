@@ -325,6 +325,37 @@
         </Setter>
     </Style>
 
+    <!-- Version pill (RadioButton): the changelog drill-in's release
+         selector — a rounded chip that fills primary when checked. -->
+    <Style x:Key="Md3PillChip" TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource M3FocusVisual}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Grid>
+                        <Border x:Name="Bg" Background="{DynamicResource B.SCHighest}"
+                                CornerRadius="14" Padding="13,5"/>
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource B.Primary}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource B.OnPrimary}"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource B.OnSurface}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ComboBox (outlined dropdown) -->
     <Style x:Key="Md3ComboBoxItem" TargetType="ComboBoxItem">
         <Setter Property="Foreground" Value="{DynamicResource B.OnSurface}"/>

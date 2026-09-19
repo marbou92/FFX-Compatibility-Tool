@@ -6,6 +6,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using FfxTool.Core;
 
 namespace FfxTool.Gui
@@ -17,12 +19,18 @@ namespace FfxTool.Gui
     /// recognition in the Lister, but the profile grid only offers real,
     /// installable plugin makers, and every card carries a description.
     /// Cards live in one of two sections — LINKED (switch on) and
-    /// AVAILABLE (switch off) — and physically move between them the
-    /// moment a switch flips. All colors are attached via
-    /// SetResourceReference (NOT captured brush instances) so the cards
-    /// re-theme live when the palette or dark mode changes — the old
-    /// FindResource captures froze with the theme that was active at
-    /// startup and turned unreadable after switching.
+    /// AVAILABLE (switch off) — and physically move between them (with a
+    /// fade + rise) the moment a switch flips. Every card's switch is a
+    /// real Md3Switch and the badge beside it is a mini-pill — a
+    /// miniature of the switch itself — where the Check/Info glyphs used
+    /// to sit. A filter box narrows both sections live; the section
+    /// headers carry two-step Link all / Unlink all actions; the custom
+    /// vendor card actually adds vendors now; and per-vendor counts from
+    /// the scan catalog read as ".aex files cataloged" captions. All
+    /// colors are attached via SetResourceReference (NOT captured brush
+    /// instances) so the cards re-theme live when the palette or dark
+    /// mode changes — the old FindResource captures froze with the theme
+    /// that was active at startup and turned unreadable after switching.
     /// </summary>
     public partial class ProfilePage : UserControl
     {
@@ -30,21 +38,33 @@ namespace FfxTool.Gui
         private readonly Action _onChange;
         private readonly Dictionary<string, ToggleButtonSwitchPair> _switches = new Dictionary<string, ToggleButtonSwitchPair>();
         private TextBlock _scanStatus; // live result line inside the discovery card
+        private WrapPanel _scanChips;  // per-vendor result chips under it
+        private TextBlock _aeSuggest;  // the detected AE Plug-ins folder shortcut
         // the two profile sections and the cards that move between them
+        private Grid _linkedHead;
+        private Grid _otherHead;
         private WrapPanel _linkedCards;
         private WrapPanel _otherCards;
-        private TextBlock _linkedHint;
+        private Border _emptyLinked;
         private TextBlock _linkedCount;
         private TextBlock _otherCount;
+        private TextBlock _linkAll;
+        private TextBlock _unlinkAll;
+        private Border _customCard;
+        private Border _discoveryCard;
         private readonly List<string> _vendorOrder = new List<string>();
         private readonly Dictionary<string, Border> _cards = new Dictionary<string, Border>();
+        // per-vendor .aex counts from the scan catalog (loaded off-thread)
+        private Dictionary<string, int> _fileCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+        private bool _countsLoading;
 
         private class ToggleButtonSwitchPair
         {
             public System.Windows.Controls.Primitives.ToggleButton Toggle;
             public Border Badge;
             public TextBlock BadgeText;
-            public IconGlyph BadgeIcon;
+            public MiniPill BadgePill;
+            public TextBlock CountCaption;
         }
 
         /// <summary>The curated profile list, in display order. Every entry
@@ -115,7 +135,8 @@ namespace FfxTool.Gui
             // two labeled sections: linked first, available below — a
             // flip physically moves the card between them. The headers
             // speak the settings GroupHeader language (small uppercase
-            // labels), so the grid reads as part of the same page system
+            // labels), so the grid reads as part of the same page system,
+            // and each carries its two-step bulk action on the right.
             var linkedTitle = new TextBlock
             {
                 Text = "LINKED TO YOUR PROFILE",
@@ -123,22 +144,14 @@ namespace FfxTool.Gui
             };
             _linkedCount = new TextBlock { FontSize = 11, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
             _linkedCount.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
-            var linkedHead = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 16, 8) };
-            linkedHead.Children.Add(linkedTitle);
-            linkedHead.Children.Add(_linkedCount);
+            _unlinkAll = BuildSectionAction("Unlink all", "Clears every linked vendor — click again to confirm", () => SetAll(false));
+            _linkedHead = BuildSectionHead(linkedTitle, _linkedCount, _unlinkAll, new Thickness(0, 0, 16, 8));
 
-            _linkedHint = new TextBlock
-            {
-                Text = "Nothing linked yet — flip a vendor's switch below and its card moves up here.",
-                FontSize = 11.5,
-                FontStyle = FontStyles.Italic,
-                Margin = new Thickness(0, 0, 16, 10)
-            };
-            _linkedHint.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
+            _emptyLinked = BuildEmptyLinked();
 
             _linkedCards = new WrapPanel();
-            Cards.Children.Add(linkedHead);
-            Cards.Children.Add(_linkedHint);
+            Cards.Children.Add(_linkedHead);
+            Cards.Children.Add(_emptyLinked);
             Cards.Children.Add(_linkedCards);
 
             var otherTitle = new TextBlock
@@ -148,46 +161,232 @@ namespace FfxTool.Gui
             };
             _otherCount = new TextBlock { FontSize = 11, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
             _otherCount.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
-            var otherHead = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 14, 16, 8) };
-            otherHead.Children.Add(otherTitle);
-            otherHead.Children.Add(_otherCount);
+            _linkAll = BuildSectionAction("Link all", "Links every available vendor — click again to confirm", () => SetAll(true));
+            _otherHead = BuildSectionHead(otherTitle, _otherCount, _linkAll, new Thickness(0, 14, 16, 8));
 
             _otherCards = new WrapPanel();
-            Cards.Children.Add(otherHead);
+            Cards.Children.Add(_otherHead);
             Cards.Children.Add(_otherCards);
 
-            UpdateSections();
+            // tools row: the custom-vendor card (real now) and the
+            // discovery card close out the page
+            _customCard = BuildAddCustomCard();
+            _discoveryCard = BuildDiscoveryCard();
+            _otherCards.Children.Add(_customCard);
+            _otherCards.Children.Add(_discoveryCard);
 
-            // tools row: the not-yet custom vendor card and the discovery
-            // card close out the page
-            _otherCards.Children.Add(BuildAddCustomCard());
-            _otherCards.Children.Add(BuildDiscoveryCard());
+            RefreshSections();
+            LoadFileCounts();
+
+            // the live filter: narrows both sections as you type
+            FilterBox.TextChanged += (s, e) => ApplyFilter();
         }
 
-        /// <summary>
-        /// Re-files every vendor card into its section (linked vs.
-        /// available) in display order, refreshes both counts and the
-        /// empty-linked hint. Runs after Build and after every toggle/scan
-        /// flip, so the sections are always an honest snapshot of the
-        /// saved profile.
-        /// </summary>
-        private void UpdateSections()
+        /// <summary>One section header: title + count on the left, the
+        /// bulk action right-aligned — the settings-row header language.</summary>
+        private Grid BuildSectionHead(System.Windows.Controls.TextBlock title,
+            System.Windows.Controls.TextBlock count, TextBlock action, Thickness margin)
         {
-            int linked = 0;
+            var head = new Grid { Margin = margin };
+            head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            Grid.SetColumn(title, 0);
+            Grid.SetColumn(count, 1);
+            Grid.SetColumn(action, 2);
+            action.HorizontalAlignment = HorizontalAlignment.Right;
+            head.Children.Add(title);
+            head.Children.Add(count);
+            head.Children.Add(action);
+            return head;
+        }
+
+        /// <summary>A two-step bulk action: first click arms it ("… — sure?")
+        /// for three seconds; a second click inside the window executes —
+        /// the RestoreButton pattern, in section-header size.</summary>
+        private TextBlock BuildSectionAction(string label, string confirmTip, Action apply)
+        {
+            var tb = new TextBlock
+            {
+                Text = label,
+                FontSize = 11.5,
+                FontWeight = FontWeights.Medium,
+                Cursor = Cursors.Hand,
+                VerticalAlignment = VerticalAlignment.Center,
+                ToolTip = confirmTip
+            };
+            tb.SetResourceReference(TextBlock.ForegroundProperty, "B.Primary");
+            bool armed = false;
+            DispatcherTimer timer = null;
+            tb.MouseLeftButtonUp += (s, e) =>
+            {
+                if (!armed)
+                {
+                    armed = true;
+                    tb.Text = label + " — sure?";
+                    timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+                    timer.Tick += (s2, e2) =>
+                    {
+                        timer.Stop();
+                        armed = false;
+                        tb.Text = label;
+                    };
+                    timer.Start();
+                    return;
+                }
+                if (timer != null) timer.Stop();
+                armed = false;
+                tb.Text = label;
+                apply();
+            };
+            return tb;
+        }
+
+        /// <summary>Links or unlinks every vendor in one move — the bulk
+        /// actions' executor. One save, one re-file, one callback.</summary>
+        private void SetAll(bool owned)
+        {
+            foreach (var vendor in _vendorOrder)
+                _profile.SetOwned(vendor, owned);
+            _profile.Save();
+            RefreshSections();
+            _onChange?.Invoke();
+        }
+
+        /// <summary>The LINKED section's empty state: a quiet slot that
+        /// says what to do and carries the scan shortcut inline.</summary>
+        private Border BuildEmptyLinked()
+        {
+            var icon = new IconGlyph
+            {
+                IconName = "Plugin",
+                Width = 18,
+                Height = 18,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            icon.SetResourceReference(IconGlyph.ForegroundProperty, "B.OnSurfaceVariant");
+
+            var text = new TextBlock
+            {
+                Text = "Nothing linked yet — flip a vendor's switch or scan your system.",
+                FontSize = 11.5,
+                TextWrapping = TextWrapping.Wrap,
+                VerticalAlignment = VerticalAlignment.Center,
+                MaxWidth = 300,
+                Margin = new Thickness(10, 0, 0, 0)
+            };
+            text.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
+
+            var scan = new Button
+            {
+                Content = "Scan System",
+                Style = (Style)FindResource("TonalButton"),
+                Height = 30,
+                MinWidth = 110,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            scan.Click += (s, e) => ScanFolder();
+
+            var host = new StackPanel { Orientation = Orientation.Horizontal };
+            host.Children.Add(icon);
+            host.Children.Add(text);
+            host.Children.Add(scan);
+
+            return new Border
+            {
+                Padding = new Thickness(14, 10, 14, 10),
+                CornerRadius = new CornerRadius(14),
+                BorderThickness = new Thickness(1),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Margin = new Thickness(0, 0, 16, 10),
+                Child = host
+            };
+        }
+
+        /// <summary>The card's arrival when it moves sections: fade + a
+        /// small rise — the flip feels physical instead of teleporting.</summary>
+        private void AnimateCardIn(Border card)
+        {
+            var slide = card.RenderTransform as TranslateTransform;
+            if (slide == null)
+            {
+                slide = new TranslateTransform();
+                card.RenderTransform = slide;
+            }
+            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+            var dur = TimeSpan.FromMilliseconds(200);
+            card.BeginAnimation(UIElement.OpacityProperty,
+                new DoubleAnimation(0, 1, dur) { EasingFunction = ease });
+            slide.BeginAnimation(TranslateTransform.YProperty,
+                new DoubleAnimation(8, 0, dur) { EasingFunction = ease });
+        }
+
+        /// <summary>The live filter: cards hide unless the query hits the
+        /// vendor name or its description; the tool cards (custom vendor,
+        /// discovery) hide while a query is on; headers and counts follow
+        /// what is actually visible.</summary>
+        private void ApplyFilter()
+        {
+            string q = (FilterBox.Text ?? "").Trim();
+            FilterPlaceholder.Visibility = q.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+            int linkedVisible = 0, otherVisible = 0;
             foreach (var vendor in _vendorOrder)
             {
                 var card = _cards[vendor];
                 bool owned = _profile.OwnedVendors.Contains(vendor);
-                if (owned) linked++;
+                bool match = q.Length == 0 ||
+                    vendor.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    (VendorMeta.TryGetValue(vendor, out var meta) &&
+                     meta.suites.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0);
+                card.Visibility = match ? Visibility.Visible : Visibility.Collapsed;
+                if (match)
+                {
+                    if (owned) linkedVisible++;
+                    else otherVisible++;
+                }
+            }
+            _customCard.Visibility = q.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+            _discoveryCard.Visibility = q.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+            _linkedHead.Visibility = linkedVisible > 0 ? Visibility.Visible : Visibility.Collapsed;
+            _otherHead.Visibility = otherVisible > 0 ? Visibility.Visible : Visibility.Collapsed;
+            _emptyLinked.Visibility = q.Length == 0 && linkedVisible == 0
+                ? Visibility.Visible : Visibility.Collapsed;
+
+            _linkedCount.Text = linkedVisible == 0 ? "" : "· " + linkedVisible;
+            _otherCount.Text = "· " + otherVisible;
+        }
+
+        /// <summary>Re-files every card into its section, then re-applies
+        /// the filter so counts and headers stay honest. Runs after Build
+        /// and after every toggle / bulk action.</summary>
+        private void RefreshSections()
+        {
+            UpdateSections();
+            if (_customCard != null && _discoveryCard != null) ApplyFilter();
+        }
+
+        /// <summary>
+        /// Re-files every vendor card into its section (linked vs.
+        /// available) in display order; cards that actually move get the
+        /// fade + rise arrival. Counts, headers and the empty state are
+        /// ApplyFilter's business — this only physically places cards.
+        /// Runs after Build and after every toggle/scan flip, so the
+        /// sections are always an honest snapshot of the saved profile.
+        /// </summary>
+        private void UpdateSections()
+        {
+            foreach (var vendor in _vendorOrder)
+            {
+                var card = _cards[vendor];
+                bool owned = _profile.OwnedVendors.Contains(vendor);
                 var target = owned ? _linkedCards : _otherCards;
                 if (ReferenceEquals(card.Parent, target)) continue;
                 (card.Parent as Panel)?.Children.Remove(card);
                 target.Children.Add(card);
+                AnimateCardIn(card);
             }
-            if (_linkedCount != null) _linkedCount.Text = linked == 0 ? "" : "· " + linked;
-            if (_otherCount != null) _otherCount.Text = "· " + (_vendorOrder.Count - linked);
-            if (_linkedHint != null)
-                _linkedHint.Visibility = linked == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private const int CardW = 300;
@@ -252,12 +451,11 @@ namespace FfxTool.Gui
             header.Children.Add(titleStack);
             header.Children.Add(sw);
 
-            var badgeIcon = new IconGlyph
-            {
-                IconName = sw.IsChecked == true ? "Check" : "Info",
-                Width = 14,
-                Height = 14
-            };
+            // the badge is a mini-pill now — a miniature of the switch
+            // itself, dot parked right when linked, parked left on a ghost
+            // track when not. No more Check/Info glyphs.
+            var badgePill = new MiniPill { VerticalAlignment = VerticalAlignment.Center };
+            badgePill.Set(sw.IsChecked == true);
             var badgeText = new TextBlock
             {
                 Text = sw.IsChecked == true ? "Profile linked" : "Not in profile",
@@ -268,7 +466,7 @@ namespace FfxTool.Gui
             badgeText.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
 
             var badgeStack = new StackPanel { Orientation = Orientation.Horizontal };
-            badgeStack.Children.Add(badgeIcon);
+            badgeStack.Children.Add(badgePill);
             badgeStack.Children.Add(badgeText);
 
             var badge = new Border
@@ -281,6 +479,26 @@ namespace FfxTool.Gui
             };
             badge.SetResourceReference(Border.BackgroundProperty, "B.SCHighest");
 
+            // the per-vendor inventory line: what the scan catalog knows
+            // about this vendor, e.g. "12 .aex files cataloged"
+            var countCaption = new TextBlock
+            {
+                FontSize = 11,
+                Margin = new Thickness(8, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Visibility = Visibility.Collapsed
+            };
+            countCaption.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
+
+            var badgeRow = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Margin = new Thickness(0, 8, 0, 0)
+            };
+            badgeRow.Children.Add(badge);
+            badgeRow.Children.Add(countCaption);
+
             var card = new Border
             {
                 Style = (Style)FindResource("Card"),
@@ -290,14 +508,12 @@ namespace FfxTool.Gui
                 Child = new Grid
                 {
                     RowDefinitions = { new RowDefinition { Height = GridLength.Auto }, new RowDefinition() },
-                    Children = { header, badge }
+                    Children = { header, badgeRow }
                 }
             };
-            Grid.SetRow(badge, 1);
-            badge.VerticalAlignment = VerticalAlignment.Bottom;
-            badge.Margin = new Thickness(0, 8, 0, 0);
+            Grid.SetRow(badgeRow, 1);
 
-            var pair = new ToggleButtonSwitchPair { Toggle = sw, Badge = badge, BadgeText = badgeText, BadgeIcon = badgeIcon };
+            var pair = new ToggleButtonSwitchPair { Toggle = sw, Badge = badge, BadgeText = badgeText, BadgePill = badgePill, CountCaption = countCaption };
             _switches[vendor] = pair;
 
             sw.Checked += (s, e) => { UpdateBadge(vendor); SaveVendor(vendor, true); };
@@ -311,21 +527,22 @@ namespace FfxTool.Gui
             bool owned = pair.Toggle.IsChecked == true;
             pair.BadgeText.Text = owned ? "Profile linked" : "Not in profile";
             pair.Badge.Opacity = owned ? 1 : 0.6;
-            pair.BadgeIcon.IconName = owned ? "Check" : "Info";
-            // re-point the resource KEY (not a frozen brush) so the tint both
-            // switches instantly and keeps tracking palette/dark-mode swaps
-            pair.BadgeIcon.SetResourceReference(IconGlyph.ForegroundProperty,
-                owned ? "B.Primary" : "B.OnSurfaceVariant");
+            pair.BadgePill.Set(owned); // dot right on primary, or ghost with the dot left
         }
 
         private void SaveVendor(string vendor, bool owned)
         {
             _profile.SetOwned(vendor, owned);
             _profile.Save();
-            UpdateSections(); // the card physically moves between the sections
+            RefreshSections(); // the card physically moves between the sections
             _onChange?.Invoke();
         }
 
+        /// <summary>The custom-vendor card, real now: click it and a
+        /// mini-form drops in — a name box, Add, Cancel. The name becomes
+        /// a full card (switch, mini-pill badge, sections) and future
+        /// system scans match the name against plugin paths like any
+        /// curated vendor's hints.</summary>
         private Border BuildAddCustomCard()
         {
             var icon = new IconGlyph
@@ -346,9 +563,57 @@ namespace FfxTool.Gui
             };
             label.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
 
-            var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-            stack.Children.Add(icon);
-            stack.Children.Add(label);
+            var rest = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            rest.Children.Add(icon);
+            rest.Children.Add(label);
+
+            var nameBox = new TextBox
+            {
+                FontSize = 12.5,
+                MinWidth = 170,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Padding = new Thickness(8, 5, 8, 5)
+            };
+            var addBtn = new Button
+            {
+                Content = "Add",
+                Style = (Style)FindResource("TonalButton"),
+                MinWidth = 74,
+                Height = 30,
+                Margin = new Thickness(8, 0, 0, 0)
+            };
+            var cancelBtn = new Button
+            {
+                Content = "Cancel",
+                Style = (Style)FindResource("OutlinedButton"),
+                MinWidth = 74,
+                Height = 30,
+                Margin = new Thickness(8, 0, 0, 0)
+            };
+            var formRow = new StackPanel { Orientation = Orientation.Horizontal };
+            formRow.Children.Add(nameBox);
+            formRow.Children.Add(addBtn);
+            formRow.Children.Add(cancelBtn);
+
+            var hint = new TextBlock
+            {
+                Text = "The name becomes the card — future scans match it against plugin paths too.",
+                FontSize = 10.5,
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Center,
+                MaxWidth = 240,
+                Margin = new Thickness(0, 8, 0, 0)
+            };
+            hint.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
+
+            var form = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            form.Children.Add(formRow);
+            form.Children.Add(hint);
+            form.Visibility = Visibility.Collapsed;
+
+            var host = new Grid();
+            host.Children.Add(rest);
+            host.Children.Add(form);
 
             var card = new Border
             {
@@ -357,12 +622,51 @@ namespace FfxTool.Gui
                 Margin = new Thickness(0, 0, 16, 16),
                 CornerRadius = new CornerRadius(20),
                 BorderThickness = new Thickness(1),
-                Opacity = 0.55,
-                ToolTip = "Not yet implemented",
-                Child = stack
+                Child = host
             };
             card.SetResourceReference(Border.BackgroundProperty, "B.SCLow");
             card.SetResourceReference(Border.BorderBrushProperty, "B.OutlineVariant");
+
+            rest.Cursor = Cursors.Hand;
+            rest.MouseLeftButtonUp += (s, e) =>
+            {
+                rest.Visibility = Visibility.Collapsed;
+                form.Visibility = Visibility.Visible;
+                nameBox.Focus();
+            };
+            cancelBtn.Click += (s, e) =>
+            {
+                form.Visibility = Visibility.Collapsed;
+                rest.Visibility = Visibility.Visible;
+                nameBox.Text = "";
+            };
+
+            var submit = new Action(() =>
+            {
+                string name = (nameBox.Text ?? "").Trim();
+                if (name.Length == 0)
+                {
+                    nameBox.Focus();
+                    return;
+                }
+                if (!_cards.ContainsKey(name))
+                {
+                    _vendorOrder.Add(name);
+                    _cards[name] = BuildVendorCard(name);
+                }
+                _profile.SetOwned(name, true);
+                _profile.Save();
+                RefreshSections();
+                _onChange?.Invoke();
+                form.Visibility = Visibility.Collapsed;
+                rest.Visibility = Visibility.Visible;
+                nameBox.Text = "";
+            });
+            addBtn.Click += (s, e) => submit();
+            nameBox.KeyDown += (s, e) =>
+            {
+                if (e.Key == Key.Enter) submit();
+            };
             return card;
         }
 
@@ -437,9 +741,37 @@ namespace FfxTool.Gui
             status.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
             _scanStatus = status;
 
+            _scanChips = new WrapPanel
+            {
+                Margin = new Thickness(0, 2, 0, 0),
+                Visibility = Visibility.Collapsed
+            };
+
+            // the detected AE Plug-ins folder, offered as one click —
+            // no dialog hunting through Program Files
+            _aeSuggest = new TextBlock
+            {
+                FontSize = 11.5,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 8, 0, 0),
+                Visibility = Visibility.Collapsed,
+                Cursor = Cursors.Hand
+            };
+            _aeSuggest.SetResourceReference(TextBlock.ForegroundProperty, "B.Primary");
+            string suggested = SuggestAePluginsFolder();
+            if (suggested != null)
+            {
+                _aeSuggest.Text = "Use " + suggested;
+                _aeSuggest.ToolTip = "Scans this detected AE Plug-ins folder";
+                string path = suggested;
+                _aeSuggest.MouseLeftButtonUp += (s, e) => ScanPath(path);
+            }
+
             var host = new StackPanel();
             host.Children.Add(grid);
             host.Children.Add(status);
+            host.Children.Add(_scanChips);
+            host.Children.Add(_aeSuggest);
 
             return new Border
             {
@@ -542,7 +874,15 @@ namespace FfxTool.Gui
 
             int flipped = 0;
             var found = new List<string>();
-            foreach (var kv in VendorFileHints)
+            // curated hints first, then every custom vendor's own name as a
+            // hint — a vendor added by hand gets recognized by its name
+            // sitting in the plugin path, same as the curated ones (only
+            // names long enough to be worth matching)
+            var hints = new List<KeyValuePair<string, string[]>>(VendorFileHints);
+            foreach (var vendor in _vendorOrder)
+                if (!VendorMeta.ContainsKey(vendor) && vendor.Length >= 4)
+                    hints.Add(new KeyValuePair<string, string[]>(vendor, new[] { vendor.ToLowerInvariant() }));
+            foreach (var kv in hints)
             {
                 if (!files.Any(f => HintHit(root, f, kv.Value))) continue;
                 found.Add(kv.Key);
@@ -569,20 +909,13 @@ namespace FfxTool.Gui
                 catalog.Save();
                 PluginRecognition.ResetCatalog();
             }
+            // the catalog changed — per-vendor counts refresh from it
+            LoadFileCounts();
 
             string catalogText = catalog.NameCount + " effect names cataloged";
-            string result;
-            if (files.Count == 0)
-                result = "no .aex plugin files found there — that doesn't look like an AE Plug-ins folder";
-            else if (found.Count == 0)
-                result = files.Count + " plugin files scanned — " + catalogText +
-                         " — none match a profile vendor";
-            else
-                result = files.Count + " plugin files scanned — " + catalogText +
-                         " — recognized: " + string.Join(", ", found) +
-                         (flipped > 0 ? " (" + flipped + " linked now)" : " (already in profile)");
-            ShowScanStatus(result);
-            LogService.Append("plugin scan: " + files.Count + " .aex files under \"" + root + "\" — " + result);
+            ShowScanResult(files.Count, found, flipped, catalogText);
+            LogService.Append("plugin scan: " + files.Count + " .aex files under \"" + root + "\" — " +
+                              (_scanStatus != null ? _scanStatus.Text : "done"));
         }
 
         /// <summary>First vendor whose hints hit the file's path relative to
@@ -594,11 +927,95 @@ namespace FfxTool.Gui
             return null;
         }
 
-        private void ShowScanStatus(string text)
+        /// <summary>The scan's report: a summary line plus one chip per
+        /// recognized vendor carrying its cataloged file count — the old
+        /// single sentence made a 5-vendor find read like a footnote.</summary>
+        private void ShowScanResult(int fileCount, List<string> found, int flipped, string catalogText)
         {
             if (_scanStatus == null) return;
-            _scanStatus.Text = text;
+            string summary;
+            if (fileCount == 0)
+                summary = "no .aex plugin files found there — that doesn't look like an AE Plug-ins folder";
+            else if (found.Count == 0)
+                summary = fileCount + " plugin files scanned — " + catalogText +
+                          " — none match a profile vendor";
+            else
+                summary = fileCount + " plugin files scanned — " + catalogText +
+                          " — recognized " + found.Count + (found.Count == 1 ? " vendor" : " vendors") +
+                          (flipped > 0 ? " (" + flipped + " linked now)" : " (already in profile)");
+            _scanStatus.Text = summary;
             _scanStatus.Visibility = Visibility.Visible;
+
+            if (_scanChips == null) return;
+            _scanChips.Children.Clear();
+            foreach (var vendor in found)
+            {
+                int count = _fileCounts.TryGetValue(vendor, out var c) ? c : 0;
+                var chip = new Border
+                {
+                    CornerRadius = new CornerRadius(9),
+                    Padding = new Thickness(10, 4, 10, 4),
+                    Margin = new Thickness(0, 6, 8, 0)
+                };
+                chip.SetResourceReference(Border.BackgroundProperty, "B.PrimaryContainer");
+                var t = new TextBlock
+                {
+                    FontSize = 11,
+                    Text = vendor + " — " + count + " file" + (count == 1 ? "" : "s")
+                };
+                t.SetResourceReference(TextBlock.ForegroundProperty, "B.OnPrimaryContainer");
+                chip.Child = t;
+                _scanChips.Children.Add(chip);
+            }
+            _scanChips.Visibility = found.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        /// <summary>Per-vendor .aex counts from the scan catalog, loaded
+        /// off-thread (the catalog file can be megabytes) — feeds the
+        /// count captions and the scan chips. The catalog's Files view is
+        /// read-only; no scan state is touched.</summary>
+        private void LoadFileCounts()
+        {
+            if (_countsLoading) return;
+            _countsLoading = true;
+            System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+            {
+                var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+                try
+                {
+                    foreach (var f in PluginRecognition.Catalog.Files)
+                        if (!string.IsNullOrEmpty(f.Vendor))
+                            counts[f.Vendor] = (counts.TryGetValue(f.Vendor, out var c) ? c : 0) + 1;
+                }
+                catch { /* no catalog yet — counts stay empty */ }
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    _countsLoading = false;
+                    _fileCounts = counts;
+                    RefreshCountCaptions();
+                }));
+            });
+        }
+
+        /// <summary>Shows or hides each card's "N .aex files cataloged"
+        /// caption from the loaded counts. A vendor with nothing on disk
+        /// stays quiet — absence is not an accusation.</summary>
+        private void RefreshCountCaptions()
+        {
+            foreach (var kv in _switches)
+            {
+                var caption = kv.Value.CountCaption;
+                if (caption == null) continue;
+                if (_fileCounts.TryGetValue(kv.Key, out int n) && n > 0)
+                {
+                    caption.Text = n + " .aex file" + (n == 1 ? "" : "s") + " cataloged";
+                    caption.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    caption.Visibility = Visibility.Collapsed;
+                }
+            }
         }
 
         /// <summary>Hint match over the path RELATIVE to the scan root —

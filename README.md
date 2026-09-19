@@ -126,28 +126,47 @@ until that listing is live, the download above is the way to go.
 
 ## ⚙️ Settings
 
+Five panels — **Appearance, Storage, Plugin Profiles, Updates, About** —
+on one shared row system, with a remembered last tab and **Alt+1…5** to
+switch from the keyboard.
+
 - **Plugin profile** — which plugin suites you own, so compatibility
-  warnings match your machine.
+  warnings match your machine. A filter box narrows the vendor grid as
+  you type, **Link all / Unlink all** sit on the section headers behind a
+  two-step confirm, a system scan reports one chip per recognized vendor
+  and offers the detected AE Plug-ins folder as a one-click link,
+  **Add custom vendor** actually adds vendors, and each card shows how
+  many `.aex` files the scan catalog holds for it.
 - **Settings search** — type in the box at the top of Settings and pick a
   match: the app opens the right panel and flashes the row you asked for.
 - **Theme** — one three-way **Light / Dark / System** control, four color
-  palettes with a checkmark on the chosen swatch, a live preview card, and
-  a two-step **Restore Defaults** that tells you what it did.
+  palettes whose chosen swatch wears a mini-pill badge, a live preview
+  card, and a two-step **Restore Defaults** that tells you what it did.
+  Every boolean in Settings is a real switch — no checkboxes anywhere.
 - **Verbose Logging** — per-file conversion steps in the session log; turn
   on when reporting a bug.
 - **Storage cleanup** — a stacked meter shows what the plugin scan catalog,
   the recent-presets history and the session logs occupy; deletes confirm
   in place for three seconds instead of a popup, then settle with a toast,
   and the storage folder and logs open from rows like everything else.
-- **Check for Updates** — the app's only network traffic. An automatic
-  check (on by default, off in About) notices a new release quietly — a
-  toast and a Settings badge, never a popup — and the About card shows
-  four honest faces: up to date with the last-checked time, a spinner
-  while checking, an accent card with a Download button when a version is
-  out, and a retry on error. The updater shows the release's what's-new
-  notes, downloads the exe, verifies it against the release's SHA-256 and
-  swaps it in place. The release page is always there when you prefer to
-  fetch it yourself.
+- **Updates** — the app's only network traffic, on its own panel. A
+  System update row runs the check (its value reads Up to date, Checking…,
+  or the new version and unfurls **See what's new**, **Release page** and
+  **Skip this version**), App version copies on click, Flavour says Stable
+  or Nightly, and three switches decide behavior: the automatic check,
+  **Include nightlies** (prerelease checks by publish date — a nightly hit
+  opens its release page), and **Notify** (gates the corner toast; the
+  tab's dot shows either way). **Clear downloaded updates** reports and
+  deletes whatever a previous download left staged. The **Changelog** row
+  drills into a strip of version pills fetched straight from GitHub —
+  pick a release and its date, hero image and full notes render below.
+  The updater shows the release's what's-new notes, downloads the exe,
+  verifies it against the release's SHA-256 and swaps it in place.
+- **About** — links and details only: the identity row with its STABLE /
+  NIGHTLY channel chip and click-to-copy version, the specs chips
+  (Windows 10+, .NET Framework 4.8, single exe, no installer), a
+  **Copy SHA-256** row (the exact hash the release page publishes), and
+  the repository and issue-tracker links.
 
 <p align="center">
   <img src="docs/screenshots/settings.png" width="720" alt="Settings page — dark mode switch and the four color palettes Teal, Blue, Purple and Orange" /><br />

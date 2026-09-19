@@ -168,6 +168,11 @@ namespace FfxTool.Gui
 
         public int NameCount { get { return _exact.Count; } }
 
+        /// <summary>Read-only view over the cataloged files — the profile
+        /// page's per-vendor ".aex files cataloged" counts group this by
+        /// Vendor. No mutation path on purpose; the scan owns writes.</summary>
+        public IEnumerable<CatalogFile> Files { get { return _files; } }
+
         public static PluginCatalog Load()
         {
             var cat = new PluginCatalog();

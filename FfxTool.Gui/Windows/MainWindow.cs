@@ -128,7 +128,12 @@ namespace FfxTool.Gui
             // the dispatcher. Found → rail badge on Settings + the toast
             // pill; seen → both stand down.
             UpdateService.UpdateFound += entry => Dispatcher.BeginInvoke(new Action(() =>
-                ShowUpdateToast(entry)));
+            {
+                Rail.SetItemBadge(2, true);
+                // the toast obeys the "Notify when an update is found"
+                // switch on the Updates tab — the badge never does
+                if (UpdateService.NotifyEnabled) ShowUpdateToast(entry);
+            }));
             UpdateService.UpdateSeen += () => Dispatcher.BeginInvoke(new Action(() =>
             {
                 HideUpdateToast();
@@ -160,7 +165,6 @@ namespace FfxTool.Gui
         {
             if (entry == null) return;
             ToastSub.Text = "v" + entry.Version + " is available — see what's new";
-            Rail.SetItemBadge(2, true);
             UpdateToast.Visibility = Visibility.Visible;
             UpdateToast.Opacity = 0;
             ToastMove.Y = 14;
@@ -322,9 +326,9 @@ namespace FfxTool.Gui
                 ShowSection(index);
                 e.Handled = true;
             }
-            else if (Keyboard.Modifiers == ModifierKeys.Alt && e.Key >= Key.D1 && e.Key <= Key.D4)
+            else if (Keyboard.Modifiers == ModifierKeys.Alt && e.Key >= Key.D1 && e.Key <= Key.D5)
             {
-                // Alt+1..4: the Settings sub-tabs — the Ctrl range is taken
+                // Alt+1..5: the Settings sub-tabs — the Ctrl range is taken
                 // by the section shortcuts (Ctrl+3 opens Settings itself),
                 // so the sub-nav rides the next modifier up. Only meaningful
                 // while Settings is the active section.

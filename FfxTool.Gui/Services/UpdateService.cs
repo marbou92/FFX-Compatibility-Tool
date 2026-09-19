@@ -91,6 +91,25 @@ namespace FfxTool.Gui
         }
 
         public static bool AutoCheckEnabled { get; private set; } = true;
+
+        /// <summary>"Include nightlies": checks also consider prereleases
+        /// (the rolling nightly), compared by publish date — see
+        /// UpdateChecker.CheckPrereleases. Off by default; a nightly build
+        /// only ever checks when this is on.</summary>
+        public static bool BetaCheckEnabled { get; private set; }
+
+        /// <summary>"Notify when an update is found": gates the corner
+        /// toast pill. The Updates tab's dot and the status row always
+        /// reflect a pending find — the switch only silences the
+        /// announcement.</summary>
+        public static bool NotifyEnabled { get; private set; } = true;
+
+        /// <summary>A version the user explicitly skipped — auto and
+        /// manual checks stay quiet about exactly this version until the
+        /// next one lands. Persisted; the Updates page's "Skip this
+        /// version" link writes it.</summary>
+        public static string SkipVersion { get; private set; }
+
         private static DateTime _lastCheckUtc = DateTime.MinValue;
         private static int _checking;
         private static volatile bool _cancelRequested;
@@ -107,6 +126,9 @@ namespace FfxTool.Gui
         {
             [DataMember(Name = "autoCheck")] public bool AutoCheck = true;
             [DataMember(Name = "lastCheckUtc")] public string LastCheckUtc;
+            [DataMember(Name = "betaCheck")] public bool BetaCheck;
+            [DataMember(Name = "notify")] public bool Notify = true;
+            [DataMember(Name = "skipVersion")] public string SkipVersion;
         }
 
         private static string SettingsPath()
@@ -130,6 +152,9 @@ namespace FfxTool.Gui
                     if (serializer.ReadObject(fs) is Stored s)
                     {
                         AutoCheckEnabled = s.AutoCheck;
+                        BetaCheckEnabled = s.BetaCheck;
+                        NotifyEnabled = s.Notify;
+                        SkipVersion = string.IsNullOrEmpty(s.SkipVersion) ? null : s.SkipVersion;
                         if (DateTime.TryParse(s.LastCheckUtc,
                                 System.Globalization.CultureInfo.InvariantCulture,
                                 System.Globalization.DateTimeStyles.RoundtripKind,
@@ -144,6 +169,35 @@ namespace FfxTool.Gui
         {
             AutoCheckEnabled = enabled;
             SaveSettings();
+        }
+
+        public static void SetBetaCheck(bool enabled)
+        {
+            BetaCheckEnabled = enabled;
+            SaveSettings();
+        }
+
+        public static void SetNotify(bool enabled)
+        {
+            NotifyEnabled = enabled;
+            SaveSettings();
+        }
+
+        /// <summary>Silences exactly this version ("v" prefix stripped, as
+        /// everywhere) — a later version automatically un-skips. Pass null
+        /// to clear (never exposed; skip dies with the next release).</summary>
+        public static void SetSkipVersion(string version)
+        {
+            SkipVersion = string.IsNullOrWhiteSpace(version)
+                ? null
+                : version.TrimStart('v', 'V');
+            SaveSettings();
+        }
+
+        private static bool IsSkipped(string version)
+        {
+            return SkipVersion != null && version != null &&
+                   version.TrimStart('v', 'V') == SkipVersion;
         }
 
         private static void TouchLastCheck()
@@ -161,6 +215,9 @@ namespace FfxTool.Gui
                     serializer.WriteObject(fs, new Stored
                     {
                         AutoCheck = AutoCheckEnabled,
+                        BetaCheck = BetaCheckEnabled,
+                        Notify = NotifyEnabled,
+                        SkipVersion = SkipVersion,
                         LastCheckUtc = _lastCheckUtc == DateTime.MinValue
                             ? null
                             : _lastCheckUtc.ToString("o")
@@ -176,10 +233,12 @@ namespace FfxTool.Gui
         /// window decides how loudly to announce it.</summary>
         public static void BeginAutoCheck()
         {
-            if (!AutoCheckEnabled || IsNightlyBuild)
+            if (!AutoCheckEnabled || (IsNightlyBuild && !BetaCheckEnabled))
             {
                 LogService.Append("update auto-check: skipped (" +
-                    (!AutoCheckEnabled ? "turned off in Settings" : "nightly build") + ")");
+                    (!AutoCheckEnabled ? "turned off in Settings"
+                        : IsNightlyBuild ? "nightly build, nightlies off"
+                        : "nightly build") + ")");
                 return;
             }
             if ((DateTime.UtcNow - _lastCheckUtc).TotalHours < AutoCheckIntervalHours) return;
@@ -189,7 +248,7 @@ namespace FfxTool.Gui
             {
                 try
                 {
-                    var result = UpdateChecker.Check();
+                    var result = RunCheck();
                     TouchLastCheck();
                     LastCheckMessage = result.Message;
                     LastCheckStatus = result.Status;
@@ -200,8 +259,12 @@ namespace FfxTool.Gui
                         // the feed adds notes + file name + hash; when it is
                         // unreachable (or the newest release predates the
                         // feed) the minimal entry keeps the updater working
-                        // with the release page as the fallback path
-                        var entry = ChangelogFeed.Fetch() ?? MinimalEntry(result.LatestVersion);
+                        // with the release page as the fallback path — and a
+                        // prerelease find (a nightly) has no feed at all, so
+                        // it always takes the tag-built entry
+                        var entry = IsPrereleaseTag(result.LatestVersion)
+                            ? MinimalEntryFromTag(result.LatestVersion)
+                            : ChangelogFeed.Fetch() ?? MinimalEntryFromTag(result.LatestVersion);
                         PendingUpdate = entry;
                         UpdateFound?.Invoke(entry);
                     }
@@ -225,28 +288,62 @@ namespace FfxTool.Gui
 
         public static UpdateCheckResult CheckNow()
         {
-            var result = UpdateChecker.Check();
+            var result = RunCheck();
             TouchLastCheck();
             LastCheckMessage = result.Message;
             LastCheckStatus = result.Status;
             LogService.Append("update check: " + result.Message);
             if (result.Status == UpdateCheckStatus.UpdateAvailable)
-                PendingUpdate = ChangelogFeed.Fetch() ?? MinimalEntry(result.LatestVersion);
+                PendingUpdate = IsPrereleaseTag(result.LatestVersion)
+                    ? MinimalEntryFromTag(result.LatestVersion)
+                    : ChangelogFeed.Fetch() ?? MinimalEntryFromTag(result.LatestVersion);
             CheckFinished?.Invoke(result);
             return result;
         }
 
-        /// <summary>A feed-less stand-in: version + release page only.
-        /// File stays null, so the UI offers the release page instead of a
-        /// blind download.</summary>
-        private static ChangelogEntry MinimalEntry(string version)
+        /// <summary>Which check runs: with "Include nightlies" on, every
+        /// build compares against the plain releases list (prereleases
+        /// included) by publish date; otherwise the classic numeric
+        /// releases/latest probe. A find for a version the user skipped
+        /// reads as up-to-date — the skip dies with the next release.</summary>
+        private static UpdateCheckResult RunCheck()
         {
+            var result = BetaCheckEnabled
+                ? UpdateChecker.CheckPrereleases(BuildOrInstallTimeUtc)
+                : UpdateChecker.Check();
+            if (result.Status == UpdateCheckStatus.UpdateAvailable &&
+                IsSkipped(result.LatestVersion))
+            {
+                result.Status = UpdateCheckStatus.UpToDate;
+                result.Message = "v" + result.LatestVersion.TrimStart('v') +
+                                 " is skipped — the next release will speak up again.";
+            }
+            return result;
+        }
+
+        /// <summary>A tag that a numeric compare can't judge — anything
+        /// with letters after the version ("0.2.2-nightly.20260918").</summary>
+        private static bool IsPrereleaseTag(string tag)
+        {
+            if (string.IsNullOrEmpty(tag)) return false;
+            string t = tag.TrimStart('v', 'V');
+            foreach (char c in t)
+                if (c != '.' && (c < '0' || c > '9')) return true;
+            return false;
+        }
+
+        /// <summary>A feed-less stand-in built from a release tag: version
+        /// + release page only. File stays null, so the UI offers the
+        /// release page instead of a blind download.</summary>
+        private static ChangelogEntry MinimalEntryFromTag(string tag)
+        {
+            string version = tag != null ? tag.TrimStart('v', 'V') : "?";
             var entry = new ChangelogEntry
             {
                 Version = version,
                 Description = "FFX Compatibility Tool " + version +
                               " is out. The release page has the full story.",
-                Url = ChangelogFeed.RepoUrl + "/releases/tag/v" + version
+                Url = ChangelogFeed.RepoUrl + "/releases/tag/" + tag
             };
             entry.Sections.Add(new ChangelogSection
             {
@@ -270,6 +367,73 @@ namespace FfxTool.Gui
             return Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "FFXCompatibilityTool", "update");
+        }
+
+        /// <summary>What a previous download left staged ("name · size"),
+        /// or null when the staging folder is empty or absent — the
+        /// Updates page's "Clear downloaded updates" row reads this.</summary>
+        public static string StagedUpdateInfo
+        {
+            get
+            {
+                try
+                {
+                    var dir = new DirectoryInfo(StagingDir());
+                    if (!dir.Exists) return null;
+                    long bytes = 0;
+                    int count = 0;
+                    string name = null;
+                    foreach (var f in dir.GetFiles())
+                    {
+                        count++;
+                        bytes += f.Length;
+                        // the staged exe outlives its .part sibling; prefer
+                        // whichever real file is there for the label
+                        if (!f.Name.EndsWith(".part") || name == null) name = f.Name;
+                    }
+                    if (count == 0) return null;
+                    return name + " · " + FmtBytes(bytes);
+                }
+                catch { return null; }
+            }
+        }
+
+        /// <summary>Deletes everything a download left behind (a staged exe
+        /// the user never applied, a crash-orphaned .part). Returns what
+        /// was actually removed, for the toast.</summary>
+        public static int ClearStagedUpdate()
+        {
+            int removed = 0;
+            try
+            {
+                var dir = new DirectoryInfo(StagingDir());
+                if (!dir.Exists) return 0;
+                foreach (var f in dir.GetFiles())
+                {
+                    try { f.Delete(); removed++; }
+                    catch { /* a locked file just stays */ }
+                }
+            }
+            catch { /* unreadable staging folder — report what we got */ }
+            return removed;
+        }
+
+        /// <summary>When this exe landed on disk (UTC) — build time for a
+        /// fresh copy, download/apply time for an updated one. The
+        /// prerelease check compares release publish dates against it.</summary>
+        public static DateTime BuildOrInstallTimeUtc
+        {
+            get
+            {
+                try
+                {
+                    string exe = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                    if (!string.IsNullOrEmpty(exe) && File.Exists(exe))
+                        return File.GetLastWriteTimeUtc(exe);
+                }
+                catch { /* unreadable path — fall through to "now" */ }
+                return DateTime.UtcNow; // nothing can be "older" — stay silent
+            }
         }
 
         public static void CancelDownload()
