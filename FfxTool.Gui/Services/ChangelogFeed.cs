@@ -183,14 +183,19 @@ namespace FfxTool.Gui
     /// <summary>
     /// The shared renderer for a changelog entry — the same vivi-style
     /// look everywhere: a section title per group, and every item as a
-    /// line with a small primary-colored dot in front of it. Used by the
-    /// About page's what's-new panel and by the updater window's offer.
-    /// Colors are bound to resource KEYS (not captured brushes), so the
-    /// rows re-theme live exactly like the rest of the app.
+    /// row in front of it. Used by the About page's what's-new panel and
+    /// by the updater window's offer. Colors are bound to resource KEYS
+    /// (not captured brushes), so the rows re-theme live exactly like the
+    /// rest of the app.
     /// </summary>
     public static class ChangelogView
     {
-        public static void BuildInto(StackPanel host, ChangelogEntry entry, bool includeDescription)
+        /// <summary>Render a changelog entry. Pass showSectionTitles:false
+        /// when the host already carries a version title (the Settings
+        /// what's-new card shows "What's new in vX" in its own header row),
+        /// true when the panel is the whole story (the updater window).</summary>
+        public static void BuildInto(StackPanel host, ChangelogEntry entry, bool includeDescription,
+                                     bool showSectionTitles = true)
         {
             host.Children.Clear();
             if (entry == null) return;
@@ -211,45 +216,99 @@ namespace FfxTool.Gui
             bool first = true;
             foreach (var section in entry.Sections)
             {
-                var title = new TextBlock
+                if (showSectionTitles)
                 {
-                    Text = string.IsNullOrEmpty(section.Title) ? "Changes" : section.Title,
-                    FontSize = 13,
-                    FontWeight = FontWeights.SemiBold,
-                    Margin = new Thickness(0, first ? 8 : 16, 0, 4)
-                };
-                title.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurface");
-                host.Children.Add(title);
+                    // section header in the settings-row language: a small
+                    // rounded icon tile + the section name — the feed's own
+                    // "✨" is dropped here because the tile IS the sparkle
+                    string titleText = string.IsNullOrEmpty(section.Title) ? "Changes" : section.Title;
+                    titleText = titleText.Replace("✨", "").Trim();
+                    if (titleText.Length == 0) titleText = "Changes";
+
+                    var headGrid = new Grid { Margin = new Thickness(0, first ? 6 : 14, 0, 8) };
+                    headGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                    headGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+                    var tile = new Border
+                    {
+                        Width = 26,
+                        Height = 26,
+                        CornerRadius = new CornerRadius(8),
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+                    tile.SetResourceReference(Border.BackgroundProperty, "B.PrimaryContainer");
+                    var tileIcon = new IconGlyph { IconName = "AutoAwesome", Width = 14, Height = 14 };
+                    tileIcon.SetResourceReference(IconGlyph.ForegroundProperty, "B.OnPrimaryContainer");
+                    tile.Child = tileIcon;
+                    Grid.SetColumn(tile, 0);
+
+                    var title = new TextBlock
+                    {
+                        Text = titleText,
+                        FontSize = 13,
+                        FontWeight = FontWeights.SemiBold,
+                        Margin = new Thickness(10, 0, 0, 0),
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+                    title.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurface");
+                    Grid.SetColumn(title, 1);
+
+                    headGrid.Children.Add(tile);
+                    headGrid.Children.Add(title);
+                    host.Children.Add(headGrid);
+                }
 
                 foreach (var item in section.Items)
                 {
-                    var row = new Grid { Margin = new Thickness(0, 0, 0, 7) };
-                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
+                    // item rows in the settings-row language: a rounded
+                    // row whose leading tinted circle carries the bullet
+                    // dot — same silhouette as the Storage and About rows
+                    var rowBorder = new Border
+                    {
+                        CornerRadius = new CornerRadius(10),
+                        Padding = new Thickness(2, 5, 2, 5),
+                        Margin = new Thickness(0, 0, 0, 2),
+                        Background = Brushes.Transparent
+                    };
+                    var row = new Grid();
+                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                     row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
+                    var lead = new Border
+                    {
+                        Width = 18,
+                        Height = 18,
+                        CornerRadius = new CornerRadius(9),
+                        VerticalAlignment = VerticalAlignment.Top,
+                        Margin = new Thickness(0, 1, 0, 0)
+                    };
+                    lead.SetResourceReference(Border.BackgroundProperty, "B.PrimaryContainer");
                     var dot = new Border
                     {
                         Width = 5,
                         Height = 5,
                         CornerRadius = new CornerRadius(2.5),
-                        VerticalAlignment = VerticalAlignment.Top,
-                        Margin = new Thickness(0, 7, 0, 0)
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center
                     };
-                    dot.SetResourceReference(Border.BackgroundProperty, "B.Primary");
-                    Grid.SetColumn(dot, 0);
+                    dot.SetResourceReference(Border.BackgroundProperty, "B.OnPrimaryContainer");
+                    lead.Child = dot;
+                    Grid.SetColumn(lead, 0);
 
                     var text = new TextBlock
                     {
                         Text = item,
                         TextWrapping = TextWrapping.Wrap,
-                        FontSize = 12.5
+                        FontSize = 12.5,
+                        Margin = new Thickness(10, 0, 0, 0)
                     };
                     text.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurface");
                     Grid.SetColumn(text, 1);
 
-                    row.Children.Add(dot);
+                    row.Children.Add(lead);
                     row.Children.Add(text);
-                    host.Children.Add(row);
+                    rowBorder.Child = row;
+                    host.Children.Add(rowBorder);
                 }
                 first = false;
             }

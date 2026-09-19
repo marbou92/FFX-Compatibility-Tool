@@ -623,17 +623,27 @@ namespace FfxTool.Gui
                     RenderTransformOrigin = new Point(0.5, 0.5),
                     RenderTransform = new ScaleTransform(1, 1)
                 };
-                var check = new IconGlyph
+                // selection badge — borrowed from the Plugin Profiles cards:
+                // a small rounded chip (B.SCHighest) carrying the same
+                // primary-tinted check as the "Profile linked" badge, docked
+                // over the swatch's bottom-right instead of a bare white
+                // check floating on the color
+                var badge = new Border
                 {
-                    IconName = "Check",
-                    Width = 19,
-                    Height = 19,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Visibility = Visibility.Collapsed
+                    Width = 20,
+                    Height = 20,
+                    CornerRadius = new CornerRadius(10),
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                    Margin = new Thickness(0, 0, 2, 2),
+                    Visibility = Visibility.Collapsed,
+                    RenderTransformOrigin = new Point(0.5, 0.5),
+                    RenderTransform = new ScaleTransform(0, 0)
                 };
-                check.SetResourceReference(IconGlyph.ForegroundProperty, "B.OnPrimary");
-                circle.Child = check;
+                badge.SetResourceReference(Border.BackgroundProperty, "B.SCHighest");
+                var check = new IconGlyph { IconName = "Check", Width = 12, Height = 12 };
+                check.SetResourceReference(IconGlyph.ForegroundProperty, "B.Primary");
+                badge.Child = check;
 
                 var ring = new System.Windows.Shapes.Ellipse
                 {
@@ -654,6 +664,7 @@ namespace FfxTool.Gui
                 };
                 hit.Children.Add(circle);
                 hit.Children.Add(ring);
+                hit.Children.Add(badge);
                 var name = new TextBlock
                 {
                     Text = p.ToString(),
@@ -664,7 +675,7 @@ namespace FfxTool.Gui
                 var stack = new StackPanel { Margin = new Thickness(0, 0, 22, 0) };
                 stack.Children.Add(hit);
                 stack.Children.Add(name);
-                var tag = new StackPanel { Tag = (ring, name, p, check, circle) };
+                var tag = new StackPanel { Tag = (ring, name, p, badge, circle) };
                 tag.Children.Add(stack);
                 hit.MouseLeftButtonUp += (s, e) =>
                 {
@@ -683,23 +694,30 @@ namespace FfxTool.Gui
         {
             foreach (StackPanel tag in PaletteRow.Children)
             {
-                var (ring, name, p, check, circle) =
-                    ((System.Windows.Shapes.Ellipse, TextBlock, Md3Palette, IconGlyph, Border))tag.Tag;
+                var (ring, name, p, badge, circle) =
+                    ((System.Windows.Shapes.Ellipse, TextBlock, Md3Palette, Border, Border))tag.Tag;
                 bool selected = ThemeService.Palette == p;
                 ring.Stroke = selected ? (Brush)FindResource("B.Primary") : Brushes.Transparent;
                 name.Foreground = selected ? (Brush)FindResource("B.Primary") : (Brush)FindResource("B.OnSurfaceVariant");
-                check.Visibility = selected ? Visibility.Visible : Visibility.Collapsed;
+                badge.Visibility = selected ? Visibility.Visible : Visibility.Collapsed;
                 if (selected && _lastSelectedPalette != p)
                 {
-                    // a tiny spring on the newly selected swatch
-                    var scale = (ScaleTransform)circle.RenderTransform;
+                    // the badge pops in and the swatch gives a tiny spring —
+                    // the old checkmark's motion, split across both layers
                     var spring = new DoubleAnimation(1, TimeSpan.FromMilliseconds(240))
                     {
-                        From = 0.86,
+                        From = 0.94,
                         EasingFunction = new BackEase { Amplitude = 0.6, EasingMode = EasingMode.EaseOut }
                     };
-                    scale.BeginAnimation(ScaleTransform.ScaleXProperty, spring);
-                    scale.BeginAnimation(ScaleTransform.ScaleYProperty, spring);
+                    var pop = new DoubleAnimation(1, TimeSpan.FromMilliseconds(240))
+                    {
+                        From = 0.4,
+                        EasingFunction = new BackEase { Amplitude = 0.5, EasingMode = EasingMode.EaseOut }
+                    };
+                    ((ScaleTransform)circle.RenderTransform).BeginAnimation(ScaleTransform.ScaleXProperty, spring);
+                    ((ScaleTransform)circle.RenderTransform).BeginAnimation(ScaleTransform.ScaleYProperty, spring);
+                    ((ScaleTransform)badge.RenderTransform).BeginAnimation(ScaleTransform.ScaleXProperty, pop);
+                    ((ScaleTransform)badge.RenderTransform).BeginAnimation(ScaleTransform.ScaleYProperty, pop);
                 }
             }
             _lastSelectedPalette = ThemeService.Palette;
@@ -736,10 +754,12 @@ namespace FfxTool.Gui
             if (entry == null)
             {
                 WhatsNewTitle.Text = "What's new in this build";
+                ShowWhatsNewMeta(null, null);
                 return;
             }
             WhatsNewTitle.Text = "What's new in v" + entry.Version;
-            ChangelogView.BuildInto(WhatsNewPanel, entry, includeDescription: true);
+            ShowWhatsNewMeta(entry.Date, entry.Url);
+            ChangelogView.BuildInto(WhatsNewPanel, entry, includeDescription: true, showSectionTitles: false);
 
             ChangelogFeed.FetchAsync(fresh =>
             {
@@ -747,9 +767,33 @@ namespace FfxTool.Gui
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
                     WhatsNewTitle.Text = "What's new in v" + fresh.Version + " — the latest release";
-                    ChangelogView.BuildInto(WhatsNewPanel, fresh, includeDescription: true);
+                    ShowWhatsNewMeta(fresh.Date, fresh.Url);
+                    ChangelogView.BuildInto(WhatsNewPanel, fresh, includeDescription: true, showSectionTitles: false);
                 }));
             });
+        }
+
+        /// <summary>The what's-new card's meta line: the release date under
+        /// the title and a "full notes" link when the entry knows its URL —
+        /// both stay quiet until a real entry provides them.</summary>
+        private void ShowWhatsNewMeta(string dateIso, string url)
+        {
+            if (DateTime.TryParseExact(dateIso, "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
+                WhatsNewDate.Text = "Released " + dt.ToString("d MMMM yyyy", CultureInfo.InvariantCulture);
+            else
+                WhatsNewDate.Text = null;
+            WhatsNewDate.Visibility = string.IsNullOrEmpty(WhatsNewDate.Text)
+                ? Visibility.Collapsed : Visibility.Visible;
+
+            WhatsNewNotesLink.Tag = string.IsNullOrEmpty(url) ? null : url;
+            WhatsNewNotesLink.Visibility = string.IsNullOrEmpty(url)
+                ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        private void WhatsNewNotesLink_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (WhatsNewNotesLink.Tag is string url) OpenUrl(url);
         }
 
         // ---------- about: earlier-releases timeline (suggestion 18) ----------

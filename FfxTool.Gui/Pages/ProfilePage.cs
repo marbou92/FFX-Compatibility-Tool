@@ -113,22 +113,19 @@ namespace FfxTool.Gui
             }
 
             // two labeled sections: linked first, available below — a
-            // flip physically moves the card between them
-            var linkedHead = new Grid { Margin = new Thickness(0, 0, 16, 6) };
+            // flip physically moves the card between them. The headers
+            // speak the settings GroupHeader language (small uppercase
+            // labels), so the grid reads as part of the same page system
             var linkedTitle = new TextBlock
             {
-                Text = "Linked to your profile",
-                FontSize = 12.5,
-                FontWeight = FontWeights.SemiBold
+                Text = "LINKED TO YOUR PROFILE",
+                Style = (Style)FindResource("GroupHeader")
             };
-            linkedTitle.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurface");
-            _linkedCount = new TextBlock { FontSize = 11.5, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            _linkedCount = new TextBlock { FontSize = 11, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
             _linkedCount.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
-            // simple inline stack: title + count
-            var linkedStack = new StackPanel { Orientation = Orientation.Horizontal };
-            linkedStack.Children.Add(linkedTitle);
-            linkedStack.Children.Add(_linkedCount);
-            linkedHead.Children.Add(linkedStack);
+            var linkedHead = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 16, 8) };
+            linkedHead.Children.Add(linkedTitle);
+            linkedHead.Children.Add(_linkedCount);
 
             _linkedHint = new TextBlock
             {
@@ -144,16 +141,14 @@ namespace FfxTool.Gui
             Cards.Children.Add(_linkedHint);
             Cards.Children.Add(_linkedCards);
 
-            var otherHead = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 16, 6) };
             var otherTitle = new TextBlock
             {
-                Text = "Available vendors",
-                FontSize = 12.5,
-                FontWeight = FontWeights.SemiBold
+                Text = "AVAILABLE VENDORS",
+                Style = (Style)FindResource("GroupHeader")
             };
-            otherTitle.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurface");
-            _otherCount = new TextBlock { FontSize = 11.5, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            _otherCount = new TextBlock { FontSize = 11, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
             _otherCount.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
+            var otherHead = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 14, 16, 8) };
             otherHead.Children.Add(otherTitle);
             otherHead.Children.Add(_otherCount);
 
@@ -395,6 +390,21 @@ namespace FfxTool.Gui
             textStack.Children.Add(title);
             textStack.Children.Add(desc);
 
+            // the discovery card joins the settings-row language: a small
+            // icon tile leads the row, like every other card on the page
+            var tile = new Border
+            {
+                Width = 34,
+                Height = 34,
+                CornerRadius = new CornerRadius(10),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 13, 0)
+            };
+            tile.SetResourceReference(Border.BackgroundProperty, "B.PrimaryContainer");
+            var tileIcon = new IconGlyph { IconName = "Search", Width = 17, Height = 17 };
+            tileIcon.SetResourceReference(IconGlyph.ForegroundProperty, "B.OnPrimaryContainer");
+            tile.Child = tileIcon;
+
             var scanBtn = new Button
             {
                 Content = "Scan System",
@@ -405,10 +415,13 @@ namespace FfxTool.Gui
             scanBtn.Click += (s, e) => ScanFolder();
 
             var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            Grid.SetColumn(textStack, 0);
-            Grid.SetColumn(scanBtn, 1);
+            Grid.SetColumn(tile, 0);
+            Grid.SetColumn(textStack, 1);
+            Grid.SetColumn(scanBtn, 2);
+            grid.Children.Add(tile);
             grid.Children.Add(textStack);
             grid.Children.Add(scanBtn);
 
