@@ -724,7 +724,7 @@ namespace FfxTool.Gui
             foreach (StackPanel tag in PaletteRow.Children)
             {
                 var (ring, name, p, badge, circle) =
-                    ((System.Windows.Shapes.Ellipse, TextBlock, Md3Palette, Border, Border))tag.Tag;
+                    ((System.Windows.Shapes.Ellipse, TextBlock, Md3Palette, MiniPill, Border))tag.Tag;
                 bool selected = ThemeService.Palette == p;
                 ring.Stroke = selected ? (Brush)FindResource("B.Primary") : Brushes.Transparent;
                 name.Foreground = selected ? (Brush)FindResource("B.Primary") : (Brush)FindResource("B.OnSurfaceVariant");
