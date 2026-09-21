@@ -566,8 +566,12 @@
                                                     <RotateTransform x:Name="StatusSpin" Angle="0"/>
                                                 </controls:IconGlyph.RenderTransform>
                                             </controls:IconGlyph>
-                                            <TextBlock x:Name="UpdateStatusValue" Text="Not checked yet" Style="{StaticResource Body}"
-                                                       VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                            <Border x:Name="UpdateStatusPill" Background="{DynamicResource B.SCHigh}" CornerRadius="9"
+                                                    Padding="10,5" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock x:Name="UpdateStatusValue" Text="Not checked yet" FontSize="11.5"
+                                                           FontWeight="SemiBold" Foreground="{DynamicResource B.OnSurfaceVariant}"
+                                                           VerticalAlignment="Center"/>
+                                            </Border>
                                         </StackPanel>
                                     </Grid>
                                 </Border>
@@ -610,7 +614,8 @@
                                         </Border>
                                         <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
                                             <TextBlock Text="App version" Style="{StaticResource Body}" FontWeight="Medium"/>
-                                            <TextBlock Text="The number the release page publishes" Style="{StaticResource Caption}" Margin="0,2,0,0"/>
+                                            <TextBlock x:Name="AppVersionCaption" Style="{StaticResource Caption}" Margin="0,2,0,0"
+                                                       Text="Click to copy"/>
                                         </StackPanel>
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                                             <Border x:Name="AppVersionChip" Background="{DynamicResource B.Primary}" CornerRadius="9"
@@ -784,7 +789,7 @@
                                         </controls:IconGlyph>
                                     </Grid>
                                 </Border>
-                                <Border x:Name="CommitsRow" Style="{StaticResource SettingsRowClickable}" Margin="0,0,0,10"
+                                <Border x:Name="CommitsRow" Style="{StaticResource SettingsRowClickable}" Margin="0"
                                         MouseLeftButtonUp="CommitsRow_Click"
                                         ToolTip="Opens the main branch's commit history on GitHub">
                                     <Grid>

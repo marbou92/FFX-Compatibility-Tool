@@ -106,6 +106,9 @@ namespace FfxTool.Gui
             NotifySwitch.Unchecked += (s, e) => UpdateService.SetNotify(false);
 
             AppVersionValue.Text = "v" + AppInfo.DisplayVersion;
+            var builtOn = UpdateService.BuildOrInstallTimeUtc.ToLocalTime();
+            AppVersionCaption.Text = "Built " + builtOn.ToString("d MMMM yyyy", CultureInfo.InvariantCulture) +
+                " — click to copy";
             FlavourValue.Text = UpdateService.IsNightlyBuild ? "Nightly" : "Stable";
             VersionChannelText.Text = UpdateService.IsNightlyBuild ? "NIGHTLY" : "STABLE";
 
@@ -660,19 +663,37 @@ namespace FfxTool.Gui
                     RenderTransformOrigin = new Point(0.5, 0.5),
                     RenderTransform = new ScaleTransform(1, 1)
                 };
-                // selection badge — the mini-pill: a 22×12 primary pill
-                // with the white dot parked right, a miniature of the
-                // settings switch. Replaces the checkmark chip the same
-                // way every other selector checkmark went mini-pill
-                var badge = new MiniPill
+                // selection badge — the check chip: an 18px circular chip
+                // carrying the check glyph in the palette's primary. The
+                // switch miniature read as an on/off toggle here, and a
+                // palette pick isn't a toggle — it's a chosen state, and
+                // chosen states get checkmarks (the chip language of the
+                // "Profile linked" badge and the Copied chip).
+                var badge = new Border
                 {
+                    Width = 18,
+                    Height = 18,
+                    CornerRadius = new CornerRadius(9),
                     HorizontalAlignment = HorizontalAlignment.Right,
                     VerticalAlignment = VerticalAlignment.Bottom,
                     Margin = new Thickness(0, 0, 2, 2),
+                    BorderThickness = new Thickness(1),
                     Visibility = Visibility.Collapsed,
                     RenderTransformOrigin = new Point(0.5, 0.5),
                     RenderTransform = new ScaleTransform(0, 0)
                 };
+                badge.SetResourceReference(Border.BackgroundProperty, "B.SCHighest");
+                badge.SetResourceReference(Border.BorderBrushProperty, "B.OutlineVariant");
+                var badgeCheck = new IconGlyph
+                {
+                    IconName = "Check",
+                    Width = 11,
+                    Height = 11,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                badgeCheck.SetResourceReference(IconGlyph.ForegroundProperty, "B.Primary");
+                badge.Child = badgeCheck;
 
                 var ring = new System.Windows.Shapes.Ellipse
                 {
@@ -724,7 +745,7 @@ namespace FfxTool.Gui
             foreach (StackPanel tag in PaletteRow.Children)
             {
                 var (ring, name, p, badge, circle) =
-                    ((System.Windows.Shapes.Ellipse, TextBlock, Md3Palette, MiniPill, Border))tag.Tag;
+                    ((System.Windows.Shapes.Ellipse, TextBlock, Md3Palette, Border, Border))tag.Tag;
                 bool selected = ThemeService.Palette == p;
                 ring.Stroke = selected ? (Brush)FindResource("B.Primary") : Brushes.Transparent;
                 name.Foreground = selected ? (Brush)FindResource("B.Primary") : (Brush)FindResource("B.OnSurfaceVariant");
@@ -1110,6 +1131,7 @@ namespace FfxTool.Gui
 
             if (checking)
             {
+                UpdateStatusPill.SetResourceReference(Border.BackgroundProperty, "B.SCHigh");
                 UpdateStatusValue.Text = "Checking…";
                 UpdateStatusValue.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
                 UpdateDetailPanel.Visibility = Visibility.Collapsed;
@@ -1118,8 +1140,9 @@ namespace FfxTool.Gui
 
             if (available)
             {
+                UpdateStatusPill.SetResourceReference(Border.BackgroundProperty, "B.Primary");
                 UpdateStatusValue.Text = "v" + UpdateService.PendingUpdate.Version + " available";
-                UpdateStatusValue.SetResourceReference(TextBlock.ForegroundProperty, "B.Primary");
+                UpdateStatusValue.SetResourceReference(TextBlock.ForegroundProperty, "B.OnPrimary");
                 UpdateAvailSub.Text = "You're on v" + AppInfo.Version +
                     " — see what's new, then let the updater download, verify and swap it in.";
                 UpdatePageLink.Visibility = Visibility.Visible;
@@ -1130,6 +1153,7 @@ namespace FfxTool.Gui
 
             if (error)
             {
+                UpdateStatusPill.SetResourceReference(Border.BackgroundProperty, "B.SCHigh");
                 UpdateStatusValue.Text = "Check failed";
                 UpdateStatusValue.SetResourceReference(TextBlock.ForegroundProperty, "B.Error");
                 UpdateAvailSub.Text = UpdateService.LastCheckMessage ??
@@ -1144,6 +1168,7 @@ namespace FfxTool.Gui
             bool skipped = status == UpdateCheckStatus.UpdateAvailable &&
                            UpdateService.PendingUpdate == null;
             bool known = status == UpdateCheckStatus.UpToDate;
+            UpdateStatusPill.SetResourceReference(Border.BackgroundProperty, "B.SCHigh");
             UpdateStatusValue.Text = known ? "Up to date" : skipped ? "Skipped" : "Not checked yet";
             UpdateStatusValue.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
             if (skipped)

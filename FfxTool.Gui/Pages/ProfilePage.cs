@@ -269,13 +269,12 @@ namespace FfxTool.Gui
             var text = new TextBlock
             {
                 Text = "Nothing linked yet — flip a vendor's switch or scan your system.",
-                FontSize = 11.5,
+                Style = (Style)FindResource("Caption"),
                 TextWrapping = TextWrapping.Wrap,
                 VerticalAlignment = VerticalAlignment.Center,
                 MaxWidth = 300,
                 Margin = new Thickness(10, 0, 0, 0)
             };
-            text.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
 
             var scan = new Button
             {
@@ -399,36 +398,36 @@ namespace FfxTool.Gui
                 // cards on this page
                 : (icon: "Plugin", suites: "Custom vendor kept from your saved profile");
 
-            var iconGlyph = new IconGlyph { IconName = meta.icon, Width = 24, Height = 24 };
-            // B.Primary — tracks palette swaps live
+            var iconGlyph = new IconGlyph { IconName = meta.icon, Width = 18, Height = 18 };
+            // B.Primary on the settings-row tile — tracks palette swaps live
             iconGlyph.SetResourceReference(IconGlyph.ForegroundProperty, "B.Primary");
 
+            // the settings-row tile: 34px, corner 10, highest surface —
+            // the same tile every row in the other tabs leads with
             var iconChip = new Border
             {
-                Width = 44,
-                Height = 44,
-                CornerRadius = new CornerRadius(12),
+                Width = 34,
+                Height = 34,
+                CornerRadius = new CornerRadius(10),
                 Child = iconGlyph
             };
-            iconChip.SetResourceReference(Border.BackgroundProperty, "B.SCHigh");
+            iconChip.SetResourceReference(Border.BackgroundProperty, "B.SCHighest");
 
             var title = new TextBlock
             {
                 Text = vendor,
-                FontSize = 13.5,
-                FontWeight = FontWeights.SemiBold,
+                Style = (Style)FindResource("Body"),
+                FontWeight = FontWeights.Medium,
                 VerticalAlignment = VerticalAlignment.Center
             };
-            title.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurface");
 
             var subtitle = new TextBlock
             {
                 Text = meta.suites,
-                FontSize = 11,
+                Style = (Style)FindResource("Caption"),
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 2, 0, 0)
             };
-            subtitle.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
 
             var header = new Grid { Margin = new Thickness(0, 0, 0, 10) };
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -459,11 +458,10 @@ namespace FfxTool.Gui
             var badgeText = new TextBlock
             {
                 Text = sw.IsChecked == true ? "Profile linked" : "Not in profile",
-                FontSize = 11,
+                Style = (Style)FindResource("Caption"),
                 Margin = new Thickness(7, 0, 0, 0),
                 VerticalAlignment = VerticalAlignment.Center
             };
-            badgeText.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
 
             var badgeStack = new StackPanel { Orientation = Orientation.Horizontal };
             badgeStack.Children.Add(badgePill);
@@ -483,12 +481,11 @@ namespace FfxTool.Gui
             // about this vendor, e.g. "12 .aex files cataloged"
             var countCaption = new TextBlock
             {
-                FontSize = 11,
+                Style = (Style)FindResource("Caption"),
                 Margin = new Thickness(8, 0, 0, 0),
                 VerticalAlignment = VerticalAlignment.Center,
                 Visibility = Visibility.Collapsed
             };
-            countCaption.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
 
             var badgeRow = new StackPanel
             {
@@ -557,7 +554,7 @@ namespace FfxTool.Gui
             var label = new TextBlock
             {
                 Text = "Add custom vendor",
-                FontSize = 12.5,
+                FontSize = 13,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Margin = new Thickness(0, 8, 0, 0)
             };
@@ -569,7 +566,7 @@ namespace FfxTool.Gui
 
             var nameBox = new TextBox
             {
-                FontSize = 12.5,
+                FontSize = 13,
                 MinWidth = 170,
                 VerticalContentAlignment = VerticalAlignment.Center,
                 Padding = new Thickness(8, 5, 8, 5)
@@ -598,13 +595,12 @@ namespace FfxTool.Gui
             var hint = new TextBlock
             {
                 Text = "The name becomes the card — future scans match it against plugin paths too.",
-                FontSize = 10.5,
+                Style = (Style)FindResource("Caption"),
                 TextWrapping = TextWrapping.Wrap,
                 TextAlignment = TextAlignment.Center,
                 MaxWidth = 240,
                 Margin = new Thickness(0, 8, 0, 0)
             };
-            hint.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
 
             var form = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
             form.Children.Add(formRow);
@@ -675,20 +671,18 @@ namespace FfxTool.Gui
             var title = new TextBlock
             {
                 Text = "Automatic Plugin Discovery",
-                FontSize = 14,
-                FontWeight = FontWeights.SemiBold
+                Style = (Style)FindResource("Body"),
+                FontWeight = FontWeights.Medium
             };
-            title.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurface");
 
             var desc = new TextBlock
             {
                 Text = "Select your After Effects 'Plug-ins' directory — we'll catalog every effect on your system (file names plus match names read from the plugins themselves) and check that catalog FIRST, before the reference tables.",
-                FontSize = 12,
+                Style = (Style)FindResource("Caption"),
                 TextWrapping = TextWrapping.Wrap,
                 MaxWidth = 420,
                 Margin = new Thickness(0, 4, 0, 0)
             };
-            desc.SetResourceReference(TextBlock.ForegroundProperty, "B.OnSurfaceVariant");
 
             var textStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             textStack.Children.Add(title);
@@ -704,9 +698,9 @@ namespace FfxTool.Gui
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 13, 0)
             };
-            tile.SetResourceReference(Border.BackgroundProperty, "B.PrimaryContainer");
+            tile.SetResourceReference(Border.BackgroundProperty, "B.SCHighest");
             var tileIcon = new IconGlyph { IconName = "Search", Width = 17, Height = 17 };
-            tileIcon.SetResourceReference(IconGlyph.ForegroundProperty, "B.OnPrimaryContainer");
+            tileIcon.SetResourceReference(IconGlyph.ForegroundProperty, "B.Primary");
             tile.Child = tileIcon;
 
             var scanBtn = new Button
@@ -960,7 +954,7 @@ namespace FfxTool.Gui
                 chip.SetResourceReference(Border.BackgroundProperty, "B.PrimaryContainer");
                 var t = new TextBlock
                 {
-                    FontSize = 11,
+                    FontSize = 11.5,
                     Text = vendor + " — " + count + " file" + (count == 1 ? "" : "s")
                 };
                 t.SetResourceReference(TextBlock.ForegroundProperty, "B.OnPrimaryContainer");
