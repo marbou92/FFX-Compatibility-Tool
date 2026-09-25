@@ -21,9 +21,12 @@ namespace FfxTool.Gui
     /// Cards live in one of two sections — LINKED (switch on) and
     /// AVAILABLE (switch off) — and physically move between them (with a
     /// fade + rise) the moment a switch flips. Every card's switch is a
-    /// real Md3Switch and the badge beside it is a mini-pill — a
-    /// miniature of the switch itself — where the Check/Info glyphs used
-    /// to sit. A filter box narrows both sections live; the section
+    /// real Md3Switch and the badge beside it is a check chip — a primary
+    /// circle with a white check when linked, a quiet outlined plus when
+    /// not — the same mark language the palette swatch and the Copied
+    /// chip speak (the old switch miniature read as a second toggle in a
+    /// card that already has the real switch, and retired). A filter box
+    /// narrows both sections live; the section
     /// headers carry two-step Link all / Unlink all actions; the custom
     /// vendor card actually adds vendors now; and per-vendor counts from
     /// the scan catalog read as ".aex files cataloged" captions. All
@@ -63,7 +66,8 @@ namespace FfxTool.Gui
             public System.Windows.Controls.Primitives.ToggleButton Toggle;
             public Border Badge;
             public TextBlock BadgeText;
-            public MiniPill BadgePill;
+            public Border BadgeChip;
+            public IconGlyph BadgeGlyph;
             public TextBlock CountCaption;
         }
 
@@ -254,17 +258,21 @@ namespace FfxTool.Gui
         }
 
         /// <summary>The LINKED section's empty state: a quiet slot that
-        /// says what to do and carries the scan shortcut inline.</summary>
+        /// says what to do and carries the scan shortcut inline — led by
+        /// the same 34px icon tile every row and the discovery card use.</summary>
         private Border BuildEmptyLinked()
         {
-            var icon = new IconGlyph
+            var iconTile = new Border
             {
-                IconName = "Plugin",
-                Width = 18,
-                Height = 18,
+                Width = 34,
+                Height = 34,
+                CornerRadius = new CornerRadius(10),
                 VerticalAlignment = VerticalAlignment.Center
             };
-            icon.SetResourceReference(IconGlyph.ForegroundProperty, "B.OnSurfaceVariant");
+            iconTile.SetResourceReference(Border.BackgroundProperty, "B.SCHighest");
+            var icon = new IconGlyph { IconName = "Plugin", Width = 17, Height = 17 };
+            icon.SetResourceReference(IconGlyph.ForegroundProperty, "B.Primary");
+            iconTile.Child = icon;
 
             var text = new TextBlock
             {
@@ -273,7 +281,7 @@ namespace FfxTool.Gui
                 TextWrapping = TextWrapping.Wrap,
                 VerticalAlignment = VerticalAlignment.Center,
                 MaxWidth = 300,
-                Margin = new Thickness(10, 0, 0, 0)
+                Margin = new Thickness(13, 0, 0, 0)
             };
 
             var scan = new Button
@@ -287,11 +295,14 @@ namespace FfxTool.Gui
             scan.Click += (s, e) => ScanFolder();
 
             var host = new StackPanel { Orientation = Orientation.Horizontal };
-            host.Children.Add(icon);
+            host.Children.Add(iconTile);
             host.Children.Add(text);
             host.Children.Add(scan);
 
-            return new Border
+            // the slot surface matches the Add-custom-vendor card: SCLow
+            // body, outline hairline (a bare BorderThickness rendered
+            // nothing — no brush ever rode on it)
+            var empty = new Border
             {
                 Padding = new Thickness(14, 10, 14, 10),
                 CornerRadius = new CornerRadius(14),
@@ -300,6 +311,9 @@ namespace FfxTool.Gui
                 Margin = new Thickness(0, 0, 16, 10),
                 Child = host
             };
+            empty.SetResourceReference(Border.BackgroundProperty, "B.SCLow");
+            empty.SetResourceReference(Border.BorderBrushProperty, "B.OutlineVariant");
+            return empty;
         }
 
         /// <summary>The card's arrival when it moves sections: fade + a
@@ -450,11 +464,27 @@ namespace FfxTool.Gui
             header.Children.Add(titleStack);
             header.Children.Add(sw);
 
-            // the badge is a mini-pill now — a miniature of the switch
-            // itself, dot parked right when linked, parked left on a ghost
-            // track when not. No more Check/Info glyphs.
-            var badgePill = new MiniPill { VerticalAlignment = VerticalAlignment.Center };
-            badgePill.Set(sw.IsChecked == true);
+            // the badge is a check chip — the palette swatch's mark: a
+            // primary circle with a white check when linked, a quiet
+            // outlined plus when not. The switch miniature read as a
+            // second toggle in a card that already carries the real one.
+            var badgeChip = new Border
+            {
+                Width = 18,
+                Height = 18,
+                CornerRadius = new CornerRadius(9),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var badgeGlyph = new IconGlyph
+            {
+                IconName = "Check",
+                Width = 11,
+                Height = 11,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            badgeChip.Child = badgeGlyph;
+            SetLinkedChip(badgeChip, badgeGlyph, sw.IsChecked == true);
             var badgeText = new TextBlock
             {
                 Text = sw.IsChecked == true ? "Profile linked" : "Not in profile",
@@ -464,7 +494,7 @@ namespace FfxTool.Gui
             };
 
             var badgeStack = new StackPanel { Orientation = Orientation.Horizontal };
-            badgeStack.Children.Add(badgePill);
+            badgeStack.Children.Add(badgeChip);
             badgeStack.Children.Add(badgeText);
 
             var badge = new Border
@@ -510,12 +540,36 @@ namespace FfxTool.Gui
             };
             Grid.SetRow(badgeRow, 1);
 
-            var pair = new ToggleButtonSwitchPair { Toggle = sw, Badge = badge, BadgeText = badgeText, BadgePill = badgePill, CountCaption = countCaption };
+            var pair = new ToggleButtonSwitchPair { Toggle = sw, Badge = badge, BadgeText = badgeText, BadgeChip = badgeChip, BadgeGlyph = badgeGlyph, CountCaption = countCaption };
             _switches[vendor] = pair;
 
             sw.Checked += (s, e) => { UpdateBadge(vendor); SaveVendor(vendor, true); };
             sw.Unchecked += (s, e) => { UpdateBadge(vendor); SaveVendor(vendor, false); };
             return card;
+        }
+
+        /// <summary>Dresses the linked chip: a primary circle with a white
+        /// check when the vendor is linked, a quiet outlined circle with a
+        /// plus when it isn't — check for "in", plus for "not yet". Colors
+        /// attach to resource KEYS (never captured brushes) so the chip
+        /// re-themes live with the palette.</summary>
+        private static void SetLinkedChip(Border chip, IconGlyph glyph, bool owned)
+        {
+            if (owned)
+            {
+                chip.SetResourceReference(Border.BackgroundProperty, "B.Primary");
+                chip.BorderThickness = new Thickness(0);
+                glyph.IconName = "Check";
+                glyph.SetResourceReference(IconGlyph.ForegroundProperty, "B.OnPrimary");
+            }
+            else
+            {
+                chip.Background = Brushes.Transparent;
+                chip.SetResourceReference(Border.BorderBrushProperty, "B.OutlineVariant");
+                chip.BorderThickness = new Thickness(1);
+                glyph.IconName = "Add";
+                glyph.SetResourceReference(IconGlyph.ForegroundProperty, "B.OnSurfaceVariant");
+            }
         }
 
         private void UpdateBadge(string vendor)
@@ -524,7 +578,7 @@ namespace FfxTool.Gui
             bool owned = pair.Toggle.IsChecked == true;
             pair.BadgeText.Text = owned ? "Profile linked" : "Not in profile";
             pair.Badge.Opacity = owned ? 1 : 0.6;
-            pair.BadgePill.Set(owned); // dot right on primary, or ghost with the dot left
+            SetLinkedChip(pair.BadgeChip, pair.BadgeGlyph, owned);
         }
 
         private void SaveVendor(string vendor, bool owned)

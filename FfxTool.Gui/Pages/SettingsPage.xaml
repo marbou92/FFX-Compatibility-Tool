@@ -11,9 +11,9 @@
          history group whose Changelog row drills into a version-pill
          viewer fed straight from GitHub's release list. About keeps only
          the identity row, the specs chips and the project links. Every
-         boolean row carries a real Md3Switch (the checkmark era is over:
-         selectors read as mini-pills), and the switch tracks the palette
-         like everything else. -->
+         boolean row carries a real Md3Switch and tracks the palette like
+         everything else; the marks that aren't controls (the palette
+         swatch's pick, the profile card badges) wear check chips. -->
     <UserControl.Resources>
         <!-- Sub-nav item: NO selected pill of its own — the floating
              SubNavPill behind the ListBox is the selected indicator and
@@ -257,10 +257,11 @@
                                            Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="2,0,0,22"
                                            MaxWidth="520" HorizontalAlignment="Left"/>
 
-                                <!-- PALETTE group: the swatches carry a
-                                     mini-pill badge now — a miniature of the
-                                     settings switch, dot parked right — where
-                                     a checkmark chip used to sit -->
+                                <!-- PALETTE group: the swatches carry the
+                                     check chip (built in code) — an 18px
+                                     primary circle with a white check —
+                                     because a pick is a chosen state, not
+                                     a toggle -->
                                 <TextBlock Text="PALETTE" Style="{StaticResource GroupHeader}" Margin="0,0,0,12"/>
                                 <StackPanel x:Name="PaletteRow" Orientation="Horizontal" Margin="0,0,0,22"/>
 
@@ -365,14 +366,21 @@
                                 <!-- MAINTENANCE group -->
                                 <TextBlock Text="MAINTENANCE" Style="{StaticResource GroupHeader}" Margin="0,0,0,10"/>
 
-                                <!-- cache row -->
+                                <!-- cache row — leads with the same icon
+                                     tile as every other settings row -->
                                 <Border x:Name="CacheRow" Style="{StaticResource SettingsRow}" Margin="0,0,0,10">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
+                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                                Background="{DynamicResource B.SCHighest}" VerticalAlignment="Center">
+                                            <controls:IconGlyph IconName="List" Width="17" Height="17"
+                                                                Foreground="{DynamicResource B.Primary}"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
                                             <TextBlock Text="Plugin scan catalog" Style="{StaticResource Body}" FontWeight="Medium"/>
                                             <TextBlock Text="Recognition cache — rebuilt by the next system scan"
                                                        Style="{StaticResource Caption}" Margin="0,2,0,0"/>
@@ -380,7 +388,7 @@
                                                        Foreground="{DynamicResource B.OnSurfaceVariant}"
                                                        Opacity="0.85" Margin="0,2,0,0" Text="plugin_catalog.txt"/>
                                         </StackPanel>
-                                        <Button x:Name="CacheDeleteButton" Grid.Column="1" Content="Delete" MinWidth="118"
+                                        <Button x:Name="CacheDeleteButton" Grid.Column="2" Content="Delete" MinWidth="118"
                                                 Margin="12,0,0,0" VerticalAlignment="Center"
                                                 Click="CacheDeleteButton_Click"
                                                 ToolTip="Deletes plugin_catalog.txt — recognition falls back to the reference tables until the next scan"/>
@@ -394,16 +402,22 @@
                                         ToolTip="Toggles verbose logging">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
+                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                                Background="{DynamicResource B.SCHighest}" VerticalAlignment="Center">
+                                            <controls:IconGlyph IconName="Description" Width="17" Height="17"
+                                                                Foreground="{DynamicResource B.Primary}"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
                                             <TextBlock Text="Verbose Logging" Style="{StaticResource Body}" FontWeight="Medium"/>
                                             <TextBlock Text="Per-file conversion steps in the session log — turn on when reporting a bug, off again afterwards"
                                                        Style="{StaticResource Caption}" Margin="0,2,0,0" TextWrapping="Wrap"/>
                                         </StackPanel>
-                                        <ToggleButton x:Name="VerboseCheck" Grid.Column="1" Style="{StaticResource Md3Switch}"
-                                                      VerticalAlignment="Center"/>
+                                        <ToggleButton x:Name="VerboseCheck" Grid.Column="2" Style="{StaticResource Md3Switch}"
+                                                      VerticalAlignment="Center" Margin="12,0,0,0"/>
                                     </Grid>
                                 </Border>
 
@@ -411,10 +425,16 @@
                                 <Border x:Name="HistoryRow" Style="{StaticResource SettingsRow}" Margin="0,0,0,10">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
+                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                                Background="{DynamicResource B.SCHighest}" VerticalAlignment="Center">
+                                            <controls:IconGlyph IconName="Schedule" Width="17" Height="17"
+                                                                Foreground="{DynamicResource B.Primary}"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
                                             <TextBlock Text="Recent presets" Style="{StaticResource Body}" FontWeight="Medium"/>
                                             <TextBlock Text="Recently opened presets — the last 5 analyzed .ffx files"
                                                        Style="{StaticResource Caption}" Margin="0,2,0,0"/>
@@ -422,7 +442,7 @@
                                                        Foreground="{DynamicResource B.OnSurfaceVariant}"
                                                        Opacity="0.85" Margin="0,2,0,0" Text="recent_files.json"/>
                                         </StackPanel>
-                                        <Button x:Name="HistoryDeleteButton" Grid.Column="1" Content="Delete" MinWidth="118"
+                                        <Button x:Name="HistoryDeleteButton" Grid.Column="2" Content="Delete" MinWidth="118"
                                                 Margin="12,0,0,0" VerticalAlignment="Center"
                                                 Click="HistoryDeleteButton_Click"
                                                 ToolTip="Deletes recent_files.json — the recent list empties and refills as presets are analyzed"/>
@@ -627,8 +647,14 @@
                                                                FontWeight="SemiBold" Margin="6,0,0,0" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                             </Border>
+                                            <!-- the nightly hash runs ~55 chars —
+                                                 trim it at the row edge and put
+                                                 the full string on hover; click
+                                                 still copies it whole -->
                                             <TextBlock x:Name="AppVersionValue" Style="{StaticResource Body}"
-                                                       Foreground="{DynamicResource B.OnSurfaceVariant}" VerticalAlignment="Center"/>
+                                                       Foreground="{DynamicResource B.OnSurfaceVariant}" VerticalAlignment="Center"
+                                                       MaxWidth="230" TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
                                         </StackPanel>
                                     </Grid>
                                 </Border>
@@ -651,8 +677,18 @@
                                             <TextBlock Text="Stable releases update in place; nightlies are the rolling build"
                                                        Style="{StaticResource Caption}" Margin="0,2,0,0"/>
                                         </StackPanel>
-                                        <TextBlock x:Name="FlavourValue" Style="{StaticResource Body}"
-                                                   Foreground="{DynamicResource B.OnSurfaceVariant}" VerticalAlignment="Center"/>
+                                        <!-- the value lives in the right-hand
+                                              column as a quiet state pill — the
+                                              "Up to date" pill's twin. It used
+                                              to sit in column 0, on top of the
+                                              icon tile. -->
+                                        <Border Grid.Column="2" Background="{DynamicResource B.SCHigh}" CornerRadius="9"
+                                                Padding="10,5" VerticalAlignment="Center"
+                                                ToolTip="Stables ship per release; nightlies roll from every main-branch commit">
+                                            <TextBlock x:Name="FlavourValue" Text="Nightly" FontSize="11.5"
+                                                       FontWeight="SemiBold" Foreground="{DynamicResource B.OnSurfaceVariant}"
+                                                       VerticalAlignment="Center"/>
+                                        </Border>
                                     </Grid>
                                 </Border>
 
@@ -890,7 +926,7 @@
                         <Border Style="{StaticResource CardElevated}" MaxWidth="760" VerticalAlignment="Top">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                                    <Border Width="40" Height="40" CornerRadius="12" Background="{DynamicResource B.SC}"
+                                    <Border Width="40" Height="40" CornerRadius="12" Background="{DynamicResource B.SCHigh}"
                                             VerticalAlignment="Center">
                                         <controls:IconGlyph IconName="Info" Width="22" Height="22"
                                                             Foreground="{DynamicResource B.Primary}"/>

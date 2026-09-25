@@ -20,7 +20,7 @@ namespace FfxTool.Gui
     /// <summary>
     /// Settings hub, 0.2.2 second pass. Five sub-pages on a shared M3
     /// system: Appearance (Light/Dark/System segmented control, palette
-    /// swatches badged with mini-pills, a live theme preview, a two-step
+    /// swatches badged with check chips, a live theme preview, a two-step
     /// restore), Storage (disk-usage meter, two-step delete confirms,
     /// file-location rows), Plugin Profiles (embedded verbatim in matching
     /// chrome), Updates (the vivi-music "Update Settings" shape: a status
@@ -28,8 +28,8 @@ namespace FfxTool.Gui
     /// switches, a clear-downloads row and a history group whose Changelog
     /// row drills into a version-pill viewer fed from GitHub's release
     /// list) and About (identity, specs chips, project links — links and
-    /// details only). Every boolean is a real Md3Switch; the former
-    /// checkmarks on selectors read as mini-pills. Above it all: a search
+    /// details only). Every boolean is a real Md3Switch; the marks that
+    /// aren't controls wear check chips. Above it all: a search
     /// box that jumps to any row, a sub-nav whose pill slides between
     /// five items, Alt+1..5 shortcuts and a remembered last tab (UiPrefs).
     /// Theme changes apply instantly via ThemeService.
@@ -1182,6 +1182,12 @@ namespace FfxTool.Gui
             else
             {
                 UpdateDetailPanel.Visibility = Visibility.Collapsed;
+                // the row's click habit hides in its ToolTip otherwise —
+                // when nothing waits and nothing failed, the caption
+                // carries the affordance itself
+                UpdateCheckedCaption.Text = ago != null
+                    ? "Last checked " + ago + " — click to check again"
+                    : "No check has run this session — click to check now";
             }
         }
 
