@@ -652,7 +652,7 @@
                         <TextBlock Text="Open an .ffx file — or a whole folder of them — to see effects and check them against your plugin profile. You can also drag and drop files or folders directly into this workspace."
                                    Style="{StaticResource BodySecondary}" TextAlignment="Center" MaxWidth="460"
                                    TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,0,0,18"/>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,22">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,20">
                             <Button Content="Open .ffx file" Width="170" Click="Open_Click"/>
                             <Button Content="Open folder…" Width="170" Margin="12,0,0,0" Click="FolderBtn_Click"
                                     Style="{StaticResource OutlinedButton}"

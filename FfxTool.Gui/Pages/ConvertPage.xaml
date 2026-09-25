@@ -137,8 +137,9 @@
                          whole folder (or several files) is loaded — the file
                          manager lists every preset with its live conversion
                          status, the settings below apply to all -->
+                    <!-- page-level card padding = the Card tier (24) -->
                     <Border x:Name="QueueCard" Visibility="Collapsed" CornerRadius="24"
-                            Background="{DynamicResource B.SCLow}" Margin="4" Padding="20,16">
+                            Background="{DynamicResource B.SCLow}" Margin="4" Padding="24">
                         <Grid x:Name="QueueGrid">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -298,7 +299,7 @@
                 </StackPanel>
 
                 <!-- options card -->
-                <Border x:Name="OptionsCard" Grid.Row="2" Style="{StaticResource Card}" Padding="20,16" Margin="0,0,0,16">
+                <Border x:Name="OptionsCard" Grid.Row="2" Style="{StaticResource Card}" Margin="0,0,0,16">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -376,7 +377,7 @@
 
             <!-- ================= RIGHT: insight + console ================= -->
             <DockPanel Grid.Column="2" Margin="8,0,0,0">
-                <Border DockPanel.Dock="Top" Style="{StaticResource Card}" Padding="22" Margin="0,0,0,16">
+                <Border DockPanel.Dock="Top" Style="{StaticResource Card}" Margin="0,0,0,16">
                     <StackPanel>
                         <Rectangle Height="4" RadiusX="2" RadiusY="2" Margin="0,0,0,14" HorizontalAlignment="Stretch">
                             <Rectangle.Fill>

@@ -1002,7 +1002,7 @@ namespace FfxTool.Gui
                 var chip = new Border
                 {
                     CornerRadius = new CornerRadius(9),
-                    Padding = new Thickness(10, 4, 10, 4),
+                    Padding = new Thickness(10, 5, 10, 5),
                     Margin = new Thickness(0, 6, 8, 0)
                 };
                 chip.SetResourceReference(Border.BackgroundProperty, "B.PrimaryContainer");
