@@ -110,6 +110,16 @@ namespace FfxTool.Gui
     {
         public const string RepoUrl = "https://github.com/marbou92/FFX-Compatibility-Tool";
 
+        /// <summary>The REST endpoint the release-list readers (the changelog
+        /// drill-in and the nightlies check) query — the JSON API at
+        /// api.github.com, which is what "Accept: application/vnd.github+json"
+        /// is valid for. Asking the github.com HTML releases page for an API
+        /// media type is exactly how the first nightly got its
+        /// "406 Not Acceptable": the HTML route can't serve that Accept,
+        /// the API route can.</summary>
+        public const string ApiReleasesUrl =
+            "https://api.github.com/repos/marbou92/FFX-Compatibility-Tool/releases";
+
         /// <summary>Permanent GitHub shortcut: always resolves to the
         /// changelog.json asset of the newest full release. A plain file
         /// redirect — none of the 60-requests-per-hour API limits.</summary>
@@ -212,7 +222,7 @@ namespace FfxTool.Gui
                 {
                     ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
                     var req = (HttpWebRequest)WebRequest.Create(
-                        RepoUrl + "/releases?per_page=30");
+                        ApiReleasesUrl + "?per_page=30");
                     req.Method = "GET";
                     req.UserAgent = "FFXCompatibilityTool/" + AppInfo.Version;
                     req.Accept = "application/vnd.github+json";

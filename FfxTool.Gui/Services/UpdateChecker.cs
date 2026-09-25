@@ -184,9 +184,13 @@ namespace FfxTool.Gui
         /// download lands with the download moment, and a fresh build
         /// carries its build time — in every case "the exe is older than
         /// the release" reads honestly as "a newer build exists".
-        /// Hits the plain /releases endpoint (newest first, prereleases
-        /// included) instead of releases/latest, which never answers with
-        /// one. A pre-release find reports its tag; the caller routes it
+        /// Hits the JSON API's /releases endpoint (api.github.com — newest
+        /// first, prereleases included) instead of releases/latest, which
+        /// never answers with one. The api.github.com base is the point:
+        /// the first nightly asked the github.com HTML page for the API's
+        /// Accept media type and GitHub's content negotiation answered
+        /// 406 Not Acceptable before a single byte of JSON could arrive.
+        /// A pre-release find reports its tag; the caller routes it
         /// to the release page, since the feed's exe+hash shape only
         /// exists for full releases.
         /// </summary>
@@ -196,7 +200,7 @@ namespace FfxTool.Gui
             {
                 ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
                 var req = (HttpWebRequest)WebRequest.Create(
-                    "https://github.com/marbou92/FFX-Compatibility-Tool/releases?per_page=1");
+                    ChangelogFeed.ApiReleasesUrl + "?per_page=1");
                 req.Method = "GET";
                 req.UserAgent = "FFXCompatibilityTool/" + AppInfo.Version;
                 req.Accept = "application/vnd.github+json";
