@@ -83,7 +83,7 @@
                     <Grid>
                         <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="20"/>
                         <Border x:Name="StateLayer" Background="{DynamicResource B.OnPrimary}" CornerRadius="20" Opacity="0"/>
-                        <ContentPresenter x:Name="ContentHost" Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        <ContentPresenter x:Name="ContentHost" Margin="{TemplateBinding Padding}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                           RecognizesAccessKey="True"/>
                     </Grid>
                     <ControlTemplate.Triggers>
@@ -116,7 +116,7 @@
                     <Grid>
                         <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="20"/>
                         <Border x:Name="StateLayer" Background="{DynamicResource B.OnPrimaryContainer}" CornerRadius="20" Opacity="0"/>
-                        <ContentPresenter x:Name="ContentHost" Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <ContentPresenter x:Name="ContentHost" Margin="{TemplateBinding Padding}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -149,7 +149,7 @@
                         <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="20"
                                 BorderBrush="{DynamicResource B.Outline}" BorderThickness="1"/>
                         <Border x:Name="StateLayer" Background="{DynamicResource B.Primary}" CornerRadius="20" Opacity="0"/>
-                        <ContentPresenter x:Name="ContentHost" Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <ContentPresenter x:Name="ContentHost" Margin="{TemplateBinding Padding}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -325,11 +325,13 @@
         </Setter>
     </Style>
 
-    <!-- Version pill (RadioButton): the changelog drill-in's release
-         selector — a rounded chip that fills primary when checked. -->
+    <!-- the release pills in the changelog strip — the state-pill tier:
+         corner 9, 10,5 gutters, a hairline ring while idle and the primary
+         fill when picked (the old 14-radius stadium read as a blob beside
+         every other pill in Settings) -->
     <Style x:Key="Md3PillChip" TargetType="RadioButton">
         <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
-        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontSize" Value="11.5"/>
         <Setter Property="FontWeight" Value="Medium"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="FocusVisualStyle" Value="{StaticResource M3FocusVisual}"/>
@@ -338,12 +340,14 @@
                 <ControlTemplate TargetType="RadioButton">
                     <Grid>
                         <Border x:Name="Bg" Background="{DynamicResource B.SCHighest}"
-                                CornerRadius="14" Padding="13,5"/>
+                                BorderBrush="{DynamicResource B.OutlineVariant}" BorderThickness="1"
+                                CornerRadius="9" Padding="10,5"/>
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="Bg" Property="Background" Value="{DynamicResource B.Primary}"/>
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource B.Primary}"/>
                             <Setter Property="Foreground" Value="{DynamicResource B.OnPrimary}"/>
                             <Setter Property="FontWeight" Value="SemiBold"/>
                         </Trigger>

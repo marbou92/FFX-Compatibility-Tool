@@ -2,39 +2,40 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:FfxTool.Gui">
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0">
-        <StackPanel>
-            <!-- Embedded as a Settings sub-view: the section header lives in
-                 Settings' sub-nav, so no page title here — just the intro. -->
-            <TextBlock Text="Flip the switch on every plugin vendor you have installed in your target After Effects version. This ensures converted FFX files only reference available effects."
-                       Style="{StaticResource BodySecondary}" MaxWidth="760" TextWrapping="Wrap"
-                       TextAlignment="Left" HorizontalAlignment="Left" Margin="0,0,0,16"/>
+    <!-- no scroller of its own: the Settings host owns scrolling (the
+         sibling-tab anatomy — one ScrollViewer around the whole card), so
+         this content just stacks and sizes to itself -->
+    <StackPanel>
+        <!-- Embedded as a Settings sub-view: the section header lives in
+             Settings' sub-nav, so no page title here — just the intro. -->
+        <TextBlock Text="Flip the switch on every plugin vendor you have installed in your target After Effects version. This ensures converted FFX files only reference available effects."
+                   Style="{StaticResource BodySecondary}" MaxWidth="760" TextWrapping="Wrap"
+                   TextAlignment="Left" HorizontalAlignment="Left" Margin="0,0,0,16"/>
 
-            <!-- the live filter: narrows both sections as you type — vendor
-                 names and descriptions both match; the tool cards only
-                 matter unfiltered, so they hide while a query is on -->
-            <Border Background="{DynamicResource B.SC}" CornerRadius="14" Padding="13,9"
-                    HorizontalAlignment="Left" Width="420" Margin="0,0,0,16">
-                <StackPanel Orientation="Horizontal">
-                    <controls:IconGlyph IconName="Search" Width="16" Height="16"
-                                        Foreground="{DynamicResource B.OnSurfaceVariant}"
-                                        VerticalAlignment="Center"/>
-                    <Grid Margin="10,0,0,0" VerticalAlignment="Center" Width="350">
-                        <TextBox x:Name="FilterBox" Background="Transparent" BorderThickness="0"
-                                 Padding="0" FontSize="13" VerticalContentAlignment="Center"
-                                 ToolTip="Filters vendor cards across both sections"/>
-                        <TextBlock x:Name="FilterPlaceholder" Text="Filter vendors — try &quot;trapcode&quot;"
-                                   Style="{StaticResource Caption}" Margin="1,0,0,0"
-                                   IsHitTestVisible="False" VerticalAlignment="Center"/>
-                    </Grid>
-                </StackPanel>
-            </Border>
+        <!-- the live filter: narrows both sections as you type — vendor
+             names and descriptions both match; the tool cards only
+             matter unfiltered, so they hide while a query is on -->
+        <Border Background="{DynamicResource B.SC}" CornerRadius="14" Padding="13,9"
+                HorizontalAlignment="Left" Width="420" Margin="0,0,0,16">
+            <StackPanel Orientation="Horizontal">
+                <controls:IconGlyph IconName="Search" Width="16" Height="16"
+                                    Foreground="{DynamicResource B.OnSurfaceVariant}"
+                                    VerticalAlignment="Center"/>
+                <Grid Margin="10,0,0,0" VerticalAlignment="Center" Width="350">
+                    <TextBox x:Name="FilterBox" Background="Transparent" BorderThickness="0"
+                             Padding="0" FontSize="13" VerticalContentAlignment="Center"
+                             ToolTip="Filters vendor cards across both sections"/>
+                    <TextBlock x:Name="FilterPlaceholder" Text="Filter vendors — try &quot;trapcode&quot;"
+                               Style="{StaticResource Caption}" Margin="1,0,0,0"
+                               IsHitTestVisible="False" VerticalAlignment="Center"/>
+                </Grid>
+            </StackPanel>
+        </Border>
 
-            <!-- profile sections: "Linked to your profile" above
-                 "Available vendors", each a labeled WrapPanel built in
-                 code — cards physically move between them when a switch
-                 flips (Profiles page host) -->
-            <StackPanel x:Name="Cards" Margin="0,0,16,16"/>
-        </StackPanel>
-    </ScrollViewer>
+        <!-- profile sections: "Linked to your profile" above
+             "Available vendors", each a labeled WrapPanel built in
+             code — cards physically move between them when a switch
+             flips (Profiles page host) -->
+        <StackPanel x:Name="Cards" Margin="0,0,0,16"/>
+    </StackPanel>
 </UserControl>

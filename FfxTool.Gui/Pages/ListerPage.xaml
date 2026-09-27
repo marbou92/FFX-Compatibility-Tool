@@ -653,8 +653,8 @@
                                    Style="{StaticResource BodySecondary}" TextAlignment="Center" MaxWidth="460"
                                    TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,0,0,18"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,20">
-                            <Button Content="Open .ffx file" Width="170" Click="Open_Click"/>
-                            <Button Content="Open folder…" Width="170" Margin="12,0,0,0" Click="FolderBtn_Click"
+                            <Button Content="Open .ffx file" MinWidth="150" Click="Open_Click"/>
+                            <Button Content="Open folder…" MinWidth="150" Margin="12,0,0,0" Click="FolderBtn_Click"
                                     Style="{StaticResource OutlinedButton}"
                                     ToolTip="Load every .ffx in a folder — flip through them here, or scan the whole folder into one report"/>
                         </StackPanel>
@@ -1113,7 +1113,7 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <StackPanel Grid.Row="0" Orientation="Horizontal">
-                <Button x:Name="OpenBtn" Content="Open .ffx file…" Width="170" Click="Open_Click"/>
+                <Button x:Name="OpenBtn" Content="Open .ffx file…" MinWidth="150" Click="Open_Click"/>
                 <Border Style="{StaticResource Chip}" Margin="12,0,0,0">
                     <StackPanel Orientation="Horizontal">
                         <controls:IconGlyph IconName="Info" Width="16" Height="16"
@@ -1147,7 +1147,7 @@
                 <!-- hands the open preset to the Convert section (visible once
                      any preset is loaded) -->
                 <Button x:Name="SendConvertBtn" Content="Convert this preset…" Margin="12,0,0,0" Height="40"
-                        MinWidth="170" Visibility="Collapsed" Click="SendConvertBtn_Click"
+                        MinWidth="150" Visibility="Collapsed" Click="SendConvertBtn_Click"
                         Style="{StaticResource OutlinedButton}"
                         ToolTip="Switches to Convert with this preset loaded"/>
             </StackPanel>

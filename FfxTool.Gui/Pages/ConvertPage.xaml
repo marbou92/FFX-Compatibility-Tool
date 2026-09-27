@@ -225,7 +225,7 @@
                                                 </Grid.ColumnDefinitions>
                                                 <controls:IconGlyph IconName="FilterList" Width="16" Height="16"
                                                                     VerticalAlignment="Center"/>
-                                                <TextBlock x:Name="QueueTargetsText" Grid.Column="1" Margin="9,0,8,0"
+                                                <TextBlock x:Name="QueueTargetsText" Grid.Column="1" Margin="8"
                                                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                                            Text="Same as the Target version picker"/>
                                                 <controls:IconGlyph Grid.Column="2" IconName="ArrowDrop" Width="18" Height="18"

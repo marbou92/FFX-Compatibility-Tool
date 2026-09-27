@@ -509,32 +509,33 @@
 
                 <!-- ==================== Plugin Profiles ====================
                      the embedded page, wrapped in the same chrome as its
-                     sibling sub-pages (suggestion 16) — and now really the
-                     same chrome: the title row lives INSIDE the card like
-                     every other tab (it used to float above the card on
-                     the bare background, with a tighter 18px padding —
-                     the one header in Settings that didn't belong), the
-                     card runs the default 24, and the embedded page's
-                     own ScrollViewer fills the rest -->
+                     sibling sub-pages — and now really the same chrome: the
+                     title row lives INSIDE the card like every other tab,
+                     the card hugs its content at the top instead of
+                     stretching to the view height, and one ScrollViewer
+                     around the card owns the overflow like everywhere else -->
                 <Grid x:Name="ProfileView" Visibility="Collapsed">
-                    <Border Style="{StaticResource Card}" MaxWidth="760">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-                            <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,20">
-                                <Border Width="40" Height="40" CornerRadius="12" Background="{DynamicResource B.SCHigh}"
-                                        VerticalAlignment="Center">
-                                    <controls:IconGlyph IconName="Plugin" Width="22" Height="22"
-                                                        Foreground="{DynamicResource B.Primary}"/>
-                                </Border>
-                                <TextBlock Text="Plugin Profiles" Style="{StaticResource SectionTitle}" FontSize="17"
-                                           Margin="14,0,0,0" VerticalAlignment="Center"/>
+                    <!-- the sibling anatomy: one ScrollViewer around one card
+                         that hugs its content at the top — the card no longer
+                         stretches to the full view height like a slab (the
+                         profile content just stacks; ProfilePage no longer
+                         carries a scroller of its own) -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <Border Style="{StaticResource Card}" MaxWidth="760" VerticalAlignment="Top">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                                    <Border Width="40" Height="40" CornerRadius="12" Background="{DynamicResource B.SCHigh}"
+                                            VerticalAlignment="Center">
+                                        <controls:IconGlyph IconName="Plugin" Width="22" Height="22"
+                                                            Foreground="{DynamicResource B.Primary}"/>
+                                    </Border>
+                                    <TextBlock Text="Plugin Profiles" Style="{StaticResource SectionTitle}" FontSize="17"
+                                               Margin="14,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <ContentControl x:Name="ProfileHost"/>
                             </StackPanel>
-                            <ContentControl x:Name="ProfileHost" Grid.Row="1"/>
-                        </Grid>
-                    </Border>
+                        </Border>
+                    </ScrollViewer>
                 </Grid>
 
                 <!-- ==================== Updates ====================
