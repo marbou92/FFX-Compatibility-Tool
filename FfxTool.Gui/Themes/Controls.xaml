@@ -325,34 +325,38 @@
         </Setter>
     </Style>
 
-    <!-- the release pills in the changelog strip — the state-pill tier:
-         corner 9, 10,5 gutters, a hairline ring while idle and the primary
-         fill when picked (the old 14-radius stadium read as a blob beside
-         every other pill in Settings) -->
+    <!-- the release pills in the changelog strip — round 70 wears the
+         user's reference look: big solid chips floating on the tray, no
+         hairline anywhere. The old template was structurally deaf — its
+         Padding sat on a sibling Border the Grid never grew for, so every
+         gutter value since the first stadium rendered as zero and the
+         label hugged the pill edges (rounds 68/69 tuned numbers a template
+         could not hear); the presenter now lives INSIDE the border so the
+         18px gutters finally measure. Idle chips are SCHighest blocks with
+         a 10 corner; the picked chip turns a full 19-radius stadium in the
+         container pair the nav rail's active pill already wears -->
     <Style x:Key="Md3PillChip" TargetType="RadioButton">
         <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
-        <Setter Property="FontSize" Value="11.5"/>
+        <Setter Property="FontSize" Value="15"/>
         <Setter Property="FontWeight" Value="Medium"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="FocusVisualStyle" Value="{StaticResource M3FocusVisual}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
-                    <Grid>
-                        <Border x:Name="Bg" Background="{DynamicResource B.SCHighest}"
-                                BorderBrush="{DynamicResource B.OutlineVariant}" BorderThickness="1"
-                                CornerRadius="9" Padding="10,5"/>
+                    <Border x:Name="Bg" Background="{DynamicResource B.SCHighest}"
+                            Height="38" CornerRadius="10" Padding="18,0">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Grid>
+                    </Border>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource B.Primary}"/>
-                            <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource B.Primary}"/>
-                            <Setter Property="Foreground" Value="{DynamicResource B.OnPrimary}"/>
-                            <Setter Property="FontWeight" Value="SemiBold"/>
-                        </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter Property="Foreground" Value="{DynamicResource B.OnSurface}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource B.PrimaryContainer}"/>
+                            <Setter TargetName="Bg" Property="CornerRadius" Value="19"/>
+                            <Setter Property="Foreground" Value="{DynamicResource B.OnPrimaryContainer}"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
