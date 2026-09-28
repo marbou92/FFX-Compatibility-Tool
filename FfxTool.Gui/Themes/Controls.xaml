@@ -332,12 +332,14 @@
          gutter value since the first stadium rendered as zero and the
          label hugged the pill edges (rounds 68/69 tuned numbers a template
          could not hear); the presenter now lives INSIDE the border so the
-         18px gutters finally measure. Idle chips are SCHighest blocks with
-         a 10 corner; the picked chip turns a full 19-radius stadium in the
-         container pair the nav rail's active pill already wears -->
+         18px gutters finally measure. Round 71 connects the strip: 2px seams
+         (the reference measures 4px at 88px chip height — proportionally
+         2 here) and the idle corner comes down to 6, the reference's own
+         proportion at this scale, so the seams stop pinching; the picked
+         chip keeps its full 19-radius stadium in the nav rail's pair -->
     <Style x:Key="Md3PillChip" TargetType="RadioButton">
         <Setter Property="Foreground" Value="{DynamicResource B.OnSurfaceVariant}"/>
-        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="FontSize" Value="14.5"/>
         <Setter Property="FontWeight" Value="Medium"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="FocusVisualStyle" Value="{StaticResource M3FocusVisual}"/>
@@ -345,7 +347,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
                     <Border x:Name="Bg" Background="{DynamicResource B.SCHighest}"
-                            Height="38" CornerRadius="10" Padding="18,0">
+                            Height="38" CornerRadius="6" Padding="18,0">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>
