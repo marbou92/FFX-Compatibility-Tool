@@ -975,7 +975,7 @@ namespace FfxTool.Gui
                         GroupName = "ReleasePills",
                         Content = r.Tag,
                         Style = (Style)FindResource("Md3PillChip"),
-                        Margin = new Thickness(0, 0, 2, 0),
+                        Margin = new Thickness(0, 0, 1, 0),
                         ToolTip = (r.DateIso != null ? r.DateIso + " — " : "") + "release notes"
                     };
                     pill.Checked += (s2, e2) => ShowRelease(r);
