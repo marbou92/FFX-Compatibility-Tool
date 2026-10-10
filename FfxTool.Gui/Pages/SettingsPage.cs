@@ -137,6 +137,7 @@ namespace FfxTool.Gui
             SyncFromTheme();
             RefreshUpdateStatus();
             RefreshClearDownloadsRow();
+            RefreshStartMenuRow();
 
             // remember the last-visited sub-tab (suggestion 1): restoring
             // fires SelectionChanged, which applies the views and saves the
@@ -206,6 +207,7 @@ namespace FfxTool.Gui
                 RefreshUpdateStatus();
                 RefreshClearDownloadsRow();
             }
+            if (about) RefreshStartMenuRow(); // the shortcut can change outside this window — re-read it on every visit
 
             AnimateViewIn(appearance ? (UIElement)AppearanceView
                            : storage ? (UIElement)StorageView
@@ -288,6 +290,7 @@ namespace FfxTool.Gui
             AddSearch(3, "Updates", "Changelog", "what's new release notes version history", ChangelogRow);
             AddSearch(3, "Updates", "Commits", "main branch history github changes", CommitsRow);
             AddSearch(4, "About", "Version", "copy about identity made by", VersionRow);
+            AddSearch(4, "About", "Start menu", "shortcut icon apps list winget links blank tile pin", StartMenuRow);
             AddSearch(4, "About", "SHA-256", "hash verify checksum copy", ShaRow);
             AddSearch(4, "About", "GitHub repository", "source code repo open", RepoRow);
             AddSearch(4, "About", "Report an issue", "bug feedback problem support", IssueRow);
@@ -1040,6 +1043,74 @@ namespace FfxTool.Gui
 
         private void IssueRow_Click(object sender, MouseButtonEventArgs e) =>
             OpenUrl(RepoUrl + "/issues/new");
+
+        // ---------- about: the start menu shortcut row ----------
+
+        /// <summary>Renders the row from the shortcut's live state — the
+        /// button is honest about which of the three jobs one click does:
+        /// create it, rebuild a blank/stale one, or remove it.</summary>
+        private void RefreshStartMenuRow()
+        {
+            StartMenuShortcut.ShortcutState state;
+            try { state = StartMenuShortcut.Detect(); }
+            catch { state = StartMenuShortcut.ShortcutState.Missing; }
+
+            switch (state)
+            {
+                case StartMenuShortcut.ShortcutState.Healthy:
+                    StartMenuIcon.IconName = "Check";
+                    StartMenuTitle.Text = "Remove from the Start menu";
+                    StartMenuCaption.Text = "The shortcut points at this exe and paints its own icon — click to remove it.";
+                    break;
+                case StartMenuShortcut.ShortcutState.Broken:
+                    StartMenuIcon.IconName = "Warning";
+                    StartMenuTitle.Text = "Fix the Start menu icon";
+                    StartMenuCaption.Text = "The existing shortcut can't paint the logo — winget's Links symlink loses it — click to rebuild it with the exe's own icon.";
+                    break;
+                default:
+                    StartMenuIcon.IconName = "Add";
+                    StartMenuTitle.Text = "Add to the Start menu";
+                    StartMenuCaption.Text = "winget's portable install makes no Start entry — this creates one that always carries the logo.";
+                    break;
+            }
+        }
+
+        private void StartMenuRow_Click(object sender, MouseButtonEventArgs e)
+        {
+            StartMenuShortcut.ShortcutState state;
+            try { state = StartMenuShortcut.Detect(); }
+            catch { state = StartMenuShortcut.ShortcutState.Missing; }
+
+            if (state == StartMenuShortcut.ShortcutState.Healthy)
+            {
+                try
+                {
+                    StartMenuShortcut.Remove();
+                    InfoToast("Removed from the Start menu", "Add it back any time from this row.");
+                }
+                catch
+                {
+                    InfoToast("Couldn't remove", "Windows refused to delete the shortcut — try again with the app closed.");
+                }
+            }
+            else
+            {
+                try
+                {
+                    StartMenuShortcut.CreateOrUpdate();
+                    InfoToast(state == StartMenuShortcut.ShortcutState.Broken
+                        ? "Start menu icon fixed"
+                        : "Added to the Start menu",
+                        "The shortcut targets this exe and pins its own icon — no more blank tile.");
+                }
+                catch
+                {
+                    InfoToast("Couldn't update the shortcut",
+                        "Windows Script Host answered with an error — the shortcut is left untouched.");
+                }
+            }
+            RefreshStartMenuRow();
+        }
 
         // ---------- updates: the status row (the four faces, one row) ----------
 

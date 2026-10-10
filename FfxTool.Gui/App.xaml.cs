@@ -55,6 +55,7 @@ namespace FfxTool.Gui
                 // when turned off in Settings; its only visible output is
                 // the Settings rail badge + the toast pill.
                 CleanupLeftoverOldExe();
+                StartMenuShortcut.RepairIfBroken(); // a Start menu shortcut that went blank (winget's Links symlink) or stale (an upgrade renamed the exe) rebuilds itself — never creates one
                 UpdateService.BeginAutoCheck();
             }
             catch (Exception startup)

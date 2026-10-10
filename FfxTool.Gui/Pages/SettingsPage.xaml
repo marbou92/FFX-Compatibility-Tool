@@ -1008,6 +1008,36 @@
                                     </Border>
                                 </WrapPanel>
 
+                                <!-- start menu row: winget's portable installs get
+                                     no Start menu entry at all, and a hand-made
+                                     shortcut through winget's WinGet\Links symlink
+                                     loses its icon (Start cannot resolve icons
+                                     through a symlinked target) — this row owns a
+                                     real shortcut: add, repair a blank/stale one,
+                                     or remove it, with the exe's own icon pinned
+                                     explicitly every time -->
+                                <Border x:Name="StartMenuRow" Style="{StaticResource SettingsRowClickable}" Margin="0,0,0,20"
+                                        MouseLeftButtonUp="StartMenuRow_Click"
+                                        ToolTip="The Start menu shortcut the app manages — always painted with its own icon">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                                Background="{DynamicResource B.SCHighest}" VerticalAlignment="Center">
+                                            <controls:IconGlyph x:Name="StartMenuIcon" IconName="Add" Width="17" Height="17"
+                                                                Foreground="{DynamicResource B.Primary}"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock x:Name="StartMenuTitle" Text="Add to the Start menu"
+                                                       Style="{StaticResource Body}" FontWeight="Medium"/>
+                                            <TextBlock x:Name="StartMenuCaption" Style="{StaticResource Caption}"
+                                                       Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
                                 <!-- PROJECT group -->
                                 <TextBlock Text="PROJECT" Style="{StaticResource GroupHeader}" Margin="0,0,0,10"/>
                                 <Border x:Name="ShaRow" Style="{StaticResource SettingsRowClickable}" Margin="0,0,0,10"
