@@ -17,7 +17,7 @@ no installer, no runtime download on Windows 10/11.
 [![Release](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/build.yml/badge.svg?label=Release)](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/build.yml)
 [![Latest release](https://img.shields.io/github/v/release/marbou92/FFX-Compatibility-Tool?label=latest&color=2ea44f)](https://github.com/marbou92/FFX-Compatibility-Tool/releases/latest)
 [![License](https://img.shields.io/github/license/marbou92/FFX-Compatibility-Tool?label=license&color=6e7781)](LICENSE)
-[![winget](https://img.shields.io/badge/winget-manifest%20ready-8250df)](packaging/winget)
+[![winget](https://img.shields.io/winget/v/Marbou92.FFXCompatibilityTool?label=winget&color=8250df)](https://github.com/microsoft/winget-pkgs/tree/master/manifests/m/Marbou92/FFXCompatibilityTool)
 
 [Download](https://github.com/marbou92/FFX-Compatibility-Tool/releases/latest) · [Nightly](https://github.com/marbou92/FFX-Compatibility-Tool/raw/nightly/FFXCompatibilityTool-nightly.exe) · [Report an issue](https://github.com/marbou92/FFX-Compatibility-Tool/issues)
 
@@ -56,16 +56,19 @@ The format research the engine is built on lives in
 
 ### winget
 
-The app is packaged for the
-[Windows Package Manager](https://learn.microsoft.com/windows/package-manager/winget/):
+The app is listed in the
+[Windows Package Manager](https://learn.microsoft.com/windows/package-manager/winget/)
+catalog:
 
 ```powershell
-winget install --id Marbou92.FFXCompatibilityTool
+winget install --id Marbou92.FFXCompatibilityTool -e
 ```
 
-The manifest set lives in [packaging/winget](packaging/winget) and lands in
-the community catalog at `microsoft/winget-pkgs` through a pull request —
-until that listing is live, the download above is the way to go.
+New versions reach the catalog through a reviewed pull request, so it can
+trail the Releases page by a few days — the download above always carries
+the newest build first. One quirk of winget's portable packages: no Start
+menu entry is created for them — the app owns its own shortcut (Settings →
+About → Start menu) and pins the icon explicitly.
 
 > 🌙 Want new features early? The rolling
 > [nightly build](https://github.com/marbou92/FFX-Compatibility-Tool/raw/nightly/FFXCompatibilityTool-nightly.exe)
