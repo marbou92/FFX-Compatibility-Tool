@@ -1,31 +1,47 @@
 # Winget — every published release offers itself to the winget-pkgs
-# catalog, but only once the package actually exists there.
+# catalog as a reviewed update pull request.
 #
-# Getting listed the first time is a human-reviewed pull request (the
-# 0.1.0 new-package PR), and that review can take weeks. This workflow
-# therefore runs on two triggers and never goes red while it waits:
+# The package is listed (0.1.0 merged through the new-package PR); from
+# here on every release is offered automatically, on two triggers, and
+# the run never goes red while it waits:
 #
-#   * release published — the fast path. If the catalog already carries
-#     the package, the newest released version is submitted right away.
-#   * daily schedule — the patient path. It re-checks every day until
-#     the catalog has the package, then submits the newest released
-#     version. Release 0.2.0 whenever it is ready: the day the
-#     new-package PR merges, this workflow opens the 0.2.0 update PR
-#     on its own — no re-release, no manual step.
+#   * release published — the fast path: the newest released version is
+#     submitted right away.
+#   * daily schedule — the patient path: it re-checks every day, so a
+#     release whose submission failed (or a catalog still trailing) is
+#     picked up the next morning — no re-release, no manual step.
 #
-# One-time setup (packaging/winget/README.md has the long version and
-# the troubleshooting table for every failure this workflow can hit):
+# Maintainer setup — this header is the only documentation on purpose:
+# one-time token setup and submission troubleshooting are instructions
+# for the maintainer, not reading for the repo's users.
 #   1. GitHub → Settings → Developer settings → Personal access tokens
 #      (classic) → generate a token with the `public_repo` scope. It
 #      MUST be a classic token — fine-grained ones cannot fork
 #      microsoft/winget-pkgs, so the submission always dies with
 #      "Resource not accessible by personal access token".
 #   2. Store it in this repository as the secret WINGET_SUBMIT_TOKEN.
-# Without the secret the run stays green and skips with a notice; the
-# manual copy-paste steps in packaging/winget/README.md remain the
-# fallback. A set-but-unusable token fails fast at the preflight below,
-# with the exact fix in the error message instead of winget-create's
-# bare "Resource not accessible by personal access token".
+#   3. Re-run the workflow (Actions → Winget → Run workflow) — every
+#      skip is green, so re-running is always safe.
+#
+# Troubleshooting — every way a run can end:
+#   * notice "WINGET_SUBMIT_TOKEN is not set - skipping" → the secret
+#     does not exist under that exact name; create it (setup step 2).
+#   * preflight "fine-grained PAT" / "none of the scopes" → replace the
+#     secret with a CLASSIC PAT carrying public_repo (setup step 1).
+#   * preflight 401 → the classic PAT expired or was revoked; create a
+#     fresh one — No expiration keeps nightly submissions rotation-free
+#     — and update the secret.
+#   * notice "not in the winget-pkgs catalog yet" → safety net for a
+#     missing listing; expected only while a first listing is in review.
+#   * notice "already lists <version>" → nothing to do.
+#
+# Manual fallback (no token in CI at all), on any machine with a
+# classic PAT:
+#   wingetcreate update Marbou92.FFXCompatibilityTool --version <v> ^
+#     --urls <the release exe URL> --submit --token <classic-PAT>
+# A set-but-unusable token fails fast at the preflight below, with the
+# exact fix in the error message instead of winget-create's bare
+# "Resource not accessible by personal access token".
 
 name: Winget
 
@@ -33,7 +49,7 @@ on:
   release:
     types: [published]
   schedule:
-    - cron: "25 4 * * *" # 04:25 UTC daily — catches the catalog the day the new-package PR merges
+    - cron: "25 4 * * *" # 04:25 UTC daily — picks up anything the fast path missed
   workflow_dispatch:
 
 permissions:
@@ -74,7 +90,7 @@ jobs:
           # has the package been accepted into the catalog at all?
           # (the first submission is a human-reviewed pull request)
           if ! gh api "repos/microsoft/winget-pkgs/contents/manifests/m/Marbou92/FFXCompatibilityTool" > /dev/null 2>&1; then
-            echo "::notice::FFXCompatibilityTool is not in the winget-pkgs catalog yet (the new-package pull request is still in review) — waiting. This check runs daily, so the update PR opens by itself the day the PR merges."
+            echo "::notice::FFXCompatibilityTool is not in the winget-pkgs catalog yet — waiting. This check runs daily, so the update PR opens by itself the day the package is listed."
             echo "reason=waiting" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -106,7 +122,7 @@ jobs:
           ASSET_URL: ${{ steps.decide.outputs.url }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:WINGET_SUBMIT_TOKEN)) {
-            Write-Host "::notice::WINGET_SUBMIT_TOKEN is not set - skipping the winget submission. See packaging/winget/README.md for the one-time setup."
+            Write-Host "::notice::WINGET_SUBMIT_TOKEN is not set - skipping the winget submission. Setup: store a classic PAT with the public_repo scope as the secret WINGET_SUBMIT_TOKEN (see the header of this file)."
             exit 0
           }
 
@@ -118,7 +134,7 @@ jobs:
           # Prove the token HERE — with the fix spelled out — instead of
           # failing mid-submit after the manifest was already generated.
           if ($env:WINGET_SUBMIT_TOKEN.StartsWith('github_pat_')) {
-            Write-Host "::error::WINGET_SUBMIT_TOKEN is a fine-grained PAT (github_pat_...). Fine-grained tokens cannot fork microsoft/winget-pkgs, so a submission can never succeed with one. Fix: GitHub → Settings → Developer settings → Personal access tokens (classic) → Generate new token → tick public_repo → update the WINGET_SUBMIT_TOKEN secret. Details: packaging/winget/README.md"
+            Write-Host "::error::WINGET_SUBMIT_TOKEN is a fine-grained PAT (github_pat_...). Fine-grained tokens cannot fork microsoft/winget-pkgs, so a submission can never succeed with one. Fix: GitHub → Settings → Developer settings → Personal access tokens (classic) → Generate new token → tick public_repo → update the WINGET_SUBMIT_TOKEN secret."
             exit 1
           }
           $headers = @{
@@ -133,11 +149,11 @@ jobs:
             exit 1
           }
           if ($resp.StatusCode -eq 401) {
-            Write-Host "::error::WINGET_SUBMIT_TOKEN was rejected by GitHub (401) - the token is expired or revoked (classic PATs expire; GitHub defaults to 30 days). Fix: create a fresh classic PAT with the public_repo scope and update the WINGET_SUBMIT_TOKEN secret. Details: packaging/winget/README.md"
+            Write-Host "::error::WINGET_SUBMIT_TOKEN was rejected by GitHub (401) - the token is expired or revoked (classic PATs expire; GitHub defaults to 30 days). Fix: create a fresh classic PAT with the public_repo scope and update the WINGET_SUBMIT_TOKEN secret."
             exit 1
           }
           if ($resp.StatusCode -ne 200) {
-            Write-Host "::error::GitHub answered HTTP $($resp.StatusCode) for WINGET_SUBMIT_TOKEN's identity check - the token is not usable for submissions. Fix: create a classic PAT with the public_repo scope and update the WINGET_SUBMIT_TOKEN secret. Details: packaging/winget/README.md"
+            Write-Host "::error::GitHub answered HTTP $($resp.StatusCode) for WINGET_SUBMIT_TOKEN's identity check - the token is not usable for submissions. Fix: create a classic PAT with the public_repo scope and update the WINGET_SUBMIT_TOKEN secret."
             exit 1
           }
           # classic PATs list their scopes in X-OAuth-Scopes; fine-grained
@@ -145,7 +161,7 @@ jobs:
           # scopeless answer fails here with the same fix, whatever the token kind
           $scopes = (@($rh['X-OAuth-Scopes']) -join ',')
           if ($scopes -notmatch '(^|,\s*)(repo|public_repo)(\s*,|$)') {
-            Write-Host "::error::WINGET_SUBMIT_TOKEN carries none of the scopes a winget-pkgs submission needs (token scopes: '$scopes'). Forking microsoft/winget-pkgs requires a CLASSIC PAT with the public_repo scope - fine-grained tokens cannot fork a repository they don't own, which is exactly winget-create's 'Resource not accessible by personal access token'. Fix: GitHub → Settings → Developer settings → Personal access tokens (classic) → Generate new token → tick public_repo → update the WINGET_SUBMIT_TOKEN secret. Details: packaging/winget/README.md"
+            Write-Host "::error::WINGET_SUBMIT_TOKEN carries none of the scopes a winget-pkgs submission needs (token scopes: '$scopes'). Forking microsoft/winget-pkgs requires a CLASSIC PAT with the public_repo scope - fine-grained tokens cannot fork a repository they don't own, which is exactly winget-create's 'Resource not accessible by personal access token'. Fix: GitHub → Settings → Developer settings → Personal access tokens (classic) → Generate new token → tick public_repo → update the WINGET_SUBMIT_TOKEN secret."
             exit 1
           }
           $login = '?'
