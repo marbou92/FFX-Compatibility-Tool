@@ -65,6 +65,19 @@ namespace FfxTool.Gui
             PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(prop));
     }
 
+    /// <summary>One row of the Target version picker: the display name
+    /// plus the auto-detection verdict (AeDetect) pre-shaped as Visibility
+    /// so the XAML template binds it without a converter. Namespace-level
+    /// (not nested) because a DataTemplate's x:Type can't see nested types.</summary>
+    public class TargetVm
+    {
+        public string Key { get; set; }
+        public string Display { get; set; }
+        public bool Installed { get; set; }
+        public Visibility InstalledVis =>
+            Installed ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     /// <summary>
     /// Convert: two-pane workspace — clickable hero drop zone / effect checklist,
     /// target + output options with an auto-naming fallback, a CTA that doubles as
@@ -133,25 +146,12 @@ namespace FfxTool.Gui
         // counter is the only flicker-free way to know the drag truly left.
         private int _dragDepth;
 
-        private static readonly Dictionary<string, string> DisplayNames =
-            new Dictionary<string, string>
-            {
-                { "cs5.5", "After Effects CS5.5" },
-                { "cs6", "After Effects CS6" },
-                { "cc2013", "After Effects CC 2013" },
-                { "cc2014", "After Effects CC 2014" },
-                { "cc2015", "After Effects CC 2015" },
-                { "cc2015.3", "After Effects CC 2015.3" },
-                { "cc2017", "After Effects CC 2017" },
-                { "cc2018", "After Effects CC 2018" },
-                { "cc2019", "After Effects CC 2019" },
-                { "2020", "After Effects 2020" },
-                { "2021", "After Effects 2021" },
-                { "2022", "After Effects 2022" },
-                { "2023", "After Effects 2023" },
-                { "2024", "After Effects 2024" },
-                { "2025", "After Effects 2025" },
-            };
+        // Target version picker rows (TargetVm) plus the auto-detected
+        // installs (internal keys, null until AeDetect reports back) —
+        // the names themselves live in Core's TargetCatalog now, the one
+        // table the picker, the CLI and the detector share
+        private List<TargetVm> _targetItems;
+        private HashSet<string> _detected;
 
         public ConvertPage(PluginProfile profile)
         {
@@ -159,18 +159,20 @@ namespace FfxTool.Gui
             _profile = profile;
 
             // cs5.5 first — the verified downgrade and the default — then
-            // every AE release after it in chronological order
-            TargetCombo.ItemsSource = new[] { "cs5.5" }.Concat(Pipeline.ModernTargets)
-                .Select(DisplayNameFor)
-                .ToList();
+            // every AE release after it in chronological order. Items are
+            // TargetVm rows so AeDetect's "installed" pill can appear on
+            // the versions this machine actually has.
+            _targetItems = TargetCatalog.All.Select(e =>
+                new TargetVm { Key = e.Key, Display = e.Display }).ToList();
+            TargetCombo.ItemsSource = _targetItems;
             TargetCombo.SelectedIndex = 0;
             TargetCombo.SelectionChanged += (s, e) =>
             {
                 UpdateTargetNote();
-                ConvertSettings.SetTarget(InternalKeyFor(
-                    TargetCombo.SelectedItem as string ?? "After Effects CS5.5"));
+                ConvertSettings.SetTarget(SelectedTargetKey());
             };
             UpdateTargetNote();
+            KickDetect();
 
             EffectList.ItemsSource = _rows;
             // checkbox events bubble to the list — re-count and remember
@@ -184,6 +186,8 @@ namespace FfxTool.Gui
             RemoveMissingCheck.Unchecked += (s, e) => ConvertSettings.SetQueueRemoveMissing(false);
             OverwriteCheck.Checked += (s, e) => ConvertSettings.SetOverwriteOriginal(true);
             OverwriteCheck.Unchecked += (s, e) => ConvertSettings.SetOverwriteOriginal(false);
+            BackupCheck.Checked += (s, e) => ConvertSettings.SetQueueBackup(true);
+            BackupCheck.Unchecked += (s, e) => ConvertSettings.SetQueueBackup(false);
             QueueTargetsPopup.Closed += (s, e) => _targetsPopupClosedAt = DateTime.UtcNow;
 
             // ---- last-used settings (the 0.2.1 round): restore before first use ----
@@ -194,17 +198,23 @@ namespace FfxTool.Gui
         }
 
         private static string DisplayNameFor(string key) =>
-            DisplayNames.TryGetValue(key, out var v) ? v : key;
+            TargetCatalog.DisplayNameFor(key);
 
         private static string InternalKeyFor(string display) =>
-            DisplayNames.FirstOrDefault(kv => kv.Value == display).Key ?? display;
+            TargetCatalog.All.FirstOrDefault(e => e.Display == display)?.Key ?? display;
+
+        /// <summary>The picker's current target as the pipeline's internal
+        /// key — the one read-out every consumer shares (note, batch,
+        /// single conversion).</summary>
+        private string SelectedTargetKey() =>
+            (TargetCombo.SelectedItem as TargetVm)?.Key ?? "cs5.5";
 
         /// <summary>One honest line under the picker: what the chosen
         /// target actually does to the file, and why the result is safe
         /// in that AE version.</summary>
         private void UpdateTargetNote()
         {
-            string key = InternalKeyFor(TargetCombo.SelectedItem as string ?? "After Effects CS5.5");
+            string key = SelectedTargetKey();
             TargetNote.Text = key == "cs5.5"
                 ? "Full downgrade to CS5.5's native format — the only target verified against a real sample. The result opens in every AE from CS5.5 to the newest."
                 : "AE's own format, untouched — effects you don't own are removed and indexes repaired while the preset stays in the era the source wrote it. The safe choice for every AE after CS5.5.";
@@ -226,15 +236,16 @@ namespace FfxTool.Gui
             ConvertSettings.Load();
 
             string target = ConvertSettings.Target;
-            if (!string.IsNullOrEmpty(target))
+            if (!string.IsNullOrEmpty(target) && _targetItems != null)
             {
-                int idx = TargetCombo.Items.IndexOf(DisplayNameFor(target));
+                int idx = _targetItems.FindIndex(t => t.Key == target);
                 if (idx >= 0) TargetCombo.SelectedIndex = idx;
             }
 
             QueueRecursive.IsChecked = ConvertSettings.QueueRecursive;
             RemoveMissingCheck.IsChecked = ConvertSettings.QueueRemoveMissing;
             OverwriteCheck.IsChecked = ConvertSettings.OverwriteOriginal;
+            BackupCheck.IsChecked = ConvertSettings.QueueBackup;
             if (ConvertSettings.QueueOutputIndex >= 0 &&
                 ConvertSettings.QueueOutputIndex < QueueOutput.Items.Count)
                 QueueOutput.SelectedIndex = ConvertSettings.QueueOutputIndex;
@@ -257,16 +268,88 @@ namespace FfxTool.Gui
             {
                 var check = new CheckBox
                 {
-                    Content = DisplayNameFor(key),
                     Style = (Style)FindResource("Md3CheckBox"),
                     Margin = new Thickness(10, 3, 10, 3),
                     Tag = key,
                     IsChecked = _queueTargets.Contains(key)
                 };
+                // detected installs wear the same pill the Target version
+                // picker shows — one language across both pickers
+                if (_detected != null && _detected.Contains(key))
+                {
+                    var row = new StackPanel { Orientation = Orientation.Horizontal };
+                    row.Children.Add(new TextBlock
+                    {
+                        Text = DisplayNameFor(key),
+                        VerticalAlignment = VerticalAlignment.Center
+                    });
+                    row.Children.Add(MakeInstalledPill(8));
+                    check.Content = row;
+                }
+                else check.Content = DisplayNameFor(key);
                 check.Checked += QueueTargetCheck_Changed;
                 check.Unchecked += QueueTargetCheck_Changed;
                 QueueTargetsList.Children.Add(check);
             }
+        }
+
+        // ---------- installed-version auto-detection ----------
+
+        /// <summary>Runs the read-only AE probe once, on a worker thread;
+        /// when it finds installs, both pickers re-arm with "installed"
+        /// pills. The selection survives the rebuild via the internal key.</summary>
+        private void KickDetect()
+        {
+            Task.Run(() => AeDetect.Detect()).ContinueWith(t =>
+            {
+                try
+                {
+                    if (t.Status != TaskStatus.RanToCompletion || t.Result.Count == 0) return;
+                    _detected = new HashSet<string>(
+                        t.Result.Select(f => f.Key), StringComparer.OrdinalIgnoreCase);
+                    ApplyDetected();
+                }
+                catch { /* the app may be closing — a lost pill is nothing */ }
+            }, TaskScheduler.FromCurrentSynchronizationContext());
+        }
+
+        private void ApplyDetected()
+        {
+            string selected = SelectedTargetKey();
+            _targetItems = TargetCatalog.All.Select(e =>
+                new TargetVm { Key = e.Key, Display = e.Display, Installed = _detected.Contains(e.Key) }).ToList();
+            TargetCombo.ItemsSource = _targetItems;
+            int idx = _targetItems.FindIndex(t => t.Key == selected);
+            TargetCombo.SelectedIndex = idx >= 0 ? idx : 0;
+            BuildQueueTargetsList();
+            Console.Log("[INFO] Detected After Effects installs: " +
+                        string.Join(", ", TargetCatalog.All
+                            .Where(e => _detected.Contains(e.Key))
+                            .Select(e => e.Display)) + ".");
+        }
+
+        /// <summary>The little "installed" pill — the PrimaryContainer pair
+        /// the picked state of every chip in the app wears. Resource
+        /// references are SET, not read, so the pill re-tints with themes.</summary>
+        private Border MakeInstalledPill(double left)
+        {
+            var pill = new Border
+            {
+                CornerRadius = new CornerRadius(5),
+                Padding = new Thickness(6, 1, 6, 1),
+                Margin = new Thickness(left, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            pill.SetResourceReference(Border.BackgroundProperty, "B.PrimaryContainer");
+            var label = new TextBlock
+            {
+                Text = "installed",
+                FontSize = 9.5,
+                FontWeight = FontWeights.SemiBold
+            };
+            label.SetResourceReference(TextBlock.ForegroundProperty, "B.OnPrimaryContainer");
+            pill.Child = label;
+            return pill;
         }
 
         private void QueueTargetsBtn_Click(object sender, RoutedEventArgs e)
@@ -536,8 +619,7 @@ namespace FfxTool.Gui
             // never disagree — and the seed is remembered like any setting
             if (_queueTargets.Count == 0)
             {
-                _queueTargets.Add(InternalKeyFor(
-                    TargetCombo.SelectedItem as string ?? "After Effects CS5.5"));
+                _queueTargets.Add(SelectedTargetKey());
                 BuildQueueTargetsList();
                 UpdateQueueTargetsUi();
                 ConvertSettings.SetQueueTargets(_queueTargets);
@@ -700,7 +782,7 @@ namespace FfxTool.Gui
             var toRemove = new HashSet<string>(
                 _rows.Where(r => r.IsChecked).Select(r => r.MatchName));
 
-            string targetKey = InternalKeyFor(TargetCombo.SelectedItem as string ?? "After Effects CS5.5");
+            string targetKey = SelectedTargetKey();
             Console.Log($"[SYSTEM] Converting to target '{targetKey}'…");
             var sw = System.Diagnostics.Stopwatch.StartNew();
             LogService.AppendVerbose($"single convert '{System.IO.Path.GetFileName(_inputPath)}' — {(_inputData?.Length ?? 0)} bytes → {targetKey}");
@@ -722,6 +804,20 @@ namespace FfxTool.Gui
             if (OverwriteCheck.IsChecked == true && !string.IsNullOrEmpty(_inputPath))
             {
                 outPath = _inputPath;
+                // the single-preset half of the safety net: one original,
+                // one zip — a failure is logged and the overwrite continues
+                if (BackupCheck.IsChecked == true)
+                {
+                    try
+                    {
+                        var backup = BackupService.CreateBackup(new List<string> { _inputPath }, null);
+                        Console.Log("[INFO] Backup zip: " + backup.ZipPath);
+                    }
+                    catch (Exception backupEx)
+                    {
+                        Console.Log("[WARN] Backup failed, overwriting without one: " + backupEx.Message);
+                    }
+                }
                 try { File.WriteAllBytes(outPath, result.Data); }
                 catch (Exception ex)
                 {
@@ -782,7 +878,7 @@ namespace FfxTool.Gui
             var output = (QueueOutputMode)Math.Max(0, QueueOutput.SelectedIndex);
             // the batch's target set: the checked Targets, or the single
             // Target version picker when nothing is checked
-            string comboKey = InternalKeyFor(TargetCombo.SelectedItem as string ?? "After Effects CS5.5");
+            string comboKey = SelectedTargetKey();
             List<string> targets = _queueTargets.Count > 0
                 ? new List<string>(_queueTargets)
                 : new List<string> { comboKey };
@@ -794,11 +890,17 @@ namespace FfxTool.Gui
                     "Too many targets for overwrite", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+            bool backupOn = BackupCheck.IsChecked == true;
             if (output == QueueOutputMode.Overwrite)
             {
                 var choice = MessageBox.Show(this.FindWindow(),
-                    "Overwrite the original preset files in place?\n\n" +
-                    "The originals cannot be recovered — every conversion is verified before writing, but nothing backs them up.",
+                    backupOn
+                        ? "Overwrite the original preset files in place?\n\n" +
+                          "A backup zip of the originals is written beside the source folder first — " +
+                          "restore or delete it any time in Settings → Storage."
+                        : "Overwrite the original preset files in place?\n\n" +
+                          "The originals cannot be recovered — every conversion is verified before writing, " +
+                          "and the backup checkbox is off.",
                     "Overwrite originals", MessageBoxButton.YesNo, MessageBoxImage.Warning);
                 if (choice != MessageBoxResult.Yes) return;
             }
@@ -875,6 +977,29 @@ namespace FfxTool.Gui
                             "Output failed", MessageBoxButton.OK, MessageBoxImage.Error);
                         return;
                     }
+                }
+            }
+
+            // the overwrite safety net: every queued original goes into one
+            // backup zip beside the source folder BEFORE any conversion is
+            // written — a run that dies mid-way still leaves the originals
+            // recoverable, and Settings → Storage lists/restores them
+            if (output == QueueOutputMode.Overwrite && backupOn)
+            {
+                Console.Log("[INFO] Backing up the originals…");
+                try
+                {
+                    var backup = BackupService.CreateBackup(files, root);
+                    Console.Log("[INFO] Backup zip: " + backup.ZipPath +
+                                " — " + backup.Files + " original(s)");
+                }
+                catch (Exception backupEx)
+                {
+                    var go = MessageBox.Show(this.FindWindow(),
+                        "The backup could not be written:\n" + backupEx.Message +
+                        "\n\nOverwrite anyway, without a backup?",
+                        "Backup failed", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                    if (go != MessageBoxResult.Yes) return;
                 }
             }
 

@@ -39,6 +39,16 @@ namespace FfxTool.Gui
                             : "a background error occurred",
                        args.ExceptionObject as Exception);
 
+            // ---- command-line mode: --convert / --list-targets / --help
+            // runs the same pipeline in the calling console and exits with
+            // a scriptable code — no window, no theme, no updater. A WPF
+            // exe that also behaves like a tool.
+            if (e.Args != null && e.Args.Length > 0 && CliRunner.IsCliInvocation(e.Args))
+            {
+                Shutdown(CliRunner.Run(e.Args));
+                return;
+            }
+
             try
             {
                 ThemeService.Load(); // must run before any window reads theme colors

@@ -17,6 +17,19 @@
                            Margin="9,0,0,0" VerticalAlignment="Center"/>
             </StackPanel>
         </HierarchicalDataTemplate>
+        <!-- Target version picker row: the display name plus the
+             "installed" pill that appears once the AeDetect probe
+             finds that AE version on this machine -->
+        <DataTemplate DataType="{x:Type controls:TargetVm}">
+            <StackPanel Orientation="Horizontal" Background="Transparent">
+                <TextBlock Text="{Binding Display}" VerticalAlignment="Center"/>
+                <Border Background="{DynamicResource B.PrimaryContainer}" CornerRadius="5" Padding="6,1"
+                        Margin="8,0,0,0" VerticalAlignment="Center" Visibility="{Binding InstalledVis}">
+                    <TextBlock Text="installed" FontSize="9.5" FontWeight="SemiBold"
+                               Foreground="{DynamicResource B.OnPrimaryContainer}"/>
+                </Border>
+            </StackPanel>
+        </DataTemplate>
         <!-- preset leaf: name · profile flag · size · live conversion status -->
         <DataTemplate DataType="{x:Type controls:QueueFileVm}">
             <Grid Margin="2,2" Background="Transparent" ToolTip="{Binding Note}">
@@ -316,6 +329,12 @@
                             <TextBlock Text="Output" Style="{StaticResource FieldLabel}"/>
                             <CheckBox x:Name="OverwriteCheck" Style="{StaticResource Md3CheckBox}" Content="Overwrite original file"/>
                             <TextBlock Text="Unchecked: saves a copy next to the original with an automatic version suffix."
+                                       Style="{StaticResource Caption}" TextWrapping="Wrap" MaxWidth="300"
+                                       Margin="30,5,0,0" Opacity="0.85"/>
+                            <CheckBox x:Name="BackupCheck" Style="{StaticResource Md3CheckBox}" Margin="0,12,0,0"
+                                      Content="Back up originals before overwriting"
+                                      ToolTip="Overwrite runs and single-preset overwrites first zip the originals beside the preset folder — restore or delete the backups in Settings → Storage"/>
+                            <TextBlock Text="One zip named FFX-backup-&lt;date&gt;.zip beside the source folder; backups are managed in Settings → Storage."
                                        Style="{StaticResource Caption}" TextWrapping="Wrap" MaxWidth="300"
                                        Margin="30,5,0,0" Opacity="0.85"/>
                         </StackPanel>

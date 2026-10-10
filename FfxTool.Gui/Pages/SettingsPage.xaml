@@ -333,7 +333,7 @@
                                 </StackPanel>
 
                                 <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,0,0,16"
-                                           Text="Everything this tool keeps between sessions lives in %APPDATA%\FFXCompatibilityTool. All of it is safe to delete — the scan catalog rebuilds on the next plugin scan and the history fills up again as presets are analyzed."/>
+                                           Text="Everything this tool keeps between sessions lives in %APPDATA%\FFXCompatibilityTool — all of it is safe to delete: the scan catalog rebuilds on the next plugin scan and the history fills up again as presets are analyzed. The one exception: overwrite backups live beside the preset folders they protect, and they are listed here."/>
 
                                 <!-- DISK USAGE group: a stacked meter of the
                                      three data stores (suggestion 12) -->
@@ -449,6 +449,15 @@
                                                 ToolTip="Deletes recent_files.json — the recent list empties and refills as presets are analyzed"/>
                                     </Grid>
                                 </Border>
+
+                                <!-- conversion backups: the overwrite safety
+                                     net's records — one row per backup zip,
+                                     restore pulls the originals back over
+                                     whatever replaced them -->
+                                <TextBlock x:Name="BackupsHeader" Text="CONVERSION BACKUPS" Style="{StaticResource GroupHeader}" Margin="0,0,0,10"/>
+                                <TextBlock x:Name="BackupsEmpty" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,0,0,16"
+                                           Text="No backups yet. Overwrite runs with the backup checkbox on zip the originals beside the preset folder first — they are listed here for restore or delete."/>
+                                <StackPanel x:Name="BackupRows" Margin="0,0,0,16"/>
 
                                 <!-- consolidated file-location rows (suggestion 15):
                                      the storage folder AND the session logs live

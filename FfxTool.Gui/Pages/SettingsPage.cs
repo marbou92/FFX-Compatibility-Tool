@@ -277,6 +277,7 @@ namespace FfxTool.Gui
             AddSearch(1, "Storage", "Plugin scan catalog", "cache delete clear recognition plugin_catalog", CacheRow);
             AddSearch(1, "Storage", "Verbose Logging", "debug bug report log steps", VerboseRow);
             AddSearch(1, "Storage", "Recent presets", "history delete recent files recent_files", HistoryRow);
+            AddSearch(1, "Storage", "Conversion backups", "backup zip overwrite restore originals", BackupsHeader);
             AddSearch(1, "Storage", "Open storage folder", "explorer appdata folder files data", OpenFolderRow);
             AddSearch(1, "Storage", "Open session logs", "console log files verbose reveal", LogsRow);
             AddSearch(2, "Plugin Profiles", "Vendor switches", "plugins profile vendors after effects linked available", null);
@@ -488,6 +489,144 @@ namespace FfxTool.Gui
             MeterLegendCache.Text = "Cache " + FmtBytes(cacheBytes);
             MeterLegendHistory.Text = "History " + FmtBytes(historyBytes);
             MeterLegendLogs.Text = "Logs " + FmtBytes(logsBytes);
+
+            RefreshBackupRows();
+        }
+
+        // ---------- conversion backups ----------
+
+        /// <summary>One row per recorded backup zip, newest first — restore
+        /// pulls the originals back over whatever replaced them, delete
+        /// asks with the same two-step confirm as every other delete.
+        /// Runs whenever the Storage numbers refresh, so a backup made by
+        /// a CLI run appears here on the next visit too.</summary>
+        private void RefreshBackupRows()
+        {
+            BackupRows.Children.Clear();
+            var records = BackupService.LoadRecords();
+            bool empty = records.Count == 0;
+            BackupsEmpty.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
+            BackupsHeader.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
+            foreach (var rec in records)
+                BackupRows.Children.Add(MakeBackupRow(rec));
+        }
+
+        private FrameworkElement MakeBackupRow(BackupRecord rec)
+        {
+            string name = System.IO.Path.GetFileName(rec.ZipPath);
+            bool onDisk = File.Exists(rec.ZipPath);
+
+            var grid = new Grid { Margin = new Thickness(0) };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var chip = new Border
+            {
+                Width = 34,
+                Height = 34,
+                CornerRadius = new CornerRadius(10),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            chip.SetResourceReference(Border.BackgroundProperty, "B.SCHighest");
+            var icon = new IconGlyph { IconName = "Restore", Width = 17, Height = 17 };
+            icon.SetResourceReference(IconGlyph.ForegroundProperty, "B.Primary");
+            chip.Child = icon;
+            Grid.SetColumn(chip, 0);
+
+            var text = new StackPanel
+            {
+                Margin = new Thickness(13, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var title = new TextBlock
+            {
+                Text = name,
+                FontWeight = FontWeights.Medium,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            title.SetResourceReference(TextBlock.StyleProperty, "Body");
+            text.Children.Add(title);
+            var sub = new TextBlock
+            {
+                Text = onDisk
+                    ? rec.Root + " · " + rec.Created.ToString("yyyy-MM-dd HH:mm") +
+                      " · " + rec.Files + " original(s) · " + FmtBytes(rec.Bytes)
+                    : "the zip is gone from disk — delete this entry",
+                ToolTip = rec.ZipPath,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Margin = new Thickness(0, 2, 0, 0)
+            };
+            sub.SetResourceReference(TextBlock.StyleProperty, "Caption");
+            text.Children.Add(sub);
+            Grid.SetColumn(text, 1);
+
+            var actions = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(12, 0, 0, 0)
+            };
+            if (onDisk)
+            {
+                var restore = new Button
+                {
+                    Content = "Restore",
+                    MinWidth = 96,
+                    Margin = new Thickness(0, 0, 8, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    ToolTip = "Writes the backed-up originals back to " + rec.Root
+                };
+                restore.SetResourceReference(Button.StyleProperty, "OutlinedButton");
+                restore.Click += (s, e) => BackupRestore_Click(rec);
+                actions.Children.Add(restore);
+            }
+            var del = new Button
+            {
+                Content = "Delete",
+                MinWidth = 96,
+                VerticalAlignment = VerticalAlignment.Center,
+                ToolTip = onDisk
+                    ? "Deletes the backup zip and forgets it — the converted files stay"
+                    : "Forgets this entry"
+            };
+            del.SetResourceReference(Button.StyleProperty, "OutlinedButton");
+            del.Click += (s, e) => BackupDelete_Click(del, rec);
+            actions.Children.Add(del);
+            Grid.SetColumn(actions, 2);
+
+            grid.Children.Add(chip);
+            grid.Children.Add(text);
+            grid.Children.Add(actions);
+            var row = new Border { Child = grid };
+            row.SetResourceReference(Border.StyleProperty, "SettingsRow");
+            return row;
+        }
+
+        private void BackupRestore_Click(BackupRecord rec)
+        {
+            var result = BackupService.Restore(rec.ZipPath);
+            if (result.Ok)
+            {
+                LogService.Append("storage: restored " + result.Count + " original(s) from " + rec.ZipPath);
+                InfoToast("Originals restored",
+                          result.Count + " file(s) written back to " + result.Root);
+            }
+            else
+            {
+                InfoToast("Restore failed", result.Error ?? "Unknown error");
+            }
+        }
+
+        private void BackupDelete_Click(Button btn, BackupRecord rec)
+        {
+            ArmConfirm(btn, "Confirm delete?", () =>
+            {
+                bool deleted = BackupService.RemoveRecord(rec.ZipPath);
+                LogService.Append("storage: backup " + (deleted ? "deleted — " : "kept (locked) — ") + rec.ZipPath);
+                RefreshBackupRows();
+                InfoToast("Backup deleted", "The originals' zip is gone; the converted files stay.");
+            }, "B.ErrorContainer", "B.OnErrorContainer", "B.Primary", "B.OnPrimary");
         }
 
         // ---------- two-step delete confirms (suggestion 13) ----------

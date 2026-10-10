@@ -14,7 +14,8 @@ namespace FfxTool.Gui
     ///   • the batch's multi-target set (the file manager's Targets field)
     ///   • the batch output mode (the five-entry Output combo)
     ///   • the batch checkboxes (include subfolders, remove effects missing
-    ///     from the profile) and the single-preset overwrite choice
+    ///     from the profile), the single-preset overwrite choice and the
+    ///     backup-before-overwrite toggle
     ///   • the three last-used folders — opened presets, saved output and
     ///     the browsed preset folder — so the dialogs reopen where the user
     ///     last was instead of the system default
@@ -37,6 +38,7 @@ namespace FfxTool.Gui
             [DataMember(Name = "queueRecursive")] public bool QueueRecursive = true;
             [DataMember(Name = "queueRemoveMissing")] public bool QueueRemoveMissing;
             [DataMember(Name = "overwriteOriginal")] public bool OverwriteOriginal;
+            [DataMember(Name = "queueBackup")] public bool QueueBackup = true;
             [DataMember(Name = "lastOpenDir")] public string LastOpenDir;
             [DataMember(Name = "lastSaveDir")] public string LastSaveDir;
             [DataMember(Name = "lastFolderDir")] public string LastFolderDir;
@@ -76,6 +78,7 @@ namespace FfxTool.Gui
                         Data.QueueRecursive = s.QueueRecursive;
                         Data.QueueRemoveMissing = s.QueueRemoveMissing;
                         Data.OverwriteOriginal = s.OverwriteOriginal;
+                        Data.QueueBackup = s.QueueBackup;
                         Data.LastOpenDir = s.LastOpenDir;
                         Data.LastSaveDir = s.LastSaveDir;
                         Data.LastFolderDir = s.LastFolderDir;
@@ -90,6 +93,7 @@ namespace FfxTool.Gui
         public static bool QueueRecursive => Data.QueueRecursive;
         public static bool QueueRemoveMissing => Data.QueueRemoveMissing;
         public static bool OverwriteOriginal => Data.OverwriteOriginal;
+        public static bool QueueBackup => Data.QueueBackup;
         public static string LastOpenDir => Data.LastOpenDir;
         public static string LastSaveDir => Data.LastSaveDir;
         public static string LastFolderDir => Data.LastFolderDir;
@@ -127,6 +131,12 @@ namespace FfxTool.Gui
         public static void SetOverwriteOriginal(bool on)
         {
             Data.OverwriteOriginal = on;
+            Save();
+        }
+
+        public static void SetQueueBackup(bool on)
+        {
+            Data.QueueBackup = on;
             Save();
         }
 
