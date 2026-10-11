@@ -15,9 +15,10 @@ no installer, no runtime download on Windows 10/11.
 [![CI](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/test.yml/badge.svg?label=CI)](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/test.yml)
 [![Nightly](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/nightly.yml/badge.svg?label=Nightly)](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/nightly.yml)
 [![Release](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/build.yml/badge.svg?label=Release)](https://github.com/marbou92/FFX-Compatibility-Tool/actions/workflows/build.yml)
-[![Latest release](https://img.shields.io/github/v/release/marbou92/FFX-Compatibility-Tool?label=latest&color=2ea44f)](https://github.com/marbou92/FFX-Compatibility-Tool/releases/latest)
-[![License](https://img.shields.io/github/license/marbou92/FFX-Compatibility-Tool?label=license&color=6e7781)](LICENSE)
-[![winget](https://img.shields.io/winget/v/Marbou92.FFXCompatibilityTool?label=winget&color=8250df)](https://github.com/microsoft/winget-pkgs/tree/master/manifests/m/Marbou92/FFXCompatibilityTool)
+[![Latest release](docs/badges/release.svg)](https://github.com/marbou92/FFX-Compatibility-Tool/releases/latest)
+[![License](docs/badges/license.svg)](LICENSE)
+[![winget](docs/badges/winget.svg)](https://github.com/microsoft/winget-pkgs/tree/master/manifests/m/Marbou92/FFXCompatibilityTool)
+<!-- the three value badges are self-hosted SVGs under docs/badges — GitHub's camo proxy intermittently drops img.shields.io; the nightly build refreshes them (see .github/workflows/nightly.yml) -->
 
 [Download](https://github.com/marbou92/FFX-Compatibility-Tool/releases/latest) · [Nightly](https://github.com/marbou92/FFX-Compatibility-Tool/raw/nightly/FFXCompatibilityTool-nightly.exe) · [Report an issue](https://github.com/marbou92/FFX-Compatibility-Tool/issues)
 
