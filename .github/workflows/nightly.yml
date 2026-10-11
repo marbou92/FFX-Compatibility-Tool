@@ -109,6 +109,40 @@ jobs:
           path: ${{ steps.pack.outputs.exename }}
           retention-days: 14
 
+      - name: Refresh the README badge snapshots
+        # the README's three value badges are self-hosted SVGs now: GitHub's
+        # camo image proxy intermittently 504s img.shields.io ("Error Fetching
+        # Resource") and the Latest release, License and winget badges vanish
+        # from the README for hours while the direct URLs answer fine. The repo
+        # carries docs/badges/*.svg instead — repo-relative images bypass camo
+        # — and this step re-fetches the same shields URLs so the values stay
+        # truthful (latest release, license, winget catalog version), committing
+        # only when a value actually changed. [skip ci] keeps that push from
+        # re-triggering this workflow; every failure is tolerated — a stale
+        # badge beats a broken nightly, and the next run retries.
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p docs/badges
+          fetch() {
+            curl -fsS --max-time 30 "$2" -o "/tmp/badge-$1" \
+              && mv "/tmp/badge-$1" "docs/badges/$1" \
+              || echo "badge $1: fetch failed — keeping the current snapshot"
+          }
+          fetch release.svg "https://img.shields.io/github/v/release/${GITHUB_REPOSITORY}?label=latest&color=2ea44f"
+          fetch license.svg "https://img.shields.io/github/license/${GITHUB_REPOSITORY}?label=license&color=6e7781"
+          fetch winget.svg  "https://img.shields.io/winget/v/Marbou92.FFXCompatibilityTool?label=winget&color=8250df"
+          if [ -z "$(git status --porcelain -- docs/badges)" ]; then
+            echo "badges unchanged — nothing to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main >/dev/null 2>&1 || true
+          git add docs/badges
+          git commit -m "docs(badges): refresh the self-hosted README badge snapshots [skip ci]"
+          git push origin HEAD:main || echo "badge push failed — next nightly retries"
+
       - name: Publish the rolling nightly to the nightly branch
         shell: bash
         env:
